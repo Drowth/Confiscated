@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using Object=UnityEngine.Object;
@@ -67,6 +68,36 @@ namespace Confiscated.EditorTools
 
             MountKeyOnTrolley(run);
             RepairHoldBar();
+            BlockClosedDoorsForStaff(run);
+        }
+
+        /// <summary>
+        /// Doors shut for the whole run had a physical barrier but nothing on the NavMesh, so the caretaker walked
+        /// straight through doors the player cannot open (found by the 2026-09-25 auto-run bot at Dining west A).
+        /// </summary>
+        [MenuItem("Confiscated/School Run/Block Closed Doors For Staff")]
+        public static void InstallClosedDoorBlocks()
+        {
+            if(EditorApplication.isPlaying)throw new InvalidOperationException("Stop Play before installing.");
+            int n=BlockClosedDoorsForStaff(Object.FindFirstObjectByType<SchoolRunController>());
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());EditorSceneManager.SaveOpenScenes();
+            Debug.Log("[PlaytestFix] "+n+" closed doors now block staff navigation.");
+        }
+
+        public static int BlockClosedDoorsForStaff(SchoolRunController run)
+        {
+            if(run==null)throw new InvalidOperationException("Open the SchoolLayout scene first.");
+            int count=0;
+            foreach(var door in Object.FindObjectsByType<OfficeDoor>(FindObjectsInactive.Include,FindObjectsSortMode.None).Where(d=>d.closedForRun&&!d.mainExit))
+            {
+                var barrier=run.transform.Find("Door blocker - "+door.name+"/"+BarrierName);
+                if(barrier==null)throw new InvalidOperationException("Closed door "+door.name+" has no barrier.");
+                var modifier=barrier.GetComponent<NavMeshModifier>();if(modifier==null)modifier=barrier.gameObject.AddComponent<NavMeshModifier>();modifier.ignoreFromBuild=true;
+                var obstacle=barrier.GetComponent<NavMeshObstacle>();if(obstacle==null)obstacle=barrier.gameObject.AddComponent<NavMeshObstacle>();
+                obstacle.shape=NavMeshObstacleShape.Box;obstacle.center=Vector3.zero;obstacle.size=Vector3.one;obstacle.carving=true;obstacle.carveOnlyStationary=false;
+                EditorUtility.SetDirty(barrier.gameObject);count++;
+            }
+            return count;
         }
 
         static void MountKeyOnTrolley(SchoolRunController run)

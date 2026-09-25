@@ -487,9 +487,10 @@ namespace Confiscated.EditorTools
                     barrier.GetComponent<MeshRenderer>().enabled=false;
                     // Invisible, so it must never stand between the player's interaction ray and the door it guards.
                     barrier.layer=PlaytestFixSetup.IgnoreRaycastLayer;
+                    // Closed doors too: without it the caretaker walks through doors the player cannot open.
+                    AddDynamicBlock(barrier,new Vector3(0,0,0),Vector3.one);
                     if(!door.closedForRun)
                     {
-                        AddDynamicBlock(barrier,new Vector3(0,0,0),Vector3.one);
                         var ctrl=marker.gameObject.AddComponent<RunDoorBlocker>();ctrl.door=door;ctrl.barrier=barrier;
                     }
                     DoorNotice(door,door.closedForRun?"CLOSED":door.runLockName+"\nLOCKED STORAGE");

@@ -96,6 +96,13 @@ namespace Confiscated.EditorTools
             Need(exit.mainExit&&!exit.CanInteract(P)&&!exit.IsOpen&&exit.GetPrompt(P).Contains("MAIN ENTRANCE"),"main entrance is shut and explains itself before five of five");
             Need(exit.GetComponent<ProgressPropFeedback>()!=null&&exit.GetComponent<ProgressPropFeedback>().padlock!=null,"main entrance carries a padlock that drops at five of five");
             Need(GameObject.Find("SchoolRun/"+PlaytestFixSetup.ExitBlockerName)!=null,"staff cannot route through the shut main entrance");
+            foreach(var shut in Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None).Where(d=>d.closedForRun&&!d.mainExit))
+            {
+                var leaf=shut.hinge.GetComponentsInChildren<Collider>().First(x=>x.name=="Leaf");
+                Vector3 c=leaf.bounds.center,n=leaf.transform.forward;c.y=0;n.y=0;n=n.normalized*1.2f;var route=new NavMeshPath();
+                bool through=NavMesh.SamplePosition(c+n,out var a,.6f,NavMesh.AllAreas)&&NavMesh.SamplePosition(c-n,out var b,.6f,NavMesh.AllAreas)&&NavMesh.CalculatePath(a.position,b.position,NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete&&route.corners.Length<=3&&Vector3.Distance(a.position,b.position)<3.5f;
+                Need(!through,"staff cannot walk through closed door "+shut.name);
+            }
         }
         static void Path(Vector3 from,Vector3 to,string label)
         {
