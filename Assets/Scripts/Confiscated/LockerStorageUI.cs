@@ -151,7 +151,7 @@ namespace Confiscated
         void Inspect(InventoryEntry entry)
         {
             inspectedIcon.sprite=entry?.definition.icon;inspectedIcon.enabled=inspectedIcon.sprite!=null;
-            itemDetails.text=entry==null?"YOUR BELONGINGS\n\nClick an item to inspect it.\n\nKeys, your hall pass and newsletters work with E at their destination.\n\n1: hold football   2 / Q: place toy\n3 / G: drop glue (D-pad down)":entry.definition.displayName.ToUpperInvariant()+"\n\n"+entry.definition.description;
+            itemDetails.text=entry==null?"YOUR BELONGINGS\n\nClick an item to inspect it.\n\nKeys, your hall pass and newsletters work with F at their destination.\n\n1 / right click: wind-up toy\n2 / G: drop glue (D-pad down)":entry.definition.displayName.ToUpperInvariant()+"\n\n"+entry.definition.description;
         }
 
         void Build()

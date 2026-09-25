@@ -14,7 +14,7 @@ namespace Confiscated
         public static int TotalDeployedThisRun { get; private set; }
         public static void ResetRunTally() => TotalDeployedThisRun = 0;
         void Awake() { player = GetComponent<PlayerInteractor>(); if (quackClip == null) quackClip = Resources.Load<AudioClip>("Audio/ToyDuck"); }
-        public void Collect() { Charges = Mathf.Min(3, Charges + 1); HudController.Instance?.SetStatus("Q / right click: leave a toy, then turn a corner. It rattles in 2 seconds. He must lose sight of you first.", 8); }
+        public void Collect() { Charges = Mathf.Min(3, Charges + 1); HudController.Instance?.SetStatus("1 / right click: leave a toy, then turn a corner. It rattles in 2 seconds. He must lose sight of you first.", 8); }
         void Update() { if ((Keyboard.current != null && Keyboard.current.digit1Key.wasPressedThisFrame)||(Mouse.current!=null&&Mouse.current.rightButton.wasPressedThisFrame)) Deploy(); }
         public bool Deploy()
         {

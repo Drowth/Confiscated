@@ -156,7 +156,7 @@ namespace Confiscated
             if (Count == 5) next = period.Player.HasPhone ? "Escape through the MAIN ENTRANCE." : "Retrieve your phone from your locker.";
             else if (!Has(0)) next = period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey)?"Use the OFFICE KEY. Recover your phone from the office box.":"Take the OFFICE KEY from the trolley in DINING HALL.";
             else if (!HasBoltCutters&&!Has(1)) next = "Take bolt cutters from the caretaker workbench.";
-            else if (!Has(1)) next = CageOpen?"Find the CONFISCATED box in DINING HALL.":"Open the dining cage chain with E.";
+            else if (!Has(1)) next = CageOpen?"Find the CONFISCATED box in DINING HALL.":"Hold F on the dining cage chain.";
             else if (!Has(2)) next = "Find the CONFISCATED box in RESOURCES.";
             else if (!Has(3)) next = "Find the CONFISCATED box in EQUIPMENT.";
             else next = HasStoreKey?"Find the CONFISCATED box in STORE.":"Take the store key from the EQUIPMENT desk.";
