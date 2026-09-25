@@ -127,9 +127,14 @@ namespace Confiscated
             effectsLabel=MakeButton("Effects",p,new Vector2(.53f,.405f),new Vector2(.94f,.515f),CycleEffects).GetComponentInChildren<Text>();effectsLabel.fontSize=24;
             screenLabel=MakeButton("Screen",p,new Vector2(.53f,.275f),new Vector2(.94f,.385f),ToggleScreen).GetComponentInChildren<Text>();screenLabel.fontSize=24;
 
-            var keys=Label("WASD move    Shift run    Q / E lean    Space look back\nF or left click interact    1 wind-up toy    2 / G glue    Tab bag",p,new Vector2(.06f,.05f),new Vector2(.94f,.23f),21,Ink);
-            keys.alignment=TextAnchor.MiddleCenter;
+            KeyRow(p,.145f,.225f,("WASD","move"),("SHIFT","run"),("Q E","lean"),("SPACE","look back"));
+            KeyRow(p,.05f,.13f,("F LMB","interact"),("1 RMB","wind-up toy"),("2","glue (or G)"),("TAB","bag"));
             root.SetActive(false);
+        }
+        static void KeyRow(Transform paper,float bottom,float top,params (string keys,string label)[] hints)
+        {
+            var row=KeyCapHints.Row(paper,40,21,Ink,hints);row.anchorMin=new Vector2(.06f,bottom);row.anchorMax=new Vector2(.94f,top);row.offsetMin=row.offsetMax=Vector2.zero;
+            row.GetComponent<HorizontalLayoutGroup>().childAlignment=TextAnchor.MiddleCenter;
         }
         Button MakeButton(string text,Transform parent,Vector2 min,Vector2 max,UnityEngine.Events.UnityAction action)
         {

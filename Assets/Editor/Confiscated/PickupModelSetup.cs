@@ -17,7 +17,7 @@ namespace Confiscated.EditorTools
     {
         const string Models = "Assets/Art/Models/SchoolProps/Pickups/", Materials = "Assets/Art/Materials/", Prefabs = "Assets/Prefabs/SchoolRun/";
         const string HolderName = "Pickup model";
-        public static bool Has(string model) => File.Exists(Models + model + ".fbx");
+        public static bool Has(string model, string folder = Models) => File.Exists(folder + model + ".fbx");
         public static bool Available => Directory.Exists(Models) && Directory.GetFiles(Models, "*.fbx").Length > 0;
 
         [MenuItem("Confiscated/School Run/Apply 3D Pickup Models")]
@@ -61,11 +61,11 @@ namespace Confiscated.EditorTools
         }
 
         /// <summary>Everything under <paramref name="visual"/> becomes one centred model standing on <paramref name="baseY"/>.</summary>
-        internal static bool Place(Transform visual, string model, float longestSide, float baseY, float yaw)
+        internal static bool Place(Transform visual, string model, float longestSide, float baseY, float yaw, string folder = Models)
         {
-            if (model == null || !Has(model)) return false;
-            var asset = AssetDatabase.LoadAssetAtPath<GameObject>(Models + model + ".fbx"); if (asset == null) return false;
-            var material = Material(model); if (material == null) return false;
+            if (model == null || !Has(model, folder)) return false;
+            var asset = AssetDatabase.LoadAssetAtPath<GameObject>(folder + model + ".fbx"); if (asset == null) return false;
+            var material = Material(model, folder); if (material == null) return false;
             foreach (var old in visual.Cast<Transform>().ToArray()) Object.DestroyImmediate(old.gameObject);
             // The holder carries yaw, scale and offset; the model beneath keeps the importer's own axis correction.
             var holder = new GameObject(HolderName).transform; holder.SetParent(visual, false); holder.localRotation = Quaternion.Euler(0, yaw, 0);
@@ -84,13 +84,13 @@ namespace Confiscated.EditorTools
         }
 
         /// <summary>The Blender export does not link its embedded maps, so the colour map is extracted and used directly.</summary>
-        static Material Material(string model)
+        static Material Material(string model, string models)
         {
-            string folder = Models + "Textures/" + model;
+            string folder = models + "Textures/" + model;
             if (!Directory.Exists(folder) || Directory.GetFiles(folder, "Color_*.jpg").Length == 0)
             {
                 Directory.CreateDirectory(folder); AssetDatabase.Refresh();
-                var importer = (ModelImporter)AssetImporter.GetAtPath(Models + model + ".fbx");
+                var importer = (ModelImporter)AssetImporter.GetAtPath(models + model + ".fbx");
                 if (importer == null || !importer.ExtractTextures(folder)) { Debug.LogWarning("[PickupModels] No embedded textures in " + model); return null; }
                 AssetDatabase.Refresh();
                 // Unlit drawing has no use for the normal map; the FBX still carries it if that ever changes.

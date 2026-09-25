@@ -65,6 +65,7 @@ namespace Confiscated.EditorTools
             ChecklistIconSetup.ApplyToScene();
             RemoveFootball();
             PlaytestFixSetup.ApplyToScene();
+            ClosedDoorSignageSetup.ApplyToScene();
             PlayerClaritySetup.ApplyToScene();
             WaterFountainSetup.ApplyToScene();
             GeneratedHallwayLandmarksSetup.ApplyToScene();
@@ -137,10 +138,10 @@ namespace Confiscated.EditorTools
         {
             string path="Assets/Art/Materials/M_Run_"+name+".mat";
             var mat=AssetDatabase.LoadAssetAtPath<Material>(path);
-            if(mat==null){mat=new Material(Shader.Find("Universal Render Pipeline/Unlit"));AssetDatabase.CreateAsset(mat,path);}
+            if(mat==null){mat=new Material(Shader.Find("Universal Render Pipeline/Lit"));AssetDatabase.CreateAsset(mat,path);}
             var texture=AssetDatabase.LoadAssetAtPath<Texture2D>(Art+name+".png");
             if(texture==null)throw new Exception("Generated art missing: "+name);
-            mat.SetTexture("_BaseMap",texture);EditorUtility.SetDirty(mat);return mat;
+            mat.SetTexture("_BaseMap",texture);SchoolLightingSetup.ConfigureArtworkMaterial(mat,false);return mat;
         }
         static void Display(Vector3 pos,float yaw,string art="PupilArt",string title=null)
         {
@@ -465,7 +466,9 @@ namespace Confiscated.EditorTools
                 if(value!="CLOSED"&&value!="CLOSED TODAY"&&!value.Contains("LOCKED STORAGE"))Notice(position,yaw,value);
                 count++;
             }
-            foreach(var door in doors)if(door.closedForRun||door.runRequiredLevel>0)DoorNotice(door,door.closedForRun?"CLOSED":door.runLockName+"\nLOCKED STORAGE");
+            // Closed-for-run doors carry drawn signage instead (ClosedDoorSignageSetup).
+            foreach(var door in doors)if(door.runRequiredLevel>0&&!door.closedForRun)DoorNotice(door,door.runLockName+"\nLOCKED STORAGE");
+            ClosedDoorSignageSetup.ApplyToScene();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());EditorSceneManager.SaveOpenScenes();AssetDatabase.SaveAssets();
             Debug.Log("[SchoolRun] Resized "+count+" door and paper notices.");
         }
@@ -493,7 +496,7 @@ namespace Confiscated.EditorTools
                     {
                         var ctrl=marker.gameObject.AddComponent<RunDoorBlocker>();ctrl.door=door;ctrl.barrier=barrier;
                     }
-                    DoorNotice(door,door.closedForRun?"CLOSED":door.runLockName+"\nLOCKED STORAGE");
+                    if(!door.closedForRun)DoorNotice(door,door.runLockName+"\nLOCKED STORAGE");
                 }
                 EditorUtility.SetDirty(door);PrefabUtility.RecordPrefabInstancePropertyModifications(door);
             }

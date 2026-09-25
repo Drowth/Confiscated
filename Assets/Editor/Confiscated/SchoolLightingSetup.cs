@@ -36,6 +36,7 @@ namespace Confiscated.EditorTools
 
         public static void ApplyToScene()
         {
+            ApplyArtworkMaterials();
             if(AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath)==null)throw new System.Exception("P_CeilingLight prefab missing");
             var contents=PrefabUtility.LoadPrefabContents(PrefabPath);
             var light=contents.GetComponentInChildren<Light>(true);
@@ -73,6 +74,40 @@ namespace Confiscated.EditorTools
 
             SchoolLayoutBuilder.RefreshLights();
             AddFeatureFixtures();
+        }
+
+        [MenuItem("Confiscated/Lighting/Make Artwork Respond to Room Lights")]
+        public static void ApplyArtworkAndSave()
+        {
+            if(EditorApplication.isPlaying)throw new System.InvalidOperationException("Stop Play before changing artwork materials.");
+            ApplyArtworkMaterials();AssetDatabase.SaveAssets();SceneView.RepaintAll();
+        }
+
+        public static void ApplyArtworkMaterials()
+        {
+            foreach(var name in new[]{"M_Run_PupilArt","M_Run_Nature","M_Run_Sports","M_Notice_UseOtherDoor","M_Notice_UseOtherDoor_Arrow"})
+            {
+                var material=AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/"+name+".mat");
+                if(material!=null)ConfigureArtworkMaterial(material,name.StartsWith("M_Notice_"));
+            }
+        }
+
+        // Paper in the world follows the same lights and shadows as the wall behind it.
+        // Keep the source colours; remove the constant full-bright response of the old unlit cards.
+        public static void ConfigureArtworkMaterial(Material material,bool cutout)
+        {
+            material.shader=Shader.Find("Universal Render Pipeline/Lit");
+            material.SetFloat("_Surface",0);material.SetFloat("_Smoothness",0);material.SetFloat("_Metallic",0);
+            material.SetFloat("_SpecularHighlights",0);material.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            material.SetFloat("_EnvironmentReflections",0);material.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            material.SetFloat("_ReceiveShadows",1);material.DisableKeyword("_RECEIVE_SHADOWS_OFF");
+            material.SetColor("_EmissionColor",Color.black);material.DisableKeyword("_EMISSION");
+            material.globalIlluminationFlags=MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+            material.SetFloat("_AlphaClip",cutout?1:0);material.SetFloat("_Cutoff",.4f);
+            if(cutout)material.EnableKeyword("_ALPHATEST_ON");else material.DisableKeyword("_ALPHATEST_ON");
+            material.SetOverrideTag("RenderType",cutout?"TransparentCutout":"Opaque");
+            material.renderQueue=(int)(cutout?RenderQueue.AlphaTest:RenderQueue.Geometry);
+            EditorUtility.SetDirty(material);
         }
 
         // Objectives the plan-grid fixtures can't reach (walled off or outside a room's grid) get their own fixture,

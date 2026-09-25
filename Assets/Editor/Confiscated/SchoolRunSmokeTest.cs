@@ -102,6 +102,9 @@ namespace Confiscated.EditorTools
                 Vector3 c=leaf.bounds.center,n=leaf.transform.forward;c.y=0;n.y=0;n=n.normalized*1.2f;var route=new NavMeshPath();
                 bool through=NavMesh.SamplePosition(c+n,out var a,.6f,NavMesh.AllAreas)&&NavMesh.SamplePosition(c-n,out var b,.6f,NavMesh.AllAreas)&&NavMesh.CalculatePath(a.position,b.position,NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete&&route.corners.Length<=3&&Vector3.Distance(a.position,b.position)<3.5f;
                 Need(!through,"staff cannot walk through closed door "+shut.name);
+                var signage=shut.transform.Find(ClosedDoorSignageSetup.GroupName);
+                Need(signage!=null&&signage.GetComponentsInChildren<Renderer>().Any(r=>r.name=="Use other door notice")&&signage.GetComponentsInChildren<Transform>().Any(t=>t.name=="Wedged chair"&&t.childCount>0),
+                    "closed door "+shut.name+" carries its use-other-door notice and wedged chair");
             }
         }
         static void Path(Vector3 from,Vector3 to,string label)

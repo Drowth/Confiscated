@@ -6,7 +6,7 @@ namespace Confiscated
     /// <summary>Compact escape HUD and restrained, readable pursuit feedback.</summary>
     public sealed class EscapeRunFeedback : MonoBehaviour
     {
-        SchoolRunController run;Canvas canvas;Text kit,controls,staminaLabel;SketchStaminaBar stamina;AudioSource ambience,steps,pickupAudio;AudioClip hum,step,sting;
+        SchoolRunController run;Canvas canvas;Text kit,staminaLabel;RectTransform controls;SketchStaminaBar stamina;AudioSource ambience,steps,pickupAudio;AudioClip hum,step,sting;
         ThreatVignette vignette;Light[] lights;float[] intensities;float nextStep,danger;bool built;float oldFont;
         bool wasChasing;float spottedAt=-10,flickerAt=-10;int lastCount;PickupChecklist checklist;
         void Start()
@@ -25,7 +25,8 @@ namespace Confiscated
             var rect=go.GetComponent<RectTransform>();rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.offsetMin=rect.offsetMax=Vector2.zero;
             var edge=new GameObject("Pursuit edge shade",typeof(RectTransform),typeof(ThreatVignette));edge.transform.SetParent(go.transform,false);var er=edge.GetComponent<RectTransform>();er.anchorMin=Vector2.zero;er.anchorMax=Vector2.one;er.offsetMin=er.offsetMax=Vector2.zero;vignette=edge.GetComponent<ThreatVignette>();vignette.raycastTarget=false;
             kit=Label(go.transform,new Vector2(24,65),new Vector2(750,40),20);
-            controls=Label(go.transform,new Vector2(24,18),new Vector2(950,36),18);
+            controls=KeyCapHints.Row(go.transform,30,18,new Color(.93f,.91f,.78f),("F LMB","interact"),("Q E","lean"),("1 RMB","toy"),("SHIFT","run"),("SPACE","look back"),("TAB","bag"));
+            controls.anchorMin=controls.anchorMax=controls.pivot=Vector2.zero;controls.anchoredPosition=new Vector2(24,14);controls.sizeDelta=new Vector2(1100,30);
             staminaLabel=Label(go.transform,new Vector2(24,104),new Vector2(300,32),24);
             staminaLabel.text="STAMINA";
             var track=new GameObject("Sketch stamina bar",typeof(RectTransform),typeof(SketchStaminaBar));track.transform.SetParent(go.transform,false);
@@ -55,7 +56,6 @@ namespace Confiscated
             {
                 var p=run.period.Player;var decoy=p.GetComponent<ClockworkDecoy>();
                 kit.text=(run.HasBoltCutters?"Cutters ready  ":"")+(run.HasStoreKey?"Store key ready":"");
-                controls.text="F: interact     Q / E: lean     Tab: bag     Shift: run     Space: look back     F8: effects";
                 float distance=Vector3.Distance(p.transform.position,run.caretaker.transform.position);
                 danger=Mathf.MoveTowards(danger,run.caretaker.Current==CaretakerAI.State.Chase?1:Mathf.Clamp01(1-distance/16)*.5f,Time.deltaTime);
                 vignette.SetStrength(.18f+danger*.25f);var agent=run.caretaker.GetComponent<NavMeshAgent>();
