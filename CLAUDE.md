@@ -6,7 +6,7 @@ Before changing gameplay, read `../Docs/CLAUDE_PROJECT_BRIEF.md`. It defines the
 
 ## Project
 
-CONFISCATED! is a short first-person comedy-horror chase game (British primary school, caretaker antagonist). Unity 6000.5.5f1 (URP, new Input System, AI Navigation). The Unity project is this folder; `../Docs/`, `../Backups/` and the art sources live in the parent. **It is not a git repo**: before scene-changing or multi-file work, copy the files to `../Backups/<yyyy-mm-dd>_<topic>/`.
+CONFISCATED! is a short first-person comedy-horror chase game (British primary school, caretaker antagonist). Unity 6000.5.5f1 (URP, new Input System, AI Navigation). The Unity project is this folder; `../Docs/`, `../Backups/` and the art sources live in the parent. This folder is a git repo (GitHub `Drowth/Confiscated`, branch `main`, `core.autocrlf=false` so Unity YAML stays LF); the parent folder is not tracked. Commit each self-contained change; for large scene-changing work also copy the files to `../Backups/<yyyy-mm-dd>_<topic>/`.
 
 Main scene: `Assets/Scenes/SchoolLayout.unity`. Loop: classroom phone confiscation -> newsletter errand -> recover 5 belongings -> leave by the main entrance; a caretaker catch ends the run. `VisualTest.unity` is the old office chapter.
 
