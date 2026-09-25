@@ -42,6 +42,6 @@ namespace Confiscated.EditorTools
                 }
             }catch(Exception e){File.AppendAllText(Report,e+"\n");Finish(false);}
         }
-        static void Finish(bool success){EditorApplication.update-=Tick;if(mouse!=null)InputSystem.RemoveDevice(mouse);if(keys!=null)InputSystem.RemoveDevice(keys);if(oldMouse!=null)InputSystem.EnableDevice(oldMouse);if(oldKeys!=null)InputSystem.EnableDevice(oldKeys);InputSystem.settings.backgroundBehavior=background;InputSystem.settings.editorInputBehaviorInPlayMode=focus;File.AppendAllText(Report,success?"PASS\n":"FAIL\n");EditorApplication.isPlaying=false;}
+        static void Finish(bool success){EditorApplication.update-=Tick;if(mouse!=null&&mouse.added)InputSystem.RemoveDevice(mouse);if(keys!=null&&keys.added)InputSystem.RemoveDevice(keys);if(oldMouse!=null)InputSystem.EnableDevice(oldMouse);if(oldKeys!=null)InputSystem.EnableDevice(oldKeys);InputSystem.settings.backgroundBehavior=background;InputSystem.settings.editorInputBehaviorInPlayMode=focus;File.AppendAllText(Report,success?"PASS\n":"FAIL\n");EditorApplication.isPlaying=false;}
     }
 }

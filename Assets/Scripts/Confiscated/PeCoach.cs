@@ -19,6 +19,7 @@ namespace Confiscated
         public Renderer cutout;
         public Texture2D idleArt, walkArt;
         public AudioClip command, warningWhistle;
+        AudioClip lapDone;
         public AudioClip[] steps;
         public float sightRange = 9f, patrolSpeed = 6.4f, coachingSpeed = 6.4f;
         public float pupilSpeed = 5.8f, cooldownSeconds = 10f;
@@ -76,6 +77,7 @@ namespace Confiscated
             recoveryArt = Resources.Load<Texture2D>("Art/CoachRecovery");
             var exerciseVoice = Resources.Load<AudioClip>("Audio/CoachExerciseCommand");
             if (exerciseVoice != null) command = exerciseVoice;
+            lapDone = Resources.Load<AudioClip>("Audio/CoachLapDone");
             // Older scenes saved a 34-second cooldown and a barely visible rest.
             cooldownSeconds = 10f; corridorStopSeconds = 2.5f;
             fixedLap = new Vector3[lap != null ? lap.Length : 0];
@@ -339,7 +341,8 @@ namespace Confiscated
         void FinishDrill()
         {
             if (!Coaching && !Approaching) return;
-            if (Coaching) { DrillsFinished++; LastDrillSeconds = Time.time - drillStartedAt; }
+            // Spoken only for a real lap, not when a pause (catch, detention) cuts the drill short.
+            if (Coaching) { DrillsFinished++; LastDrillSeconds = Time.time - drillStartedAt; if (lapDone != null && !Paused) voice.PlayOneShot(lapDone, 1f); }
             Coaching = false; Approaching = false;
             pupil?.StopForcedCorridorRun();
             cooldownUntil = Time.time + cooldownSeconds;

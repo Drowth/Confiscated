@@ -188,7 +188,7 @@ namespace Confiscated.EditorTools
         static void Finish()
         {
             EditorApplication.update-=Tick;
-            if(keys!=null)InputSystem.RemoveDevice(keys);if(mouse!=null)InputSystem.RemoveDevice(mouse);
+            if(keys!=null&&keys.added)InputSystem.RemoveDevice(keys);if(mouse!=null&&mouse.added)InputSystem.RemoveDevice(mouse);
             if(oldKeys!=null)InputSystem.EnableDevice(oldKeys);if(oldMouse!=null)InputSystem.EnableDevice(oldMouse);
             InputSystem.settings.backgroundBehavior=background;InputSystem.settings.editorInputBehaviorInPlayMode=focus;
             foreach(var k in Prefs)if(!hadPrefs.Contains(k))PlayerPrefs.DeleteKey(k);PlayerPrefs.Save();
