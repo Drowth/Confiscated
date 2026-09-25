@@ -1,0 +1,63 @@
+# Unity generated
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+
+# Asset Store tools / Plastic plugin
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/Plugins/PlasticSCM*
+.plastic/
+ignore.conf
+
+# IDE / generated project files
+.vs/
+.vscode/
+.idea/
+.gradle/
+.consulo/
+ExportedObj/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity crash / build artifacts
+sysinfo.txt
+crashlytics-build.properties
+*.apk
+*.aab
+*.app
+*.unitypackage
+~UnityDirMonSyncFile~*
+
+# Addressables
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# OS
+.DS_Store*
+Thumbs.db
+Desktop.ini

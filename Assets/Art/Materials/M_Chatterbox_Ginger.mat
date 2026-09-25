@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Chatterbox_Ginger
+  m_Shader: {fileID: 4800000, guid: 2a0f408508889d649be08fcdba77c5ba, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 2800000, guid: a80554fdcb9b57a4290f17a55d9c757b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TalkMap:
+        m_Texture: {fileID: 2800000, guid: 262e41972f76f1b49a962ef5a3e4982a, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _ChaseTorsoWidth: 1
+    - _Cutoff: 0.5
+    - _DirectionalViews: 0
+    - _MagentaKey: 0
+    - _MouthOpen: 0
+    m_Colors:
+    - _BackRect: {r: 0, g: 0, b: 1, a: 1}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _FrontRect: {r: 0, g: 0, b: 1, a: 1}
+    - _MouthRect: {r: 0.44335938, g: 0.68359375, b: 0.15820312, a: 0.0625}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

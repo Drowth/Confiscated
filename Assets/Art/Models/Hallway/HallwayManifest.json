@@ -1,0 +1,229 @@
+{
+  "props": [
+    {
+      "name": "SM_Hall_Bench",
+      "colliders": [
+        {
+          "center": [
+            0,
+            0.26,
+            0
+          ],
+          "size": [
+            1.8,
+            0.52,
+            0.5
+          ]
+        },
+        {
+          "center": [
+            0,
+            0.77,
+            0.2
+          ],
+          "size": [
+            1.8,
+            0.47,
+            0.1
+          ]
+        }
+      ],
+      "labels": [],
+      "triangles": 356
+    },
+    {
+      "name": "SM_Hall_Radiator",
+      "colliders": [
+        {
+          "center": [
+            0,
+            0.54,
+            0
+          ],
+          "size": [
+            1.5,
+            0.84,
+            0.22
+          ]
+        }
+      ],
+      "labels": [],
+      "triangles": 532
+    },
+    {
+      "name": "SM_Hall_LitterBin",
+      "colliders": [
+        {
+          "center": [
+            0,
+            0.4,
+            0
+          ],
+          "size": [
+            0.49,
+            0.8,
+            0.49
+          ]
+        }
+      ],
+      "labels": [
+        {
+          "text": "LITTER",
+          "position": [
+            0,
+            0.49,
+            -0.234
+          ],
+          "size": 0.04
+        }
+      ],
+      "triangles": 120
+    },
+    {
+      "name": "SM_Hall_RecyclingBin",
+      "colliders": [
+        {
+          "center": [
+            0,
+            0.4,
+            0
+          ],
+          "size": [
+            0.49,
+            0.8,
+            0.49
+          ]
+        }
+      ],
+      "labels": [
+        {
+          "text": "PAPER",
+          "position": [
+            0,
+            0.49,
+            -0.234
+          ],
+          "size": 0.04
+        }
+      ],
+      "triangles": 120
+    },
+    {
+      "name": "SM_Hall_Extinguisher",
+      "colliders": [
+        {
+          "center": [
+            0.035,
+            0.48,
+            0
+          ],
+          "size": [
+            0.36,
+            0.65,
+            0.35
+          ]
+        }
+      ],
+      "labels": [
+        {
+          "text": "FIRE",
+          "position": [
+            0,
+            1.02,
+            0.058
+          ],
+          "size": 0.055
+        },
+        {
+          "text": "WATER",
+          "position": [
+            0,
+            0.42,
+            -0.18
+          ],
+          "size": 0.021
+        }
+      ],
+      "triangles": 2192
+    },
+    {
+      "name": "SM_Hall_Clock",
+      "colliders": [],
+      "labels": [
+        {
+          "text": "12",
+          "position": [
+            0,
+            0.153,
+            -0.045
+          ],
+          "size": 0.034
+        },
+        {
+          "text": "6",
+          "position": [
+            0,
+            -0.15,
+            -0.045
+          ],
+          "size": 0.034
+        }
+      ],
+      "triangles": 1580
+    },
+    {
+      "name": "SM_Hall_CoatRail",
+      "colliders": [],
+      "labels": [],
+      "triangles": 628
+    },
+    {
+      "name": "SM_Hall_WetFloorSign",
+      "colliders": [
+        {
+          "center": [
+            0,
+            0.38,
+            0
+          ],
+          "size": [
+            0.37,
+            0.77,
+            0.52
+          ]
+        }
+      ],
+      "labels": [
+        {
+          "text": "CAUTION",
+          "position": [
+            0,
+            0.545,
+            -0.094
+          ],
+          "size": 0.034
+        }
+      ],
+      "triangles": 276
+    },
+    {
+      "name": "SM_Hall_DrinkingFountain",
+      "colliders": [
+        {
+          "center": [
+            0,
+            0.67,
+            0
+          ],
+          "size": [
+            0.56,
+            1.34,
+            0.48
+          ]
+        }
+      ],
+      "labels": [],
+      "triangles": 260
+    }
+  ]
+}
