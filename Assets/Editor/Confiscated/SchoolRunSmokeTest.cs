@@ -172,6 +172,8 @@ namespace Confiscated.EditorTools
                         Need(S.IsComplete,"recovering phone ends lesson errands without returning to starting room");
                         Need(R.RoundStarted&&GameManager.Instance.IsPlaying&&!F.MovementLocked,"phone recovery starts escape run immediately");R.caretaker.Freeze();Time.timeScale=1;Next(30);break;
                     case 30:
+                        foreach(var lessonDoor in Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None).Where(d=>d.closedDuringLessons))
+                            Need(lessonDoor.IsOpen,lessonDoor.name+" swings open when lessons end, so a hunted player need not stop at it");
                         Need(Chatter!=null,"one chatterbox is installed");Chatter.cooldownSeconds=3;
                         Warp(Chatter.transform.position+Chatter.transform.forward*2);F.LookLocked=false;P.InputLocked=false;Next(31);break;
                     case 31:

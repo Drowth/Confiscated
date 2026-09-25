@@ -29,7 +29,7 @@ namespace Confiscated
         public bool IsUnlocked { get; private set; }
         public bool IsOpen => openAmount > .9f;
         DoorSounds doorSounds;
-        bool requestedOpen;
+        bool requestedOpen, openedForRound;
         float openAmount;
         Quaternion closedRotation;
         Quaternion secondClosedRotation;
@@ -103,6 +103,8 @@ namespace Confiscated
             if (run != null && (closedForRun || runRequiredLevel > 0 && !IsUnlocked)) staffPassing = false;
             if (run != null && closedForRun) requestedOpen = false;
             if (LessonLocked) { staffPassing = false; requestedOpen = false; }
+            // Lesson doors swing open once when the round starts: stopping to open them mid-chase was where most bot runs died.
+            else if (closedDuringLessons && !openedForRound && run != null && run.RoundStarted) { openedForRound = true; requestedOpen = true; }
             // Nobody leaves by the main entrance until the escape itself swings it open.
             if (ExitGated && !escaped) { staffPassing = false; requestedOpen = false; }
             bool shouldOpen = !DetentionLocked && (requestedOpen || staffPassing);
