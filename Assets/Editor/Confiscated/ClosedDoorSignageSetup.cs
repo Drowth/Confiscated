@@ -131,7 +131,8 @@ namespace Confiscated.EditorTools
             holder.position+=viewerSide*(.01f-nearest)+Vector3.up*(face.position.y-lowest);
             // Toward the handle (the leaf's free edge) and clear of the notice.
             holder.position+=face.right*.18f;
-            foreach(var r in holder.GetComponentsInChildren<Renderer>())r.shadowCastingMode=ShadowCastingMode.On;
+            // Lit like the corridor around it, not full-bright like a collectible.
+            foreach(var r in holder.GetComponentsInChildren<Renderer>()){r.shadowCastingMode=ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
             // Solid, but never between the player's interaction ray and the door (Ignore Raycast is skipped by PlayerInteractor.Resolve).
             var box=visual.gameObject.AddComponent<BoxCollider>();var bounds=Bounds(holder);
             box.center=visual.InverseTransformPoint(bounds.center);box.size=Abs(visual.InverseTransformVector(bounds.size));

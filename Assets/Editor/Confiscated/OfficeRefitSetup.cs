@@ -129,7 +129,8 @@ namespace Confiscated.EditorTools
         {
             var visual=new GameObject(name).transform;visual.SetParent(parent,false);visual.position=at;
             if(!PickupModelSetup.Place(visual,model,size,0,yaw,Models)){Debug.LogWarning("[OfficeRefit] Missing model or texture: "+model);return;}
-            foreach(var r in visual.GetComponentsInChildren<Renderer>())r.shadowCastingMode=ShadowCastingMode.On;
+            // Furniture follows the room's light, unlike collectibles, which stay unlit so they read from across a room.
+            foreach(var r in visual.GetComponentsInChildren<Renderer>()){r.shadowCastingMode=ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
             if(!solid)return;
             var rs=visual.GetComponentsInChildren<Renderer>();var b=rs[0].bounds;foreach(var r in rs)b.Encapsulate(r.bounds);
             var box=visual.gameObject.AddComponent<BoxCollider>();box.center=visual.InverseTransformPoint(b.center);box.size=b.size;
