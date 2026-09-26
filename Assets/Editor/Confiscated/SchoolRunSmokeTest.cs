@@ -185,8 +185,15 @@ namespace Confiscated.EditorTools
                         foreach(var libraryDoor in LibrarySetup.Doors.Select(Door))
                         {
                             Vector3 outside=libraryDoor.transform.position+(LibrarySetup.Interior.center-libraryDoor.transform.position).normalized*-1.6f;outside.y=0;
-                            var route=new NavMeshPath();bool staffCanEnter=NavMesh.SamplePosition(outside,out var o,1,NavMesh.AllAreas)&&NavMesh.SamplePosition(new Vector3(-16,0,90.5f),out var c,1,NavMesh.AllAreas)&&NavMesh.CalculatePath(o.position,c.position,NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete;
+                            int staffMask=R.caretaker.GetComponent<NavMeshAgent>().areaMask;
+                            var route=new NavMeshPath();bool staffCanEnter=NavMesh.SamplePosition(outside,out var o,1,staffMask)&&NavMesh.SamplePosition(new Vector3(-16,0,90.5f),out var c,1,NavMesh.AllAreas)&&NavMesh.CalculatePath(o.position,c.position,staffMask,route)&&route.status==NavMeshPathStatus.PathComplete;
                             Need(!libraryDoor.closedForRun&&libraryDoor.closedDuringLessons&&!staffCanEnter,"library door "+libraryDoor.name+" opens for the run and staff cannot walk in through it");
+                            var game=Item(2).transform.position;var bottle=Object.FindFirstObjectByType<GluePickup>().transform.position;
+                            Need(LibrarySetup.Interior.Contains(new Vector3(game.x,1.5f,game.z))&&LibrarySetup.Interior.Contains(new Vector3(bottle.x,1.5f,bottle.z)),"handheld game and glue are inside the library");
+                            Need(NavMesh.SamplePosition(outside,out var fromDoor,1,NavMesh.AllAreas)&&NavMesh.SamplePosition(new Vector3(game.x,0,game.z-1.3f),out var atDesk,1,NavMesh.AllAreas)&&NavMesh.SamplePosition(new Vector3(bottle.x,0,bottle.z),out var atGlue,1.2f,NavMesh.AllAreas)
+                                &&NavMesh.CalculatePath(fromDoor.position,atDesk.position,NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete
+                                &&NavMesh.CalculatePath(fromDoor.position,atGlue.position,NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete,
+                                "maze: the returns desk and the glue are reachable on foot from "+libraryDoor.name);
                         }
                         Need(Chatter!=null,"one chatterbox is installed");Chatter.cooldownSeconds=3;
                         Warp(Chatter.transform.position+Chatter.transform.forward*2);F.LookLocked=false;P.InputLocked=false;Next(31);break;

@@ -61,16 +61,19 @@ namespace Confiscated.EditorTools
                         if(elapsed<.8)return;
                         if(SchoolTitleMenu.IsActive){SchoolTitleMenu.Instance.StartGame();SchoolTitleMenu.Instance.SkipIntro();}
                         ComicDialogue.Cancel();R.period.PrepareChaseRetry();R.PrepareChaseRetry();R.PauseStaff();
-                        Check(Bottle!=null&&Bottle.transform.position.x>-11&&Bottle.transform.position.x<1&&Bottle.transform.position.z<32,"glue lives in optional Art Room");
-                        Check(!Object.FindObjectsByType<RunPickup>(FindObjectsSortMode.None).Any(p=>p.transform.position.x>-11&&p.transform.position.x<1&&p.transform.position.z>9&&p.transform.position.z<32),"no required belonging is placed in glue room");
-                        var door=Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None).First(d=>d.name=="South room B north");
-                        door.Interact(P);Warp(new Vector3(-4.54f,0,28.25f));
+                        // Moved into the library maze on 2026-09-26 (LibrarySetup), alongside the handheld game.
+                        Check(Bottle!=null&&LibrarySetup.Interior.Contains(new Vector3(Bottle.transform.position.x,1.5f,Bottle.transform.position.z)),"glue lives in the library maze");
+                        // Stand in the open side of the glue's dead end, facing its little table.
+                        Vector3 b=Bottle.transform.position;b.y=0;Vector3 stand=b;
+                        foreach(var dir in new[]{Vector3.right,Vector3.left,Vector3.forward,Vector3.back})
+                            if(NavMesh.SamplePosition(b+dir*1.15f,out var hit,.3f,NavMesh.AllAreas)&&(!Physics.Linecast(b+dir*1.15f+Vector3.up*1.2f,Bottle.transform.position+Vector3.up*.2f,out var blocked,~(1<<2),QueryTriggerInteraction.Ignore)||blocked.collider.GetComponentInParent<GluePickup>()==Bottle)){stand=hit.position;break;}
+                        Warp(stand);
                         F.LookLocked=true;P.ViewCamera.transform.LookAt(Bottle.transform.position+Vector3.up*.22f);Next();break;
                     case 1:
                         if(elapsed<1)return;
                         var path=new NavMeshPath();
-                        Check(NavMesh.CalculatePath(new Vector3(-9.11f,0,34),P.transform.position,NavMesh.AllAreas,path)&&path.status==NavMeshPathStatus.PathComplete,"Art Room bottle has a navigable route from corridor");
-                        Check(PlayerInteractor.Resolve(new Ray(P.ViewCamera.transform.position,P.ViewCamera.transform.forward),2.6f,~0)==Bottle,"bottle can be targeted over the desk");
+                        Check(NavMesh.SamplePosition(new Vector3(-33.6f,0,89.9f),out var westDoor,1,NavMesh.AllAreas)&&NavMesh.CalculatePath(westDoor.position,P.transform.position,NavMesh.AllAreas,path)&&path.status==NavMeshPathStatus.PathComplete,"library glue has a walking route in from the west door");
+                        Check(PlayerInteractor.Resolve(new Ray(P.ViewCamera.transform.position,P.ViewCamera.transform.forward),2.6f,~0)==Bottle,"bottle can be targeted on its table");
                         ScreenCapture.CaptureScreenshot("../Docs/Glue_Pickup.png");Next();break;
                     case 2:
                         if(elapsed<.3)return;
