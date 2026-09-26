@@ -182,6 +182,12 @@ namespace Confiscated.EditorTools
                     case 30:
                         foreach(var lessonDoor in Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None).Where(d=>d.closedDuringLessons))
                             Need(lessonDoor.IsOpen,lessonDoor.name+" swings open when lessons end, so a hunted player need not stop at it");
+                        foreach(var libraryDoor in LibrarySetup.Doors.Select(Door))
+                        {
+                            Vector3 outside=libraryDoor.transform.position+(LibrarySetup.Interior.center-libraryDoor.transform.position).normalized*-1.6f;outside.y=0;
+                            var route=new NavMeshPath();bool staffCanEnter=NavMesh.SamplePosition(outside,out var o,1,NavMesh.AllAreas)&&NavMesh.SamplePosition(new Vector3(-16,0,90.5f),out var c,1,NavMesh.AllAreas)&&NavMesh.CalculatePath(o.position,c.position,NavMesh.AllAreas,route)&&route.status==NavMeshPathStatus.PathComplete;
+                            Need(!libraryDoor.closedForRun&&libraryDoor.closedDuringLessons&&!staffCanEnter,"library door "+libraryDoor.name+" opens for the run and staff cannot walk in through it");
+                        }
                         Need(Chatter!=null,"one chatterbox is installed");Chatter.cooldownSeconds=3;
                         Warp(Chatter.transform.position+Chatter.transform.forward*2);F.LookLocked=false;P.InputLocked=false;Next(31);break;
                     case 31:

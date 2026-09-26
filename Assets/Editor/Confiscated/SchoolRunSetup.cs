@@ -76,6 +76,7 @@ namespace Confiscated.EditorTools
             CharacterShadowSetup.ApplyToScene();
             // Last: it moves furniture the builders above lay out, and switches off plant-room ceiling lights.
             OfficeRefitSetup.ApplyToScene();
+            LibrarySetup.ApplyToScene();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene()); EditorSceneManager.SaveOpenScenes(); AssetDatabase.SaveAssets();
             Debug.Log("[SchoolRun] Built five-item loop, cafeteria cover, locked rooms, furnished shortcuts and generated-art displays.");
         }
@@ -481,7 +482,8 @@ namespace Confiscated.EditorTools
             {
                 foreach(var old in door.GetComponentsInChildren<Transform>().Where(t=>t.name=="School door notice").ToArray())Object.DestroyImmediate(old.gameObject);
                 string n=door.name;
-                door.closedForRun=n.StartsWith("North room A")||n.StartsWith("North classroom A")||n.StartsWith("South room A")||n.StartsWith("South classroom")||n=="East room A north"||n=="East room A south"||n=="Dining west A"||n=="Dining east A"||n=="North yard doors"||n=="East yard doors";
+                // The library (old classrooms 9 and 10) keeps only its north-east door shut; LibrarySetup opens the other three.
+                door.closedForRun=n==LibrarySetup.ShutDoor||n.StartsWith("South room A")||n.StartsWith("South classroom")||n=="East room A north"||n=="East room A south"||n=="Dining west A"||n=="Dining east A"||n=="North yard doors"||n=="East yard doors";
                 door.runRequiredLevel=n.StartsWith("North room B")?2:n.StartsWith("East room B")?3:n=="Store cupboard"?4:0;
                 door.runLockName=door.runRequiredLevel==2?"RESOURCES":door.runRequiredLevel==3?"EQUIPMENT":"STORE";
                 if(door.closedForRun||door.runRequiredLevel>0)door.startsUnlocked=false;

@@ -132,7 +132,7 @@ namespace Confiscated.EditorTools
                         Need(inventory.HasCarried(InventoryItemKind.OfficeKey), "office key taken inside the wing");
                         Need(inventory.Move(InventoryContainer.Satchel, inventory.Find(InventoryContainer.Satchel, InventoryItemKind.OfficeKey), InventoryContainer.Use, 0, out _), "office key equipped");
                         Door("Caretaker office").Interact(P); Need(Door("Caretaker office").IsUnlocked, "office unlocks with the gates shut");
-                        Warp(new Vector3(-44.6f, 0, 80.1f)); Need(S.phonePickup.CanInteract(P), "phone recoverable in the office"); S.phonePickup.Interact(P);
+                        Warp(R.period.officeDrop.position); Need(S.phonePickup.CanInteract(P), "phone recoverable in the office"); S.phonePickup.Interact(P);
                         Need(R.RoundStarted && !SchoolRunController.LessonsInProgress, "phone recovery starts the run and ends lessons");
                         R.caretaker.Freeze(); Next(4); break;
                     case 4:
@@ -149,7 +149,8 @@ namespace Confiscated.EditorTools
                             }
                             Passage(g.Position, -g.wing, true, g.name);
                         }
-                        Vector3 office = new Vector3(-44.6f, 0, 80.1f);
+                        // The caretaker's desk (OfficeRefitSetup moved it; the old spot is behind the plant-room partition).
+                        Vector3 office = R.period.officeDrop.position;
                         foreach (var o in Objectives) Reachable(office, o.point, "run objective: " + o.label);
                         foreach (string name in LessonGateSetup.LessonDoors) Need(!Door(name).LessonLocked && Door(name).CanInteract(P), name + " is an ordinary door again");
                         Need(Route(new Vector3(-8.6f, 0, 60), SchoolPlan.Point(538, 657), out float through) && through < 12, "dining east door is a real route again (" + through.ToString("F1") + " m)");
