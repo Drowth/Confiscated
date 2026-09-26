@@ -65,6 +65,8 @@ namespace Confiscated.EditorTools
         }
         static AccessToolPickup Tool(AccessToolPickup.Tool kind)=>Object.FindObjectsByType<AccessToolPickup>(FindObjectsSortMode.None).First(t=>t.tool==kind);
         static RunPickup Item(int id)=>R.pickups.First(p=>p.itemId==id);
+        // Where a player stands to use something on the caretaker's desk (desk against the south wall; OfficeRefitSetup).
+        static Vector3 DeskStand(Transform t)=>new Vector3(t.position.x,0,t.position.z+1.2f);
         static void Reach(Interactable target,Vector3 from,Vector3 aim)
         {
             Path(P.transform.position,from,"route to "+target.name);Warp(from);F.LookLocked=true;P.ViewCamera.transform.LookAt(aim);Physics.SyncTransforms();
@@ -96,6 +98,9 @@ namespace Confiscated.EditorTools
             Need(exit.mainExit&&!exit.CanInteract(P)&&!exit.IsOpen&&exit.GetPrompt(P).Contains("MAIN ENTRANCE"),"main entrance is shut and explains itself before five of five");
             Need(exit.GetComponent<ProgressPropFeedback>()!=null&&exit.GetComponent<ProgressPropFeedback>().padlock!=null,"main entrance carries a padlock that drops at five of five");
             Need(GameObject.Find("SchoolRun/"+PlaytestFixSetup.ExitBlockerName)!=null,"staff cannot route through the shut main entrance");
+            var officeBounds=GameManager.Instance.officeMission.officeBounds;
+            Need(GameObject.Find("SchoolRun/"+OfficeRefitSetup.RootName+"/Plant room/Bare bulb")!=null&&officeBounds.size.x<7&&officeBounds.Contains(S.phonePickup.transform.position)&&officeBounds.Contains(S.officeDrop.position+Vector3.up),
+                "caretaker's office is the partitioned front room, with the phone box and his drop point inside it");
             foreach(var shut in Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None).Where(d=>d.closedForRun&&!d.mainExit))
             {
                 var leaf=shut.hinge.GetComponentsInChildren<Collider>().First(x=>x.name=="Leaf");
@@ -168,7 +173,7 @@ namespace Confiscated.EditorTools
                         Need(!I.IsEquipped(InventoryItemKind.OfficeKey),"office key remains in satchel");var office=Door("Caretaker office");office.Interact(P);Need(office.IsUnlocked,"carried office key unlocks original office without inventory juggling");Next(4);break;
                     case 4:
                         Passage(Door("Caretaker office").transform.position,Door("Caretaker office").transform.forward,true,"office door");
-                        Reach(S.phonePickup,new Vector3(-44.6f,0,80.1f),S.phonePickup.transform.position+Vector3.up*.3f);
+                        Reach(S.phonePickup,DeskStand(S.phonePickup.transform),S.phonePickup.transform.position+Vector3.up*.3f);
                         Need(S.phonePickup.CanInteract(P),"deposited phone is recoverable");S.phonePickup.Interact(P);Need(R.Count==1&&P.HasPhone&&!R.HasBoltCutters&&!R.HasStoreKey,"phone counts as item one and does not magically award tools");
                         Need(R.caretaker.SuspicionSeconds>1f,"early game gives a forgiving beat to duck out of sight when spotted ("+R.caretaker.SuspicionSeconds.ToString("F2")+"s)");
                         P.GetComponent<PhoneRinger>().Activate();Need(!P.GetComponent<PhoneRinger>().Emitter.isPlaying&&P.GetComponent<PhoneRinger>().SecondsToRing<0,"recovered phone stays silent");
@@ -195,7 +200,7 @@ namespace Confiscated.EditorTools
                         Warp(Chatter.transform.position+Chatter.transform.forward*.75f);Next(35);break;
                     case 35:
                         Need(Chatter.Distracted&&Chatter.Interruptions==1&&!F.IsDistracted,"rattling decoy allows safe passage within arm's reach");
-                        Chatter.cooldownSeconds=25;Warp(new Vector3(-44.6f,0,80.1f));Next(5);break;
+                        Chatter.cooldownSeconds=25;Warp(DeskStand(S.phonePickup.transform));Next(5);break;
                     case 5:
                         if(!Gates.All(g=>g.IsOpen)){if(now-at>5)throw new Exception("lesson gates did not open after the run started");return;}
                         Need(Gates.All(g=>!g.barrier.activeSelf),"run start opens every lesson gate; the rest of the school is reachable");
@@ -204,7 +209,7 @@ namespace Confiscated.EditorTools
                         Need(Door("East room B east").CanInteract(P)&&Door("East room B west").CanInteract(P),"equipment can be explored before other recoveries");Need(!Door("Store cupboard").CanInteract(P),"store remains locked without physical store key");
                         var gate=Object.FindObjectsByType<RunGate>(FindObjectsSortMode.None).First(g=>g.kind==RunGate.Kind.Chain);
                         Need(!gate.CanInteract(P),"phone alone cannot open cage");
-                        var cutters=Tool(AccessToolPickup.Tool.BoltCutters);Reach(cutters,new Vector3(-45.5f,0,80.1f),cutters.transform.position);cutters.Interact(P);Need(R.HasBoltCutters&&R.Count==1,"physical cutters collected separately from objective items");
+                        var cutters=Tool(AccessToolPickup.Tool.BoltCutters);Reach(cutters,DeskStand(cutters.transform),cutters.transform.position);cutters.Interact(P);Need(R.HasBoltCutters&&R.Count==1,"physical cutters collected separately from objective items");
                         Reach(gate,new Vector3(-10,0,47),new Vector3(-10,1.1f,45.65f));gate.Interact(P);Need(gate.Cleared,"bolt cutters open physical chain gate");Next(6);break;
                     case 6:
                         Passage(new Vector3(-10,0,45.65f),Vector3.back,true,"opened cage gate");
@@ -270,7 +275,7 @@ namespace Confiscated.EditorTools
                         R.caretaker.Freeze();
                         Equip(InventoryItemKind.OfficeKey);
                         Door("Caretaker office").Interact(P);Need(Door("Caretaker office").IsUnlocked,"retry run can unlock the office again");
-                        Path(P.transform.position,new Vector3(-44.6f,0,80.1f),"route to retry phone");Warp(new Vector3(-44.6f,0,80.1f));S.phonePickup.Interact(P);Need(R.Count==1&&P.HasPhone,"retry run recovers the phone as item one");
+                        Path(P.transform.position,DeskStand(S.phonePickup.transform),"route to retry phone");Warp(DeskStand(S.phonePickup.transform));S.phonePickup.Interact(P);Need(R.Count==1&&P.HasPhone,"retry run recovers the phone as item one");
                         // Real capture: a noise turns him toward the player, he sees, chases and makes contact himself.
                         Warp(Corridor);PlaceCaretaker(Corridor+Vector3.left*5.5f,Corridor);R.caretaker.ResumeAfterDetention(0);NoiseEvents.Emit(P.transform.position,12,"dropped satchel");Next(13);break;
                     case 13:
