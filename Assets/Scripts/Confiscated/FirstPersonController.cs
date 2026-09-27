@@ -140,6 +140,13 @@ namespace Confiscated
             forcedRunPusher = null;
         }
         public float SprintFraction => sprintReserve / 5f;
+        public void RefillSprint(){sprintReserve=5;exhausted=false;}
+        // Twitch chat: a few seconds rooted to the spot (looking still works), or unlimited sprint for a while.
+        float feetGluedUntil,sugarUntil;
+        public bool FeetGlued=>Time.time<feetGluedUntil;
+        public bool SugarRushing=>Time.time<sugarUntil;
+        public void GlueFeet(float seconds){feetGluedUntil=Time.time+seconds;}
+        public void SugarRush(float seconds){sugarUntil=Time.time+seconds;RefillSprint();}
 
         public CharacterController Controller => controller;
         public bool MovementLocked { get; set; }
@@ -311,10 +318,12 @@ namespace Confiscated
             }
             Vector2 input = moveAction != null ? moveAction.ReadValue<Vector2>() : Vector2.zero;
             if (input.sqrMagnitude > 1f) input.Normalize();
+            if (FeetGlued) input = Vector2.zero;
 
             bool sprinting = !IsDistracted && sprintAction != null && sprintAction.IsPressed();
             if (SchoolRunController.Instance != null)
             {
+                if (SugarRushing) { sprintReserve = 5; exhausted = false; }
                 if (exhausted && sprintReserve >= 1.5f) exhausted = false;
                 sprinting = sprinting && input.sqrMagnitude > .01f && !exhausted && sprintReserve > 0;
                 if (sprinting)

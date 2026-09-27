@@ -37,6 +37,7 @@ namespace Confiscated
         Image fade;
         Text caption,skip;
         Button startButton;
+        GameObject twitchPanel;InputField twitchInput;Text twitchStatus,twitchConnect,twitchHelp,twitchNames;
         AudioSource musicSource;
         bool active,starting,oldMove,oldLook,oldInput,oldHold,oldDoorEnabled;
         float startTime,oldFov,oldTime;
@@ -88,6 +89,13 @@ namespace Confiscated
             }
             else if(kb!=null&&kb.enterKey.wasPressedThisFrame)
             {
+                if(twitchPanel!=null&&twitchPanel.activeSelf)
+                {
+                    // Enter in the channel box connects; it must never fall through to Start game.
+                    if(twitchInput.isFocused||EventSystem.current?.currentSelectedGameObject==twitchInput.gameObject)ToggleTwitch();
+                    else EventSystem.current?.currentSelectedGameObject?.GetComponent<Button>()?.onClick.Invoke();
+                    return;
+                }
                 var selected=EventSystem.current?.currentSelectedGameObject?.GetComponent<Button>();
                 if(selected!=null){if(selected.interactable)selected.onClick.Invoke();}else StartGame();
             }
@@ -99,6 +107,7 @@ namespace Confiscated
                 if(other!=canvas&&other.enabled&&other.renderMode!=RenderMode.WorldSpace){hidden.Add(other);other.enabled=false;}
             Cursor.lockState=CursorLockMode.None;Cursor.visible=!starting;
             float elapsed=SequenceTime;
+            if(twitchPanel!=null&&twitchPanel.activeSelf)RefreshTwitch();
             if(starting){RenderEntrance(elapsed);return;}
             ShotIndex=Mathf.FloorToInt(elapsed/shotSeconds)%4;
             float t=elapsed%shotSeconds;
@@ -209,12 +218,63 @@ namespace Confiscated
             dark.interactable=SchoolGameMode.DarkUnlocked;
             Label(SchoolGameMode.DarkUnlocked?(SchoolGameMode.DevUnlock?"DEV UNLOCK ON. LIGHTS OUT.":"LIGHTS OUT. FIND YOUR TORCH."):"ESCAPE ONCE TO UNLOCK DARK MODE",content,new Vector2(.30f,.27f),new Vector2(.66f,.315f),17,Cream);
             MakeButton("Quit",content,new Vector2(.07f,.225f),new Vector2(.20f,.292f),Quit);
+            MakeButton("Twitch",content,new Vector2(.22f,.225f),new Vector2(.40f,.292f),()=>ShowTwitch(true));
             caption=Label("",content,new Vector2(.07f,.09f),new Vector2(.78f,.15f),17,new Color(.87f,.84f,.73f));
             skip=Label("",root.transform,new Vector2(.7f,.005f),new Vector2(.95f,.065f),17,Cream);skip.alignment=TextAnchor.MiddleRight;
             var endingsBg=ImageRect("Endings backing",content,new Vector2(.67f,.64f),new Vector2(.98f,.91f),new Color(.055f,.075f,.105f,.72f));
             endingsBg.raycastTarget=false;
             var endings=Label(EndingsText(),content,new Vector2(.69f,.655f),new Vector2(.96f,.895f),20,Color.white);
             endings.alignment=TextAnchor.UpperLeft;endings.supportRichText=true;
+            BuildTwitch(content);
+        }
+        // Streamer setup: the channel to read chat from. Read-only guest access, so no login, no keys, nothing posted.
+        void BuildTwitch(Transform parent)
+        {
+            var dim=ImageRect("Twitch setup",parent,Vector2.zero,Vector2.one,new Color(0,0,0,.72f));twitchPanel=dim.gameObject;
+            var bg=ImageRect("Twitch card",dim.transform,new Vector2(.29f,.17f),new Vector2(.71f,.83f),Cream);
+            var border=Rect("Pencil edge",bg.transform,Vector2.zero,Vector2.one).gameObject.AddComponent<SketchBorder>();border.color=Ink;border.raycastTarget=false;
+            var p=bg.transform;
+            Label("TWITCH CHAT",p,new Vector2(.07f,.86f),new Vector2(.93f,.95f),40,Ink);
+            var info=Label("Chat votes on trouble during the chase. Viewers type 1, 2 or 3.\nRead-only: no login needed, and the game never posts in your chat.",p,new Vector2(.07f,.72f),new Vector2(.93f,.85f),19,Ink);info.alignment=TextAnchor.UpperLeft;
+            var field=DefaultControls.CreateInputField(new DefaultControls.Resources());field.name="Channel name";field.transform.SetParent(p,false);
+            var fr=(RectTransform)field.transform;fr.anchorMin=new Vector2(.07f,.585f);fr.anchorMax=new Vector2(.64f,.685f);fr.offsetMin=fr.offsetMax=Vector2.zero;
+            twitchInput=field.GetComponent<InputField>();twitchInput.characterLimit=60;twitchInput.text=TwitchChat.SavedChannel;
+            foreach(var t in field.GetComponentsInChildren<Text>(true)){t.font=SchoolTypography.Font;t.fontSize=26;t.alignment=TextAnchor.MiddleLeft;}
+            ((Text)twitchInput.placeholder).text="your channel name";
+            twitchConnect=MakeButton("Connect",p,new Vector2(.66f,.585f),new Vector2(.93f,.685f),ToggleTwitch).GetComponentInChildren<Text>();twitchConnect.fontSize=26;
+            twitchStatus=Label("",p,new Vector2(.07f,.44f),new Vector2(.93f,.57f),20,Ink);twitchStatus.alignment=TextAnchor.UpperLeft;twitchStatus.supportRichText=true;
+            twitchHelp=MakeButton("Chat can help",p,new Vector2(.07f,.29f),new Vector2(.49f,.40f),()=>{TwitchChat.ChatCanHelp=!TwitchChat.ChatCanHelp;RefreshTwitch();}).GetComponentInChildren<Text>();twitchHelp.fontSize=22;
+            twitchNames=MakeButton("Viewer names",p,new Vector2(.51f,.29f),new Vector2(.93f,.40f),()=>{TwitchChat.ShowNames=!TwitchChat.ShowNames;RefreshTwitch();}).GetComponentInChildren<Text>();twitchNames.fontSize=22;
+            MakeButton("Back",p,new Vector2(.07f,.07f),new Vector2(.35f,.19f),()=>ShowTwitch(false));
+            twitchPanel.SetActive(false);
+        }
+        public void ShowTwitch(bool show)
+        {
+            if(twitchPanel==null)return;twitchPanel.SetActive(show);
+            if(show){RefreshTwitch();EventSystem.current?.SetSelectedGameObject(twitchInput.gameObject);}
+            else EventSystem.current?.SetSelectedGameObject(startButton.gameObject);
+        }
+        void ToggleTwitch()
+        {
+            var chat=TwitchChat.Instance;
+            if(chat!=null&&chat.State!=TwitchChat.Status.Off&&TwitchChat.Normalise(twitchInput.text)==chat.Channel)chat.Disconnect();
+            else TwitchChat.Ensure().Connect(twitchInput.text);
+            RefreshTwitch();
+        }
+        void RefreshTwitch()
+        {
+            var chat=TwitchChat.Instance;var state=chat!=null?chat.State:TwitchChat.Status.Off;
+            bool sameChannel=chat!=null&&TwitchChat.Normalise(twitchInput.text)==chat.Channel;
+            twitchConnect.text=state!=TwitchChat.Status.Off&&sameChannel?"DISCONNECT":"CONNECT";
+            twitchStatus.text=state switch
+            {
+                TwitchChat.Status.Connecting=>"Connecting to #"+chat.Channel+"...",
+                TwitchChat.Status.Connected=>"<color=#6A2FD0>Connected to #"+chat.Channel+".</color> "+chat.MessagesReceived+" messages read.\nVotes start once the chase begins.",
+                TwitchChat.Status.Failed=>"<color=#A03A2A>"+(string.IsNullOrEmpty(chat.LastError)?"Couldn't reach Twitch.":chat.LastError)+"</color>",
+                _=>"Not connected.",
+            };
+            twitchHelp.text="CHAT CAN HELP: "+(TwitchChat.ChatCanHelp?"ON":"OFF");
+            twitchNames.text="VIEWER NAMES: "+(TwitchChat.ShowNames?"ON":"OFF");
         }
         static string EndingsText()
         {
