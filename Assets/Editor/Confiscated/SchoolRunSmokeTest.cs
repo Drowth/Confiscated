@@ -133,6 +133,8 @@ namespace Confiscated.EditorTools
                 switch(stage)
                 {
                     case 0:
+                        // The library shadow has its own test; here it must not throw the player out mid-check.
+                        Need(Object.FindFirstObjectByType<LibraryShadow>()!=null,"the library shadow is installed");Object.FindFirstObjectByType<LibraryShadow>().Paused=true;
                         Need(S.Current==SchoolPeriodController.Phase.PhoneRinging&&!S.worksheetUI.IsOpen,"short opening starts the phone incident without a worksheet");introStarted=Time.time;
                         Need(!R.KeyAvailable&&!R.ReadyToEscape,"key and escape initially gated");
                         Need(!Item(4).CanInteract(P),"cannot skip to final item");

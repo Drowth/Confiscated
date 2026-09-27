@@ -56,6 +56,8 @@ namespace Confiscated.EditorTools
         static void Tick()
         {
             if(!EditorApplication.isPlaying){Finish();return;}
+            // The bot tests the item route, not the shadow (which has its own test): it cannot read the rules.
+            var shade=Object.FindFirstObjectByType<LibraryShadow>();if(shade!=null)shade.Paused=true;
             try{Step();}catch(Exception e){Line("bot error: "+e.Message);Log("error",e.Message);Keys();phase=3;phaseAt=Now;}
         }
 

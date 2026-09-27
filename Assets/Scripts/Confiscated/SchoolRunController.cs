@@ -125,6 +125,14 @@ namespace Confiscated
             else foreach (var pickup in pickups) if (pickup != null && pickup.itemId == lost) pickup.Restore();
             ApplyPressure();
         }
+        /// <summary>Puts one recovered belonging back in its CONFISCATED box (the library shadow takes back the handheld game).</summary>
+        public bool ReturnToBox(int id)
+        {
+            if (id == 0 || !Has(id)) return false;
+            RecoveryOrder.Remove(id);
+            foreach (var pickup in pickups) if (pickup != null && pickup.itemId == id) pickup.Restore();
+            ApplyPressure(); return true;
+        }
         public void PauseStaff() { secondStaff?.Freeze(); Object.FindFirstObjectByType<PeCoach>()?.Pause(); }
         public void ResumeStaff()
         {

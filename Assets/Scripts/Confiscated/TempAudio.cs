@@ -10,7 +10,7 @@ namespace Confiscated
     {
         const int Rate = 22050;
 
-        static AudioClip ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip, jingleClip;
+        static AudioClip ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip, jingleClip, whisperClip;
 
         public static AudioClip Ring => ringClip ??= Build("Temp_Ring", 1.6f, t =>
         {
@@ -51,6 +51,16 @@ namespace Confiscated
             }
             return .22f * v;
         });
+
+        // A breathy whisper: hiss shaped into five syllables, fading in and out over 1.5 s.
+        public static AudioClip Whisper => whisperClip ??= BuildNoise("Temp_Whisper", 1.5f, (t, n) =>
+            n * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(2f * Mathf.PI * 3.3f * t)), 2f) * Mathf.Sin(Mathf.PI * t / 1.5f) * .5f);
+
+        static AudioClip BuildNoise(string name, float seconds, System.Func<float, float, float> f)
+        {
+            var rng = new System.Random(7); float last = 0f;
+            return Build(name, seconds, t => { float r = (float)rng.NextDouble() * 2f - 1f, hiss = r - last; last = r; return f(t, hiss); });
+        }
 
         static AudioClip Build(string name, float seconds, System.Func<float, float> f)
         {

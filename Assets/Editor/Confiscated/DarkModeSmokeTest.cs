@@ -153,7 +153,7 @@ namespace Confiscated.EditorTools
                         Warp(new Vector3(-33.6f,0,29),new Vector3(-33.6f,1.5f,48));Next();break;
                     case 17:
                         if(dt<1)return;
-                        Check(!D.Started&&!I.Contains(InventoryContainer.Locker,InventoryItemKind.Torch)&&T==null,"normal mode has no blackout or torch");Shot("07-normal-lighting");
+                        Check(!D.Started&&I.Contains(InventoryContainer.Locker,InventoryItemKind.Torch)&&T!=null&&PlayerTorch.Limited&&!T.IsOn,"normal mode has no blackout; the torch waits in the locker, on a battery (library shadow)");Shot("07-normal-lighting");
                         // Normal-mode ambient is deliberately dim now (SchoolLightingSetup) so the ceiling fluorescents
                         // read as the level's real light source; .5f predates that rework. Outage min is ~.025f, so
                         // .1f still clearly distinguishes "restored" from "still blacked out".

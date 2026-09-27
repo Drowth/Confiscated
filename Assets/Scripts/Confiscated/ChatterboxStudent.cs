@@ -29,6 +29,10 @@ namespace Confiscated
             "Did you see Mr Reed today? He looks funny, doesn't he? Anyway... where are you going?"
         };
         static readonly string[] lineClips={"ChatterboxYoYo","ChatterboxMrReed"};
+        // His first chat (once; a chase retry already knows): the only place the library shadow's rules are given (Docs/LibraryMaze.md).
+        public const string RumourLine="My brother says something lives in the library. Stand still with your torch off and it walks right past you. Move, and... GONE! Anyway... where are you going?";
+        const string RumourClip="ChatterboxLibraryRumour";
+        public bool ToldRumour {get;private set;}
         void OnDisable()
         {
             if(Talking)ComicDialogue.Cancel();
@@ -107,10 +111,12 @@ namespace Confiscated
                 HudController.Instance?.SetStatus("Chatterbox ahead. Give him space.",4);
             }
             if(distance>reach)return;
-            int line=PickLine(out var clip);
-            // Hold him for the whole recording, plus a beat; the placeholder lines use the default hold.
-            string words=DarkModeDialogue.Active?DarkModeDialogue.Chatterbox[line].text:lineTexts[line];
-            if(!ComicDialogue.TrySpeakTimed(transform,"Chatterbox",words,clip!=null?clip.length+.5f:interruptionSeconds))return;
+            AudioClip clip;string words;
+            if(!ToldRumour){ToldRumour=true;clip=Resources.Load<AudioClip>("Audio/"+RumourClip);words=RumourLine;}
+            else{int line=PickLine(out clip);words=DarkModeDialogue.Active?DarkModeDialogue.Chatterbox[line].text:lineTexts[line];}
+            // Hold him for the whole recording, plus a beat; lines without a recording get time to read.
+            float hold=clip!=null?clip.length+.5f:words==RumourLine?8f:interruptionSeconds;
+            if(!ComicDialogue.TrySpeakTimed(transform,"Chatterbox",words,hold)){if(words==RumourLine)ToldRumour=false;return;}
             speech.clip=clip;if(clip!=null)speech.Play();
             Interruptions++;availableAt=Time.time+cooldownSeconds;needsSpace=true;
             HudController.Instance?.SetStatus(null);

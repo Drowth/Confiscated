@@ -6,7 +6,7 @@ namespace Confiscated
     /// <summary>Compact escape HUD and restrained, readable pursuit feedback.</summary>
     public sealed class EscapeRunFeedback : MonoBehaviour
     {
-        SchoolRunController run;Canvas canvas;Text kit,staminaLabel;RectTransform controls;SketchStaminaBar stamina;AudioSource ambience,steps,pickupAudio;AudioClip hum,step,sting;
+        SchoolRunController run;Canvas canvas;Text kit,staminaLabel,batteryLabel;RectTransform controls;SketchStaminaBar stamina,battery;AudioSource ambience,steps,pickupAudio;AudioClip hum,step,sting;
         ThreatVignette vignette;Light[] lights;float[] intensities;float nextStep,danger;bool built;float oldFont;
         bool wasChasing;float spottedAt=-10,flickerAt=-10;int lastCount;PickupChecklist checklist;
         void Start()
@@ -25,13 +25,18 @@ namespace Confiscated
             var rect=go.GetComponent<RectTransform>();rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.offsetMin=rect.offsetMax=Vector2.zero;
             var edge=new GameObject("Pursuit edge shade",typeof(RectTransform),typeof(ThreatVignette));edge.transform.SetParent(go.transform,false);var er=edge.GetComponent<RectTransform>();er.anchorMin=Vector2.zero;er.anchorMax=Vector2.one;er.offsetMin=er.offsetMax=Vector2.zero;vignette=edge.GetComponent<ThreatVignette>();vignette.raycastTarget=false;
             kit=Label(go.transform,new Vector2(24,65),new Vector2(750,40),20);
-            controls=KeyCapHints.Row(go.transform,30,18,new Color(.93f,.91f,.78f),("F LMB","interact"),("Q E","lean"),("1 RMB","toy"),("SHIFT","run"),("SPACE","look back"),("TAB","bag"));
+            controls=KeyCapHints.Row(go.transform,30,18,new Color(.93f,.91f,.78f),("F LMB","interact"),("Q E","lean"),("1 RMB","toy"),("SHIFT","run"),("SPACE","look back"),("T","torch"),("TAB","bag"));
             controls.anchorMin=controls.anchorMax=controls.pivot=Vector2.zero;controls.anchoredPosition=new Vector2(24,14);controls.sizeDelta=new Vector2(1100,30);
             staminaLabel=Label(go.transform,new Vector2(24,104),new Vector2(300,32),24);
             staminaLabel.text="STAMINA";
             var track=new GameObject("Sketch stamina bar",typeof(RectTransform),typeof(SketchStaminaBar));track.transform.SetParent(go.transform,false);
             var r=track.GetComponent<RectTransform>();r.anchorMin=r.anchorMax=r.pivot=Vector2.zero;r.anchoredPosition=new Vector2(24,65);r.sizeDelta=new Vector2(280,34);
             stamina=track.GetComponent<SketchStaminaBar>();stamina.raycastTarget=false;
+            // Day-play torch battery, beside stamina (Dark Mode's torch is unlimited and shows no bar).
+            batteryLabel=Label(go.transform,new Vector2(330,104),new Vector2(300,32),24);batteryLabel.text="TORCH";
+            var cell=new GameObject("Sketch torch battery bar",typeof(RectTransform),typeof(SketchStaminaBar));cell.transform.SetParent(go.transform,false);
+            var br=cell.GetComponent<RectTransform>();br.anchorMin=br.anchorMax=br.pivot=Vector2.zero;br.anchoredPosition=new Vector2(330,65);br.sizeDelta=new Vector2(200,34);
+            battery=cell.GetComponent<SketchStaminaBar>();battery.raycastTarget=false;
             kit.rectTransform.anchoredPosition=new Vector2(24,143);
             var list=new GameObject("Belongings checklist",typeof(RectTransform),typeof(PickupChecklist));list.transform.SetParent(go.transform,false);
             var lr=list.GetComponent<RectTransform>();lr.anchorMin=lr.anchorMax=lr.pivot=new Vector2(1,1);lr.anchoredPosition=new Vector2(-24,-24);lr.sizeDelta=new Vector2(440,90);checklist=list.GetComponent<PickupChecklist>();checklist.raycastTarget=false;checklist.SetIcons(run.checklistIcons);
@@ -51,6 +56,9 @@ namespace Confiscated
                 checklist.gameObject.SetActive(run.RecoveryBegun);
                 stamina.SetFraction(run.period.Player.GetComponent<FirstPersonController>().SprintFraction);
                 staminaLabel.text=stamina.Fraction<=.2f?"STAMINA - LOW":"STAMINA";
+                var torch=run.period.Player.GetComponent<PlayerTorch>();bool showTorch=torch!=null&&PlayerTorch.Limited&&torch.HasTorch;
+                battery.gameObject.SetActive(showTorch);batteryLabel.gameObject.SetActive(showTorch);
+                if(showTorch){battery.SetFraction(torch.Battery);batteryLabel.text=torch.Flat?"TORCH - FLAT":torch.Battery<=PlayerTorch.WarnFraction?"TORCH - LOW":torch.IsOn?"TORCH - ON":"TORCH";}
             }
             if(active)
             {

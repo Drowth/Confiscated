@@ -59,6 +59,7 @@ namespace Confiscated.EditorTools
             foreach(var sign in Object.FindObjectsByType<TextMesh>(FindObjectsInactive.Include).Where(t=>t.text=="CLASSROOM 9"||t.text=="CLASSROOM 10"))
             {sign.text="LIBRARY";EditorUtility.SetDirty(sign);}
             DiningHallSetup.Rebake();
+            Shadow(root,run);
         }
 
         static void OpenDoors(SchoolRunController run)
@@ -96,6 +97,7 @@ namespace Confiscated.EditorTools
         static readonly Vector2Int[][] DoorCells={new[]{new Vector2Int(0,3),new Vector2Int(0,4)},new[]{new Vector2Int(7,Rows-1),new Vector2Int(8,Rows-1)},new[]{new Vector2Int(11,0),new Vector2Int(12,0)}};
         public const int MinDoorToDesk=12,MinDoorToGlue=9;
         public static int ChosenSeed{get;private set;}
+        static bool[,] mazeEast,mazeNorth;static Vector2Int mazeGlue;
 
         static List<(Vector3 centre,bool alongX)> BuildMaze(Transform root,out Vector3 desk,out Vector3 glueSpot)
         {
@@ -107,7 +109,7 @@ namespace Confiscated.EditorTools
                 int toDesk=DoorCells.Min(d=>{var dist=Distance(east,north,d);var cells=new List<Vector2Int>();foreach(var p in Clearing.allPositionsWithin)cells.Add(p);return cells.Min(p=>dist[p.x,p.y]);});
                 if(toDesk<MinDoorToDesk)continue;
                 if(!FarDeadEnd(east,north,out glueCell,out int toGlue)||toGlue<MinDoorToGlue)continue;
-                ChosenSeed=seed;break;
+                ChosenSeed=seed;mazeEast=east;mazeNorth=north;mazeGlue=glueCell;break;
             }
             if(ChosenSeed==0)throw new InvalidOperationException("No maze seed met the route-length rules; relax MinDoorToDesk.");
 
@@ -188,10 +190,24 @@ namespace Confiscated.EditorTools
             foreach(var fixture in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include).Where(t=>t.name.StartsWith("P_CeilingLight")&&Interior.Contains(new Vector3(t.position.x,1.5f,t.position.z))))
             {fixture.gameObject.SetActive(false);EditorUtility.SetDirty(fixture.gameObject);}
             var lamps=new GameObject("Dim lamps").transform;lamps.SetParent(root,false);
-            Lamp(lamps,"Returns desk lamp",desk+new Vector3(-.5f,1.3f,.1f),new Color(1f,.82f,.55f),2.2f,7f,LightShadows.Soft);
-            // An even grid of weak, unshadowed pools: every aisle is readable, none of it is bright.
-            for(int c=1;c<Cols;c+=3)for(int r=1;r<Rows;r+=3)
-                Lamp(lamps,"Reading lamp",Cell(c,r,2.7f),new Color(.95f,.86f,.72f),1.6f,6.5f,LightShadows.None);
+            // Dark: hard to see without the torch (and the torch gives you away to the shadow). One weak lamp on the returns
+            // desk and a handful of faint pools so the maze is not pitch black.
+            Lamp(lamps,"Returns desk lamp",desk+new Vector3(-.5f,1.3f,.1f),new Color(1f,.78f,.5f),.9f,4.5f,LightShadows.Soft);
+            for(int c=2;c<Cols;c+=5)for(int r=1;r<Rows;r+=4)
+                Lamp(lamps,"Reading lamp",Cell(c,r,2.7f),new Color(.8f,.78f,.9f),.45f,4f,LightShadows.None);
+            Darkness(root);
+        }
+        const string DarknessProfile="Assets/Settings/LibraryDarkness.asset";
+        /// <summary>An exposure-darkening Volume faded in by position (LibraryDarkness), not by a trigger collider.</summary>
+        static void Darkness(Transform root)
+        {
+            var profile=AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.VolumeProfile>(DarknessProfile);
+            if(profile==null){profile=ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();AssetDatabase.CreateAsset(profile,DarknessProfile);}
+            if(!profile.TryGet<UnityEngine.Rendering.Universal.ColorAdjustments>(out var grade)){grade=profile.Add<UnityEngine.Rendering.Universal.ColorAdjustments>(true);AssetDatabase.AddObjectToAsset(grade,profile);}
+            grade.postExposure.Override(-1.7f);grade.saturation.Override(-30f);EditorUtility.SetDirty(grade);EditorUtility.SetDirty(profile);
+            var g=new GameObject("Library darkness");g.transform.SetParent(root,false);
+            var volume=g.AddComponent<UnityEngine.Rendering.Volume>();volume.isGlobal=true;volume.priority=20;volume.weight=0;volume.sharedProfile=profile;
+            var dark=g.AddComponent<LibraryDarkness>();dark.room=Interior;EditorUtility.SetDirty(dark);
         }
         static void Lamp(Transform parent,string name,Vector3 at,Color colour,float intensity,float range,LightShadows shadows)
         {
@@ -208,6 +224,142 @@ namespace Confiscated.EditorTools
             // A little reading table in the dead end, glue on top.
             Box(run.transform.Find(RootName),"Glue table (placeholder)",glueSpot+Vector3.up*.45f,new Vector3(.7f,.9f,.5f),Placeholder("M_Library_Desk_Placeholder",new Color(.45f,.32f,.2f)));
             glue.transform.position=glueSpot+new Vector3(0,.92f,0);glue.name="Glue bottle - Library";EditorUtility.SetDirty(glue.gameObject);
+        }
+
+        // ---------- The shadow (LibraryShadow) ----------
+        public const int AlcoveCount=10;
+        public const string NoticeText="SILENT STUDY\nPlease keep still\nand quiet.\nNo torches near\nthe books.";
+        static void Shadow(Transform root,SchoolRunController run)
+        {
+            var places=new GameObject("Shadow places").transform;places.SetParent(root,false);
+            // Alcoves: dead ends away from the doors, the desk and the glue, spread out (furthest-point picks).
+            var fromDoors=DoorCells.Select(d=>Distance(mazeEast,mazeNorth,d)).ToArray();
+            var candidates=new List<Vector2Int>();
+            for(int c=0;c<Cols;c++)for(int r=0;r<Rows;r++)
+            {
+                var cell=new Vector2Int(c,r);
+                if(Clearing.Contains(cell)||cell==mazeGlue||fromDoors.Min(d=>d[c,r])<3)continue;
+                if(Steps.Count(d=>Wall(mazeEast,mazeNorth,c,r,d))>=3)candidates.Add(cell);
+            }
+            // Too few dead ends: corners of the maze make do.
+            if(candidates.Count<AlcoveCount)for(int c=0;c<Cols;c++)for(int r=0;r<Rows;r++)
+            {var cell=new Vector2Int(c,r);if(!candidates.Contains(cell)&&!Clearing.Contains(cell)&&cell!=mazeGlue&&fromDoors.Min(d=>d[c,r])>=3&&Steps.Count(d=>Wall(mazeEast,mazeNorth,c,r,d))==2)candidates.Add(cell);}
+            var chosen=new List<Vector2Int>{candidates.OrderByDescending(p=>fromDoors.Min(d=>d[p.x,p.y])).First()};
+            while(chosen.Count<AlcoveCount&&chosen.Count<candidates.Count)
+                chosen.Add(candidates.Where(p=>!chosen.Contains(p)).OrderByDescending(p=>chosen.Min(q=>(p-q).sqrMagnitude)).First());
+            var alcoves=new List<Transform>();
+            foreach(var cell in chosen)
+            {
+                if(!NavMesh.SamplePosition(Cell(cell.x,cell.y),out var hit,1.2f,1<<NavArea))continue;
+                var a=new GameObject("Alcove "+cell.x+","+cell.y).transform;a.SetParent(places,false);a.position=hit.position;
+                a.rotation=Quaternion.Euler(0,(cell.x*37+cell.y*91)%360,0);alcoves.Add(a);
+            }
+            if(alcoves.Count<5)throw new InvalidOperationException("Only "+alcoves.Count+" shadow alcoves found on the library floor.");
+            // Each open door: a point just inside (on the library floor) and just outside.
+            var entrances=new List<Transform>();var exits=new List<Transform>();
+            var noticeBoard=Placeholder("M_Library_Notice",new Color(.93f,.9f,.8f));
+            foreach(var name in Doors)
+            {
+                var door=Object.FindObjectsByType<OfficeDoor>(FindObjectsInactive.Include).First(d=>d.name==name);
+                Vector3 f=door.transform.forward;f.y=0;f.Normalize();Vector3 centre=door.transform.position;centre.y=0;
+                Vector3 inward=Interior.Contains(centre+f*1.3f+Vector3.up*1.5f)?f:-f;
+                if(!NavMesh.SamplePosition(centre+inward*1.3f,out var inHit,1,1<<NavArea)||!NavMesh.SamplePosition(centre-inward*1.5f,out var outHit,1,NavMesh.AllAreas&~(1<<NavArea)))
+                    throw new InvalidOperationException("No floor either side of library door "+name);
+                var e=new GameObject("Entrance - "+name).transform;e.SetParent(places,false);e.position=inHit.position;entrances.Add(e);
+                var x=new GameObject("Thrown out - "+name).transform;x.SetParent(places,false);x.position=outHit.position;exits.Add(x);
+                // A plain library notice on the corridor side, beside the door.
+                Vector3 side=Vector3.Cross(Vector3.up,inward);
+                var board=Box(places,"Library notice - "+name,centre-inward*.1f+side*1.35f+Vector3.up*1.55f,new Vector3(.62f,.5f,.02f),noticeBoard);
+                board.transform.rotation=Quaternion.LookRotation(inward);Object.DestroyImmediate(board.GetComponent<Collider>());
+                var g=new GameObject("Library notice lettering");g.transform.SetParent(places,false);
+                g.transform.SetPositionAndRotation(board.transform.position-inward*.014f,Quaternion.LookRotation(inward));
+                var t=g.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.text=NoticeText;t.fontSize=80;t.characterSize=.0095f;t.color=new Color(.12f,.12f,.16f);
+                t.anchor=TextAnchor.MiddleCenter;t.alignment=TextAlignment.Center;g.AddComponent<WorldLabel>();
+            }
+            // The figure (Blender: gaunt, long skull, arms past its knees, frayed into tendrils instead of legs), see-through
+            // black, wrapped in rolling dark smoke, with two slanted, white-hot slit eyes and a glow round them.
+            var shade=new GameObject("Library shadow");shade.transform.SetParent(root,false);
+            var skip=shade.AddComponent<NavMeshModifier>();skip.ignoreFromBuild=true;
+            var body=Unlit("M_Library_Shadow",new Color(.01f,.01f,.015f,.75f),true,null,false);
+            // The smoke emits from the figure's surface, which needs a readable mesh.
+            var modelImport=(ModelImporter)AssetImporter.GetAtPath(ShadowModel);
+            if(modelImport!=null&&!modelImport.isReadable){modelImport.isReadable=true;modelImport.SaveAndReimport();}
+            var model=AssetDatabase.LoadAssetAtPath<GameObject>(ShadowModel);
+            if(model==null)throw new InvalidOperationException("Missing "+ShadowModel+" (Docs/LibraryMaze.md: made in Blender).");
+            var figure=(GameObject)PrefabUtility.InstantiatePrefab(model,shade.transform);figure.name="Figure";
+            figure.transform.localPosition=Vector3.zero;figure.transform.localRotation=Quaternion.identity;
+            var parts=figure.GetComponentsInChildren<Renderer>().ToList();
+            foreach(var r in parts){r.sharedMaterial=body;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;r.receiveShadows=false;}
+            foreach(var c in figure.GetComponentsInChildren<Collider>())Object.DestroyImmediate(c);
+            // HDR colours: the library darkness pulls exposure down, and the eyes must still burn through it (and bloom).
+            var eyeMat=Unlit("M_Library_ShadowEye",new Color(3.4f,3.2f,2.9f,1),true,Texture("T_ShadowEye"),false);
+            var glowMat=Unlit("M_Library_ShadowEyeGlow",new Color(2.6f,2.1f,1.3f,1),true,Texture("T_ShadowEyeGlow"),true);
+            var eyes=new List<Renderer>();
+            foreach(int s in new[]{-1,1})
+            {
+                // Quads face +Z (out of the face); mirrored so both slant down toward the nose.
+                eyes.Add(Quad(shade.transform,"Eye",new Vector3(s*.058f,1.99f,.365f),new Vector3(-s*.1f,.05f,1),eyeMat));
+                eyes.Add(Quad(shade.transform,"Eye glow",new Vector3(s*.058f,1.99f,.375f),new Vector3(.34f,.2f,1),glowMat));
+            }
+            // Smoke: puffs off the figure's surface, drifting up and trailing in world space as it glides.
+            var smokeGo=new GameObject("Smoke");smokeGo.transform.SetParent(shade.transform,false);
+            var smoke=smokeGo.AddComponent<ParticleSystem>();smoke.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main=smoke.main;main.loop=true;main.playOnAwake=true;main.duration=5;main.maxParticles=450;main.simulationSpace=ParticleSystemSimulationSpace.World;
+            main.startLifetime=new ParticleSystem.MinMaxCurve(1.6f,2.8f);main.startSpeed=new ParticleSystem.MinMaxCurve(.03f,.14f);
+            main.startSize=new ParticleSystem.MinMaxCurve(.45f,1.05f);main.startRotation=new ParticleSystem.MinMaxCurve(0,Mathf.PI*2);
+            main.startColor=new ParticleSystem.MinMaxGradient(new Color(.015f,.015f,.02f,1f),new Color(.05f,.045f,.07f,.85f));
+            var emission=smoke.emission;emission.rateOverTime=60;
+            var shape=smoke.shape;shape.shapeType=ParticleSystemShapeType.MeshRenderer;shape.meshRenderer=(MeshRenderer)parts[0];shape.normalOffset=.02f;
+            var rise=smoke.velocityOverLifetime;rise.enabled=true;rise.space=ParticleSystemSimulationSpace.World;
+            rise.x=new ParticleSystem.MinMaxCurve(-.04f,.04f);rise.y=new ParticleSystem.MinMaxCurve(.06f,.16f);rise.z=new ParticleSystem.MinMaxCurve(-.04f,.04f);
+            var grow=smoke.sizeOverLifetime;grow.enabled=true;grow.size=new ParticleSystem.MinMaxCurve(1,AnimationCurve.Linear(0,.6f,1,1.5f));
+            var spin=smoke.rotationOverLifetime;spin.enabled=true;spin.z=new ParticleSystem.MinMaxCurve(-.4f,.4f);
+            var fade=smoke.colorOverLifetime;fade.enabled=true;var gradient=new Gradient();
+            gradient.SetKeys(new[]{new GradientColorKey(Color.white,0),new GradientColorKey(Color.white,1)},new[]{new GradientAlphaKey(0,0),new GradientAlphaKey(1,.25f),new GradientAlphaKey(.7f,.6f),new GradientAlphaKey(0,1)});
+            fade.color=gradient;
+            var puff=smokeGo.GetComponent<ParticleSystemRenderer>();puff.renderMode=ParticleSystemRenderMode.Billboard;puff.sortMode=ParticleSystemSortMode.Distance;
+            puff.sharedMaterial=Particles("M_Library_ShadowSmoke",Texture("T_ShadowSmoke"),false);puff.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;puff.receiveShadows=false;
+            var ai=shade.AddComponent<LibraryShadow>();
+            ai.alcoves=alcoves.ToArray();ai.entrances=entrances.ToArray();ai.exits=exits.ToArray();ai.silhouette=parts.ToArray();ai.eyes=eyes.ToArray();ai.smoke=smoke;
+            ai.room=Interior;ai.areaMask=1<<NavArea;
+            shade.transform.SetPositionAndRotation(alcoves[0].position,alcoves[0].rotation);EditorUtility.SetDirty(ai);
+        }
+        const string ShadowModel="Assets/Art/Models/Library/LibraryShadow.fbx",ShadowTextures="Assets/Art/Textures/Library/";
+        static Texture2D Texture(string name)
+        {
+            string path=ShadowTextures+name+".png";var importer=(TextureImporter)AssetImporter.GetAtPath(path);
+            if(importer==null)throw new InvalidOperationException("Missing "+path);
+            if(!importer.alphaIsTransparency||importer.wrapMode!=TextureWrapMode.Clamp||importer.mipmapEnabled==false)
+            {importer.alphaIsTransparency=true;importer.wrapMode=TextureWrapMode.Clamp;importer.mipmapEnabled=true;importer.SaveAndReimport();}
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+        static Renderer Quad(Transform parent,string name,Vector3 at,Vector3 size,Material m)
+        {
+            var g=GameObject.CreatePrimitive(PrimitiveType.Quad);g.name=name;g.transform.SetParent(parent,false);g.transform.localPosition=at;
+            // A Unity quad shows its face toward -Z; turn it to face out of the head.
+            g.transform.localRotation=Quaternion.Euler(0,180,0);g.transform.localScale=size;Object.DestroyImmediate(g.GetComponent<Collider>());
+            var r=g.GetComponent<MeshRenderer>();r.sharedMaterial=m;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;r.receiveShadows=false;return r;
+        }
+        static Material Particles(string name,Texture2D texture,bool additive)
+        {
+            string path="Assets/Art/Materials/"+name+".mat";var m=AssetDatabase.LoadAssetAtPath<Material>(path);
+            if(m==null){m=new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));AssetDatabase.CreateAsset(m,path);}
+            m.SetTexture("_BaseMap",texture);m.SetColor("_BaseColor",Color.white);Transparent(m,additive);EditorUtility.SetDirty(m);return m;
+        }
+        static void Transparent(Material m,bool additive)
+        {
+            m.SetFloat("_Surface",1);m.SetFloat("_Blend",additive?2:0);m.SetFloat("_ZWrite",0);m.SetFloat("_Cull",0);
+            m.SetFloat("_SrcBlend",(float)UnityEngine.Rendering.BlendMode.SrcAlpha);m.SetFloat("_DstBlend",(float)(additive?UnityEngine.Rendering.BlendMode.One:UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha));
+            m.SetFloat("_SrcBlendAlpha",(float)UnityEngine.Rendering.BlendMode.One);m.SetFloat("_DstBlendAlpha",(float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetOverrideTag("RenderType","Transparent");m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");m.renderQueue=(int)UnityEngine.Rendering.RenderQueue.Transparent+(additive?2:1);
+        }
+        static Material Unlit(string name,Color colour,bool seeThrough,Texture2D texture,bool additive)
+        {
+            string path="Assets/Art/Materials/"+name+".mat";var m=AssetDatabase.LoadAssetAtPath<Material>(path);
+            if(m==null){m=new Material(Shader.Find("Universal Render Pipeline/Unlit"));AssetDatabase.CreateAsset(m,path);}
+            m.SetColor("_BaseColor",colour);if(texture!=null)m.SetTexture("_BaseMap",texture);
+            if(seeThrough)Transparent(m,additive);
+            EditorUtility.SetDirty(m);return m;
         }
 
         static GameObject Box(Transform parent,string name,Vector3 at,Vector3 size,Material material)

@@ -61,6 +61,7 @@ namespace Confiscated.EditorTools
                         if(elapsed<.8)return;
                         if(SchoolTitleMenu.IsActive){SchoolTitleMenu.Instance.StartGame();SchoolTitleMenu.Instance.SkipIntro();}
                         ComicDialogue.Cancel();R.period.PrepareChaseRetry();R.PrepareChaseRetry();R.PauseStaff();
+                        var shade=Object.FindFirstObjectByType<LibraryShadow>();if(shade!=null)shade.Paused=true; // has its own test
                         // Moved into the library maze on 2026-09-26 (LibrarySetup), alongside the handheld game.
                         Check(Bottle!=null&&LibrarySetup.Interior.Contains(new Vector3(Bottle.transform.position.x,1.5f,Bottle.transform.position.z)),"glue lives in the library maze");
                         // Stand in the open side of the glue's dead end, facing its little table.

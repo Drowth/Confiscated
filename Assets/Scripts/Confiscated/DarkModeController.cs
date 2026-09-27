@@ -41,11 +41,13 @@ namespace Confiscated
         LightmapData[] lightmaps;
         public void Begin()
         {
-            if(begun||!SchoolGameMode.Dark)return;begun=true;
+            if(begun||GetComponent<GameManager>().schoolPeriod==null)return;
             period=GetComponent<GameManager>().schoolPeriod;player=period.Player;inventory=player.GetComponent<PlayerInventory>();
-            inventory.StockLocker(torchItem);
+            // The torch waits in the locker in both modes: unlimited at night, on a battery by day (the library shadow).
+            if(!inventory.HasCarried(InventoryItemKind.Torch))inventory.StockLocker(torchItem);
             torch=player.GetComponent<PlayerTorch>();if(torch==null)torch=player.gameObject.AddComponent<PlayerTorch>();
             torch.Configure(torchPrefab);
+            if(!SchoolGameMode.Dark)return;begun=true;
         }
         public void PrepareRetry(){if(begun)retry=true;}
         void Update()
@@ -91,7 +93,7 @@ namespace Confiscated
             // unlit props and emissive fittings obey the outage without modifying any shared art assets.
             foreach(var r in FindObjectsByType<Renderer>(FindObjectsInactive.Include,FindObjectsSortMode.None))
             {
-                if(r is not MeshRenderer||r.GetComponentInParent<Canvas>()!=null||r.transform.IsChildOf(player.transform))continue;
+                if(r is not MeshRenderer||r.GetComponentInParent<Canvas>()!=null||r.transform.IsChildOf(player.transform)||r.GetComponentInParent<LibraryShadow>()!=null)continue; // the shadow's eyes glow in the dark
                 var originals=r.sharedMaterials;var changed=(Material[])originals.Clone();bool replace=false;
                 for(int i=0;i<changed.Length;i++)
                 {
