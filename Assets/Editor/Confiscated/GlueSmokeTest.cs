@@ -19,7 +19,7 @@ namespace Confiscated.EditorTools
         static Keyboard keys,oldKeys;static Mouse mouse,oldMouse;
         static InputSettings.BackgroundBehavior inputBackground;
         static InputSettings.EditorInputBehaviorInPlayMode inputFocus;
-        static GluePuddle puddle;static int duckCount;
+        static GluePuddle puddle;static int duckCount;static bool moved;
         static SchoolRunController R=>SchoolRunController.Instance;
         static PlayerInteractor P=>R.period.Player;
         static FirstPersonController F=>P.GetComponent<FirstPersonController>();
@@ -98,6 +98,8 @@ namespace Confiscated.EditorTools
                         InputSystem.QueueStateEvent(keys,new KeyboardState());puddle=D.LastDeployed;
                         Check(puddle!=null&&D.Charges==0,"G deploys one puddle while moving");
                         Check(puddle.transform.position.z<P.transform.position.z&&puddle.transform.position.y<.08f,"glue lies on floor behind direction of travel");
+                        // West corridor here runs x -35.67 .. -32.11.
+                        Check(puddle.halfWidth*2>3.2f&&Mathf.Abs(puddle.transform.position.x-(-33.89f))<.3f,"glue spans the corridor wall to wall, centred in it ("+(puddle.halfWidth*2).ToString("F2")+" m)");
                         Check(D.DropAudio.isPlaying&&D.DropAudio.clip.name=="GlueDrop"&&D.DropAudio.transform==P.transform,"GlueDrop plays at the player");
                         Check(!puddle.Consumed&&!C.IsGlued&&!puddle.StuckAudio.isPlaying,"deployment alone does not immobilise caretaker or play stuck sound");
                         Check(!D.Deploy()&&Object.FindObjectsByType<GluePuddle>(FindObjectsSortMode.None).Length==1,"empty use cannot create more puddles");
@@ -136,8 +138,17 @@ namespace Confiscated.EditorTools
                         if(elapsed<4.3)return;
                         Check(!C.IsGlued&&C.Current==CaretakerAI.State.Frozen&&C.GetComponent<NavMeshAgent>().isStopped,"expiring glue never undoes an independent end-round freeze");
                         D.Collect();Check(D.Deploy(),"deployment remains available after earlier trap expires");
-                        GameManager.Instance.Restart();Next();break;
+                        // Mr Reed on one side of the new strip; next step he is moved across it (a 2.8 m step, not a warp).
+                        puddle=D.LastDeployed;moved=false;var reed=R.secondStaff;reed.enabled=true;reed.ResumeAfterDetention(0);
+                        reed.GetComponent<NavMeshAgent>().Warp(puddle.transform.position-puddle.transform.forward*1.4f);Next();break;
                     case 12:
+                        if(elapsed<.2)return;
+                        if(!moved){moved=true;R.secondStaff.GetComponent<NavMeshAgent>().Warp(puddle.transform.position+puddle.transform.forward*1.4f);return;}
+                        if(!puddle.Consumed){if(elapsed>2)throw new Exception("Mr Reed crossed the glue without sticking: "+R.secondStaff.transform.position);return;}
+                        Check(puddle.StuckStaff==R.secondStaff&&R.secondStaff.IsGlued,"glue sticks Mr Reed too");
+                        Check(!C.IsGlued,"one strip holds one member of staff");
+                        R.secondStaff.Freeze();GameManager.Instance.Restart();Next();break;
+                    case 13:
                         if(elapsed<1||R==null)return;
                         Check(D.Charges==0&&!Bottle.Taken&&Bottle.visual.activeSelf&&Object.FindObjectsByType<GluePuddle>(FindObjectsSortMode.None).Length==0&&!C.IsGlued,"restart restores bottle and clears carried glue, puddles and immobilisation");
                         Finish(true);break;

@@ -1,52 +1,72 @@
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI;
 
 namespace Confiscated
 {
-    // Detect contact before the caretaker's chase/catch update. No solid collider obstructs the player.
+    // Detect contact before the staff chase/catch update. No solid collider obstructs the player.
     [DefaultExecutionOrder(-200)]
     public sealed class GluePuddle : MonoBehaviour
     {
         public const float HoldSeconds=4;
-        public float radius=.53f;
+        /// <summary>Half extents on the floor in local space: x across the corridor, z along it. Set by GlueDeployer.</summary>
+        public float halfWidth=.53f,halfDepth=.53f;
+        // Staff are about this wide; their centre only has to reach the glue's edge.
+        const float StaffRadius=.3f;
         public AudioClip stuckSound;
         public bool Consumed {get;private set;}
+        public CaretakerAI StuckStaff {get;private set;}
         public AudioSource StuckAudio {get;private set;}
-        CaretakerAI caretaker;
-        Vector3 previous;
+        readonly Dictionary<CaretakerAI,Vector3> previous=new Dictionary<CaretakerAI,Vector3>();
         float removeAt;
         void Start()
         {
-            caretaker=SchoolRunController.Instance?.caretaker;
-            if(caretaker!=null)previous=caretaker.transform.position;
             StuckAudio=gameObject.AddComponent<AudioSource>();StuckAudio.playOnAwake=false;StuckAudio.loop=false;
             StuckAudio.clip=stuckSound;StuckAudio.spatialBlend=1;StuckAudio.minDistance=2;StuckAudio.maxDistance=22;
             StuckAudio.dopplerLevel=0;StuckAudio.volume=.85f;
         }
         void Update()
         {
-            var game=GameManager.Instance;
+            var game=GameManager.Instance;var run=SchoolRunController.Instance;
             if(game==null)return;
             if(game.Current==GameManager.State.Won||game.Current==GameManager.State.Caught){Destroy(gameObject);return;}
             if(Consumed){if(Time.time>=removeAt)Destroy(gameObject);return;}
-            if(caretaker==null)return;
-            Vector3 current=caretaker.transform.position,from=previous;previous=current;
-            if(!game.IsPlaying||ComicDialogue.IsActive||Time.timeScale<=0||caretaker.IsGlued||caretaker.Current==CaretakerAI.State.Frozen)return;
-            if(Mathf.Abs(current.y-transform.position.y)>.3f)return;
-            Vector3 segment=current-from;segment.y=0;
-            // Fast ordinary movement cannot skip a small puddle; a warp is not a walk over the intervening floor.
-            if(segment.sqrMagnitude>9)from=current;
-            Vector3 end=current;from.y=end.y=transform.position.y;
-            segment=end-from;
-            float t=segment.sqrMagnitude>.00001f?Mathf.Clamp01(Vector3.Dot(transform.position-from,segment)/segment.sqrMagnitude):0;
-            if((from+segment*t-transform.position).sqrMagnitude>radius*radius)return;
-            if(!NavMesh.SamplePosition(transform.position,out var floor,.2f,NavMesh.AllAreas)||
-                NavMesh.Raycast(current,floor.position,out _,NavMesh.AllAreas)||
-                Physics.Linecast(current+Vector3.up*.2f,transform.position+Vector3.up*.2f,~0,QueryTriggerInteraction.Ignore))return;
-            if(!caretaker.TryStickInGlue(HoldSeconds))return;
-            Consumed=true;removeAt=Time.time+Mathf.Max(HoldSeconds,stuckSound!=null?stuckSound.length:0)+.15f;
-            if(stuckSound!=null)StuckAudio.Play();
-            HudController.Instance?.SetStatus("He's stuck in the glue! Four seconds — RUN!",3);
+            if(run==null)return;
+            bool live=game.IsPlaying&&!ComicDialogue.IsActive&&Time.timeScale>0;
+            // The caretaker and Mr Reed (once he's hunting): whoever walks into it first is held, then it's gone.
+            foreach(var staff in new[]{run.caretaker,run.secondStaff})
+            {
+                if(staff==null||!staff.isActiveAndEnabled)continue;
+                Vector3 current=staff.transform.position;
+                Vector3 from=previous.TryGetValue(staff,out var last)?last:current;previous[staff]=current;
+                if(!live||staff.IsGlued||staff.Current==CaretakerAI.State.Frozen)continue;
+                if(Mathf.Abs(current.y-transform.position.y)>.3f)continue;
+                // A warp is not a walk over the intervening floor.
+                if((current-from).sqrMagnitude>9)from=current;
+                if(!Crosses(from,current))continue;
+                if(!staff.TryStickInGlue(HoldSeconds))continue;
+                Consumed=true;StuckStaff=staff;removeAt=Time.time+Mathf.Max(HoldSeconds,stuckSound!=null?stuckSound.length:0)+.15f;
+                if(stuckSound!=null)StuckAudio.Play();
+                HudController.Instance?.SetStatus((staff==run.caretaker?"He's":"Mr Reed's")+" stuck in the glue! Four seconds - RUN!",3);
+                return;
+            }
+        }
+        /// <summary>Does the walk from a to b touch the glue strip (expanded by a staff member's width)?</summary>
+        public bool Crosses(Vector3 a,Vector3 b)
+        {
+            Vector3 p=transform.InverseTransformPoint(a),q=transform.InverseTransformPoint(b);
+            // InverseTransformPoint divides by scale; keep the strip's extents in metres.
+            var s=transform.lossyScale;p=Vector3.Scale(p,s);q=Vector3.Scale(q,s);
+            float hx=halfWidth+StaffRadius,hz=halfDepth+StaffRadius;
+            // Slab test of the segment against the rectangle on the floor.
+            float t0=0,t1=1;Vector2 d=new Vector2(q.x-p.x,q.z-p.z);
+            if(!Slab(p.x,d.x,hx,ref t0,ref t1)||!Slab(p.z,d.y,hz,ref t0,ref t1))return false;
+            return t0<=t1;
+        }
+        static bool Slab(float start,float dir,float half,ref float t0,ref float t1)
+        {
+            if(Mathf.Abs(dir)<1e-6f)return Mathf.Abs(start)<=half;
+            float a=(-half-start)/dir,b=(half-start)/dir;if(a>b){var t=a;a=b;b=t;}
+            t0=Mathf.Max(t0,a);t1=Mathf.Min(t1,b);return t0<=t1;
         }
     }
 }
