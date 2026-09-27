@@ -110,6 +110,8 @@ namespace Confiscated
             if (RoundStarted) {NoiseEvents.Emit(period.Player.transform.position, 45, "property box latch");GetComponent<EscapeRunFeedback>()?.PickupCue();}
             string[] rewards = { "Phone recovered! Four more belongings are in CONFISCATED boxes.", "Yo-yo recovered.", "Handheld game recovered.", "Skateboard recovered.", "Toy robot recovered." };
             HudController.Instance?.SetStatus(rewards[id], 6);
+            // The phone lights up with a friend's text: what the run is about.
+            if (id == 0) PhoneMessage.Show();
             if (Count == 5) Object.FindFirstObjectByType<SchoolBellSystem>()?.Ring();
         }
         public void PenalizeCatch()

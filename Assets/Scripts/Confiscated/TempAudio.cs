@@ -10,7 +10,7 @@ namespace Confiscated
     {
         const int Rate = 22050;
 
-        static AudioClip ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip, jingleClip, whisperClip;
+        static AudioClip ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip, jingleClip, whisperClip, buzzClip;
 
         public static AudioClip Ring => ringClip ??= Build("Temp_Ring", 1.6f, t =>
         {
@@ -37,6 +37,13 @@ namespace Confiscated
 
         public static AudioClip Pickup => pickupClip ??= Build("Temp_Pickup", 0.15f, t =>
             0.35f * Mathf.Sin(2f * Mathf.PI * (600f + 1200f * t) * t) * (1f - t / 0.15f));
+
+        // A phone on vibrate: two short buzzes.
+        public static AudioClip Buzz => buzzClip ??= Build("Temp_Buzz", 0.75f, t =>
+        {
+            float on = (t % 0.4f) < 0.26f ? 1f : 0f;
+            return on * 0.35f * Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 165f * t)) * (0.6f + 0.4f * Mathf.Sin(2f * Mathf.PI * 31f * t));
+        });
 
         // A bunch of keys shaken: metal clinks (inharmonic partials, fast decay) scattered over 0.7 s.
         static readonly float[] Clinks = { 0f, .07f, .16f, .21f, .33f, .41f, .52f, .6f };

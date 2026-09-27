@@ -239,9 +239,8 @@ namespace Confiscated.EditorTools
             var lamps=new GameObject("Dim lamps").transform;lamps.SetParent(root,false);
             // Dark: hard to see without the torch (and the torch gives you away to the shadow). One weak lamp on the returns
             // desk and a handful of faint pools so the maze is not pitch black.
-            Lamp(lamps,"Returns desk lamp",desk+new Vector3(-.5f,1.3f,.1f),new Color(1f,.78f,.5f),.3f,4.5f,LightShadows.Soft);
-            for(int c=2;c<Cols;c+=5)for(int r=1;r<Rows;r+=4)
-                Lamp(lamps,"Reading lamp",Cell(c,r,2.7f),new Color(.8f,.78f,.9f),.12f,4f,LightShadows.None);
+            // Pitch dark without the torch (-5 EV): no reading lamps, only a faint glow over the returns desk as a landmark.
+            Lamp(lamps,"Returns desk lamp",desk+new Vector3(-.5f,1.3f,.1f),new Color(1f,.78f,.5f),6f,4.5f,LightShadows.Soft);
             Darkness(root);
         }
         const string DarknessProfile="Assets/Settings/LibraryDarkness.asset";
@@ -251,7 +250,7 @@ namespace Confiscated.EditorTools
             var profile=AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.VolumeProfile>(DarknessProfile);
             if(profile==null){profile=ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();AssetDatabase.CreateAsset(profile,DarknessProfile);}
             if(!profile.TryGet<UnityEngine.Rendering.Universal.ColorAdjustments>(out var grade)){grade=profile.Add<UnityEngine.Rendering.Universal.ColorAdjustments>(true);AssetDatabase.AddObjectToAsset(grade,profile);}
-            grade.postExposure.Override(-3.4f);grade.saturation.Override(-30f);EditorUtility.SetDirty(grade);EditorUtility.SetDirty(profile);
+            grade.postExposure.Override(-5f);grade.saturation.Override(-30f);EditorUtility.SetDirty(grade);EditorUtility.SetDirty(profile);
             var g=new GameObject("Library darkness");g.transform.SetParent(root,false);
             var volume=g.AddComponent<UnityEngine.Rendering.Volume>();volume.isGlobal=true;volume.priority=20;volume.weight=0;volume.sharedProfile=profile;
             var dark=g.AddComponent<LibraryDarkness>();dark.room=Interior;EditorUtility.SetDirty(dark);
@@ -325,7 +324,7 @@ namespace Confiscated.EditorTools
                         var pool=new Vector3(x,0,z)+inward*1.5f;
                         var lamp=new GameObject("Window light").AddComponent<Light>();lamp.transform.SetParent(w,false);
                         lamp.transform.position=new Vector3(x,2.0f,z)+inward*.3f;lamp.transform.LookAt(pool);
-                        lamp.type=LightType.Spot;lamp.spotAngle=62;lamp.innerSpotAngle=35;lamp.range=6;lamp.intensity=5.5f;lamp.color=new Color(.86f,.9f,1f);lamp.shadows=LightShadows.Soft;
+                        lamp.type=LightType.Spot;lamp.spotAngle=62;lamp.innerSpotAngle=35;lamp.range=6;lamp.intensity=54f; // lifted against the -5 EV darknesslamp.color=new Color(.86f,.9f,1f);lamp.shadows=LightShadows.Soft;
                         var marker=w.gameObject.AddComponent<LibraryWindow>();marker.room=Interior;marker.pool=pool;marker.radius=2.2f;EditorUtility.SetDirty(marker);
                     }
                     Piece(from,max.x,0,h);
@@ -409,8 +408,8 @@ namespace Confiscated.EditorTools
             foreach(var r in parts){r.sharedMaterial=body;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;r.receiveShadows=false;}
             foreach(var c in figure.GetComponentsInChildren<Collider>())Object.DestroyImmediate(c);
             // HDR colours: the library darkness pulls exposure down, and the eyes must still burn through it (and bloom).
-            var eyeMat=Unlit("M_Library_ShadowEye",new Color(10.5f,9.8f,8.8f,1),true,Texture("T_ShadowEye"),false);
-            var glowMat=Unlit("M_Library_ShadowEyeGlow",new Color(8f,6.5f,4f,1),true,Texture("T_ShadowEyeGlow"),true);
+            var eyeMat=Unlit("M_Library_ShadowEye",new Color(32f,30f,27f,1),true,Texture("T_ShadowEye"),false);
+            var glowMat=Unlit("M_Library_ShadowEyeGlow",new Color(24f,20f,12f,1),true,Texture("T_ShadowEyeGlow"),true);
             var eyes=new List<Renderer>();
             foreach(int s in new[]{-1,1})
             {

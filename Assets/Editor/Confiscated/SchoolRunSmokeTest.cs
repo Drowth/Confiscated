@@ -144,7 +144,7 @@ namespace Confiscated.EditorTools
                         Time.timeScale=4;Next(1);break;
                     case 1:
                         if(!P.GetComponent<PhoneRinger>().Emitter.isPlaying)return;
-                        Need(true,"opening ringtone still plays");Next(2);break;
+                        Need(true,"opening ringtone still plays");Need(P.GetComponent<PhoneRinger>().Vibrating&&P.GetComponent<PhoneRinger>().Buzzing,"the desk phone vibrates and buzzes while it rings");Next(2);break;
                     case 2:
                         if(!S.IsRoaming)return;
                         Dismiss();Need(I.HasCarried(InventoryItemKind.HallPass)&&I.HasCarried(InventoryItemKind.Newsletters)&&!S.worksheetUI.IsOpen,"handoff releases player with pass and papers automatically");
@@ -178,7 +178,7 @@ namespace Confiscated.EditorTools
                     case 4:
                         Passage(Door("Caretaker office").transform.position,Door("Caretaker office").transform.forward,true,"office door");
                         Reach(S.phonePickup,DeskStand(S.phonePickup.transform),S.phonePickup.transform.position+Vector3.up*.3f);
-                        Need(S.phonePickup.CanInteract(P),"deposited phone is recoverable");S.phonePickup.Interact(P);Need(R.Count==1&&P.HasPhone&&!R.HasBoltCutters&&!R.HasStoreKey,"phone counts as item one and does not magically award tools");
+                        Need(S.phonePickup.CanInteract(P),"deposited phone is recoverable");S.phonePickup.Interact(P);Need(R.Count==1&&P.HasPhone&&!R.HasBoltCutters&&!R.HasStoreKey,"phone counts as item one and does not magically award tools");Need(PhoneMessage.Shown&&PhoneMessage.Current!=null&&!ComicDialogue.IsActive,"the phone lights up with Maddie's text (without pausing the game)");
                         Need(R.caretaker.SuspicionSeconds>1f,"early game gives a forgiving beat to duck out of sight when spotted ("+R.caretaker.SuspicionSeconds.ToString("F2")+"s)");
                         P.GetComponent<PhoneRinger>().Activate();Need(!P.GetComponent<PhoneRinger>().Emitter.isPlaying&&P.GetComponent<PhoneRinger>().SecondsToRing<0,"recovered phone stays silent");
                         Need(S.IsComplete,"recovering phone ends lesson errands without returning to starting room");
