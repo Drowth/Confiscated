@@ -73,6 +73,8 @@ namespace Confiscated
         }
         public void PrepareChaseRetry()
         {
+            // Sweets and the chatterbox's bench start over; he does not repeat the rumour.
+            period.Player.GetComponent<Sweets>()?.ResetRun();Object.FindFirstObjectByType<SweetJar>()?.Refill();Object.FindFirstObjectByType<ChatterboxStudent>()?.ResetRun();
             trolley.SetPositionAndRotation(trolleyDock.position,trolleyDock.rotation);
             TrolleyParked=true;
             foreach(var c in cartColliders)c.enabled=true;

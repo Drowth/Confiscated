@@ -33,6 +33,16 @@ namespace Confiscated
         public const string RumourLine="My brother says something lives in the library. Stand still with your torch off and it walks right past you. Move, and... GONE! Anyway... where are you going?";
         const string RumourClip="ChatterboxLibraryRumour";
         public bool ToldRumour {get;private set;}
+        // After the rumour he is a roaming blocker: he calls you over from across a corridor, and after each chat he moves to
+        // another chokepoint bench (while you can't see him). A sweet buys a quiet pass: he munches instead of talking.
+        [Tooltip("Chokepoint benches he moves between once he has told the rumour (ChatterboxSeatsSetup).")]
+        public Transform[] seats;
+        public float calloutDistance=6f,munchSeconds=25f,moveAwayDistance=12f;
+        public int Seat {get;private set;}
+        public int Moves {get;private set;}
+        public int SweetsEaten {get;private set;}
+        public float Reach=>ToldRumour?calloutDistance:reach;
+        bool movePending,wasTalking;
         void OnDisable()
         {
             if(Talking)ComicDialogue.Cancel();
@@ -95,22 +105,43 @@ namespace Confiscated
             // Start above the bench back; walls and shut doors still prevent an encounter.
             return !Physics.Linecast(transform.position+Vector3.up*1.1f,target+Vector3.up,out var hit,~0,QueryTriggerInteraction.Ignore)||hit.transform.IsChildOf(player.transform);
         }
+        /// <summary>To a different chokepoint bench, at random.</summary>
+        public void MoveSeat()
+        {
+            if(seats==null||seats.Length<2)return;
+            int next=Seat;for(int i=0;i<10&&next==Seat;i++)next=Random.Range(0,seats.Length);
+            Seat=next;Moves++;transform.SetPositionAndRotation(seats[Seat].position,seats[Seat].rotation);
+            needsSpace=false;warned=false;
+        }
+        /// <summary>A new run: back on his first bench, rumour untold is kept (it is told once).</summary>
+        public void ResetRun(){movePending=false;Seat=0;if(seats!=null&&seats.Length>0)transform.SetPositionAndRotation(seats[0].position,seats[0].rotation);distractedUntil=0;needsSpace=false;warned=false;}
         void Update()
         {
+            // A chat just ended: once out of the player's sight, he moves on to another bench.
+            if(wasTalking&&!Talking&&ToldRumour)movePending=true;wasTalking=Talking;
             if(!Live)return;
             if(player==null){player=SchoolRunController.Instance.period.Player;movement=player.GetComponent<FirstPersonController>();}
             var delta=player.transform.position-transform.position;delta.y=0;
-            float distance=delta.magnitude;
-            if(distance>warningDistance+1){needsSpace=false;warned=false;}
+            float distance=delta.magnitude,warnAt=Mathf.Max(warningDistance,Reach+3);
+            if(movePending&&(distance>moveAwayDistance||!Visible(player.transform.position))){movePending=false;MoveSeat();return;}
+            if(distance>warnAt+1){needsSpace=false;warned=false;}
             if(!Available||movement.MovementLocked||movement.ForcedCorridorRun||movement.IsFallen||player.InputLocked)return;
             // This pupil faces into the hall. Passing behind the bench never triggers a conversation.
             if(Vector3.Dot(transform.forward,delta)<0||!Visible(player.transform.position))return;
-            if(!warned&&distance<warningDistance)
+            if(!warned&&distance<warnAt)
             {
                 warned=true;
                 HudController.Instance?.SetStatus("Chatterbox ahead. Give him space.",4);
             }
-            if(distance>reach)return;
+            if(distance>Reach)return;
+            // A sweet: he takes it and is too busy chewing to talk.
+            if(ToldRumour&&player.GetComponent<Sweets>()?.Spend()==true)
+            {
+                SweetsEaten++;distractedUntil=Time.time+munchSeconds;needsSpace=true;movePending=true;
+                HudController.Instance?.SetBark("Chatterbox: Ooh, sweets! Mmf... fanks!",2.5f);
+                HudController.Instance?.SetStatus("He's too busy chewing to talk. Go!",3);
+                return;
+            }
             AudioClip clip;string words;
             if(!ToldRumour){ToldRumour=true;clip=Resources.Load<AudioClip>("Audio/"+RumourClip);words=RumourLine;}
             else{int line=PickLine(out clip);words=DarkModeDialogue.Active?DarkModeDialogue.Chatterbox[line].text:lineTexts[line];}

@@ -100,7 +100,8 @@ namespace Confiscated.EditorTools
                         if(elapsed<.35)return;
                         InputSystem.QueueStateEvent(keys,new KeyboardState());
                         Check(Vector3.Distance(lockedPosition,P.transform.position)>.08f,"movement resumes after conversation");
-                        Warp(C.transform.position+C.transform.forward*5);Next();break;
+                        // After his rumour he calls from across the corridor: leave properly (he may move to another bench).
+                        Warp(SchoolPlan.Point(465,1100));Next();break;
                     case 6:
                         if(elapsed<.3)return;
                         Check(C.Available,"leaving and cooldown rearms chatterbox");

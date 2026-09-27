@@ -105,10 +105,37 @@ namespace Confiscated.EditorTools
             var bell=GameObject.CreatePrimitive(PrimitiveType.Sphere);bell.name="Desk bell";bell.transform.SetParent(g,false);bell.transform.position=new Vector3(8.4f,1.13f,CounterZ+.12f);bell.transform.localScale=new Vector3(.085f,.05f,.085f);
             Object.DestroyImmediate(bell.GetComponent<Collider>());bell.GetComponent<MeshRenderer>().sharedMaterial=brass;
             Box(g,"Sign-in book",new Vector3(8.0f,1.1f,CounterZ+.08f),new Vector3(.4f,.02f,.28f),paper,false);
+            SweetJar(g,new Vector3(9.35f,1.09f,CounterZ+.2f));
             Plaque(g,"STAFF\nONLY",new Vector3(GapWest-.3f,1.6f,CounterZ+.025f),new Vector2(.34f,.26f),180,.009f);
             // Staff side: a monitor at each desk position behind the screen.
             Box(g,"Counter monitor",new Vector3(6.0f,1.28f,CounterZ-.12f),new Vector3(.46f,.32f,.04f),screen,false);
             Box(g,"Counter monitor",new Vector3(11.0f,1.28f,CounterZ-.12f),new Vector3(.46f,.32f,.04f),screen,false);
+        }
+        /// <summary>A jar of sweets on the public side of the counter: one bag per run, for the chatterbox (SweetJar).</summary>
+        static void SweetJar(Transform parent,Vector3 at)
+        {
+            var jar=new GameObject("Sweet jar").transform;jar.SetParent(parent,false);jar.position=at;
+            var pick=jar.gameObject.AddComponent<global::Confiscated.SweetJar>();
+            var box=jar.gameObject.AddComponent<BoxCollider>();box.center=new Vector3(0,.15f,0);box.size=new Vector3(.24f,.32f,.24f);
+            Cylinder(jar,"Jar glass",new Vector3(0,.13f,0),new Vector3(.17f,.13f,.17f),glass);
+            Cylinder(jar,"Jar lid",new Vector3(0,.275f,0),new Vector3(.15f,.02f,.15f),Tint("M_Office_JarLid",paper,new Color(.75f,.18f,.16f)));
+            var contents=new GameObject("Sweets").transform;contents.SetParent(jar,false);
+            var colours=new[]{Tint("M_Office_Sweet_Red",paper,new Color(.9f,.2f,.25f)),Tint("M_Office_Sweet_Yellow",paper,new Color(.95f,.8f,.2f)),Tint("M_Office_Sweet_Green",paper,new Color(.35f,.75f,.3f)),Tint("M_Office_Sweet_Purple",paper,new Color(.55f,.3f,.75f))};
+            var rng=new System.Random(4);
+            for(int i=0;i<22;i++)
+            {
+                float a=(float)rng.NextDouble()*Mathf.PI*2,r=(float)rng.NextDouble()*.055f,y=.03f+i*.0075f;
+                var sweet=GameObject.CreatePrimitive(PrimitiveType.Sphere);sweet.name="Sweet";sweet.transform.SetParent(contents,false);
+                sweet.transform.localPosition=new Vector3(Mathf.Cos(a)*r,y,Mathf.Sin(a)*r);sweet.transform.localScale=new Vector3(.04f,.03f,.04f);
+                Object.DestroyImmediate(sweet.GetComponent<Collider>());sweet.GetComponent<MeshRenderer>().sharedMaterial=colours[i%colours.Length];
+            }
+            pick.contents=contents.gameObject;EditorUtility.SetDirty(pick);
+            Plaque(jar,"SWEETS\nfor good\nbehaviour",at+new Vector3(0,.13f,.09f),new Vector2(.12f,.09f),180,.0035f,true);
+        }
+        static void Cylinder(Transform parent,string name,Vector3 local,Vector3 size,Material m)
+        {
+            var g=GameObject.CreatePrimitive(PrimitiveType.Cylinder);g.name=name;g.transform.SetParent(parent,false);g.transform.localPosition=local;g.transform.localScale=size;
+            Object.DestroyImmediate(g.GetComponent<Collider>());g.GetComponent<MeshRenderer>().sharedMaterial=m;
         }
         static void Segment(Transform g,string name,float a,float b)
         {

@@ -202,20 +202,41 @@ namespace Confiscated.EditorTools
                         Need(Chatter!=null,"one chatterbox is installed");Chatter.cooldownSeconds=3;
                         Warp(Chatter.transform.position+Chatter.transform.forward*2);F.LookLocked=false;P.InputLocked=false;Next(31);break;
                     case 31:
-                        Need(Chatter.Interruptions==0&&!F.IsDistracted,"passing outside arm's reach is safe");
+                        Need(Chatter.Interruptions==0&&!F.IsDistracted&&!Chatter.ToldRumour,"before his rumour, passing outside arm's reach is safe");
+                        Need(Chatter.seats!=null&&Chatter.seats.Length==4&&Chatter.seats.All(t=>t!=null&&NavMesh.SamplePosition(t.position+t.forward*.9f,out _,1,NavMesh.AllAreas)),"four chokepoint benches for the chatterbox");
                         Warp(Chatter.transform.position+Chatter.transform.forward*.75f);Next(32);break;
                     case 32:
-                        Need(Chatter.Interruptions==1&&Chatter.Talking&&ComicDialogue.IsActive,"near pupil locks player into a brief automatic conversation");Next(33);break;
+                        Need(Chatter.Interruptions==1&&Chatter.Talking&&ComicDialogue.IsActive&&Chatter.ToldRumour,"his first chat is the library rumour");Next(33);break;
                     case 33:
-                        if(Chatter.Talking){if(now-at>8)throw new Exception("chatterbox conversation did not finish");return;}
+                        if(Chatter.Talking){if(now-at>10)throw new Exception("chatterbox conversation did not finish");return;}
                         Need(!ComicDialogue.IsActive&&!Chatter.MouthOpen&&Chatter.Interruptions==1,"conversation releases player, closes mouth and cannot retrigger while nearby");
-                        Warp(Chatter.transform.position+Chatter.transform.forward*1.8f+Vector3.forward*6);Next(34);break;
+                        Warp(Chatter.transform.position+Chatter.transform.forward*1.8f+Vector3.forward*14);Next(34);break;
                     case 34:
                         if(now-at<3.2)return;
+                        Need(Chatter.Moves==1&&Chatter.Seat!=0,"after the rumour he moves to another bench while you're away (seat "+Chatter.Seat+")");
                         Need(Chatter.Available,"pupil rearms only after leaving and cooldown (shortened to 3s for test)");
                         NoiseEvents.Emit(Chatter.transform.position+Vector3.forward*2,38,"clockwork toy");Next(35);break;
                     case 35:
                         Need(!Chatter.Distracted&&Chatter.Available&&Chatter.Interruptions==1,"the wind-up toy does not distract the chatterbox");
+                        // Now he calls you over from across the corridor.
+                        Warp(Chatter.transform.position+Chatter.transform.forward*2.2f);Next(36);break;
+                    case 36:
+                        Need(Chatter.Interruptions==2&&Chatter.Talking,"after the rumour he calls you over from 2.2 m (not just arm's reach)");Next(37);break;
+                    case 37:
+                        if(Chatter.Talking){if(now-at>10)throw new Exception("second chatterbox conversation did not finish");return;}
+                        {
+                            // Sweets from the jar on the school office counter.
+                            var jar=Object.FindFirstObjectByType<SweetJar>();Need(jar!=null&&SchoolOfficeSetup.Interior.Contains(new Vector3(jar.transform.position.x,1.5f,jar.transform.position.z)),"a sweet jar on the school office counter");
+                            Reach(jar,new Vector3(jar.transform.position.x,0,jar.transform.position.z+.9f),jar.transform.position+Vector3.up*.15f);jar.Interact(P);
+                            Need(P.GetComponent<Sweets>()!=null&&P.GetComponent<Sweets>().Count==Sweets.BagSize&&jar.Taken&&jar.GetPrompt(P)=="The sweet jar is empty.","the jar gives one bag of "+Sweets.BagSize+" sweets");
+                        }
+                        Next(38);break;
+                    case 38:
+                        if(now-at<3.2)return;
+                        Need(Chatter.Moves==2,"and moves on again after the second chat");
+                        Warp(Chatter.transform.position+Chatter.transform.forward*2.2f);Next(39);break;
+                    case 39:
+                        Need(!Chatter.Talking&&Chatter.SweetsEaten==1&&P.GetComponent<Sweets>().Count==Sweets.BagSize-1&&Chatter.Distracted&&Chatter.Interruptions==2,"a sweet buys a quiet pass: he munches instead of talking");
                         Chatter.cooldownSeconds=25;Warp(DeskStand(S.phonePickup.transform));Next(5);break;
                     case 5:
                         if(!Gates.All(g=>g.IsOpen)){if(now-at>5)throw new Exception("lesson gates did not open after the run started");return;}

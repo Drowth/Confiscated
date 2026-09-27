@@ -12,8 +12,8 @@ namespace Confiscated
         ClockworkDecoy decoy;
         GlueDeployer glue;
         GameObject root;
-        Text toyText,glueText;
-        Image toyPanel,gluePanel,glueIcon;
+        Text toyText,glueText,sweetsText;
+        Image toyPanel,gluePanel,glueIcon,sweetsPanel;
         void Awake(){inventory=GetComponent<PlayerInventory>();player=GetComponent<PlayerInteractor>();}
         void Update()
         {
@@ -30,14 +30,18 @@ namespace Confiscated
             glueText.text="[2 / G] GLUE\n"+(glue!=null&&glue.Charges>0?"Drop trap  x"+glue.Charges:"Find in Art Room");
             gluePanel.color=new Color(.94f,.91f,.79f,glue!=null&&glue.Charges>0?.9f:.55f);
             glueIcon.sprite=glue!=null?glue.icon:null;glueIcon.enabled=glueIcon.sprite!=null;
+            var sweets=GetComponent<Sweets>();bool haveSweets=sweets!=null&&sweets.Count>0;
+            sweetsText.text="SWEETS\n"+(haveSweets?"For the chatterbox  x"+sweets.Count:"In the school office");
+            sweetsPanel.color=new Color(.94f,.91f,.79f,haveSweets?.9f:.55f);
         }
         void Build()
         {
             var parent=HudController.Instance.GetComponentInParent<Canvas>().transform;
             root=new GameObject("Quick access tools",typeof(RectTransform));root.transform.SetParent(parent,false);
-            var rect=root.GetComponent<RectTransform>();rect.anchorMin=rect.anchorMax=rect.pivot=Vector2.right;rect.anchoredPosition=new Vector2(-24,24);rect.sizeDelta=new Vector2(460,80);
+            var rect=root.GetComponent<RectTransform>();rect.anchorMin=rect.anchorMax=rect.pivot=Vector2.right;rect.anchoredPosition=new Vector2(-24,24);rect.sizeDelta=new Vector2(694,80);
             toyPanel=Card("Wind-up toy",new Vector2(0,0),out toyText);
             gluePanel=Card("Glue",new Vector2(234,0),out glueText);
+            sweetsPanel=Card("Sweets",new Vector2(468,0),out sweetsText);
             var glueImage=new GameObject("Glue icon",typeof(RectTransform),typeof(Image));glueImage.transform.SetParent(gluePanel.transform,false);
             var gr=glueImage.GetComponent<RectTransform>();gr.anchorMin=gr.anchorMax=gr.pivot=new Vector2(0,.5f);gr.anchoredPosition=new Vector2(8,0);gr.sizeDelta=new Vector2(34,46);
             glueIcon=glueImage.GetComponent<Image>();glueIcon.preserveAspect=true;glueIcon.raycastTarget=false;glueText.rectTransform.offsetMin=new Vector2(44,4);

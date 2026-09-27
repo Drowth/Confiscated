@@ -77,6 +77,7 @@ namespace Confiscated.EditorTools
             // Last: it moves furniture the builders above lay out, and switches off plant-room ceiling lights.
             OfficeRefitSetup.ApplyToScene();
             SchoolOfficeSetup.ApplyToScene();
+            ChatterboxSeatsSetup.ApplyToScene();
             LibrarySetup.ApplyToScene();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene()); EditorSceneManager.SaveOpenScenes(); AssetDatabase.SaveAssets();
             Debug.Log("[SchoolRun] Built five-item loop, cafeteria cover, locked rooms, furnished shortcuts and generated-art displays.");
