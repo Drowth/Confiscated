@@ -52,6 +52,7 @@ namespace Confiscated.EditorTools
 
             OpenDoors(run);
             StaffArea(root);
+            LoadBookcase();
             var walls=BuildMaze(root,out var desk,out var glueSpot);
             Lighting(root,desk);
             Windows(root);
@@ -133,7 +134,46 @@ namespace Confiscated.EditorTools
         static void Shelf(Transform parent,Vector3 at,Vector3 size,Material m)
         {
             float x0=Mathf.Max(at.x-size.x/2,X0+.02f),x1=Mathf.Min(at.x+size.x/2,X1-.02f),z0=Mathf.Max(at.z-size.z/2,Z0+.02f),z1=Mathf.Min(at.z+size.z/2,Z1-.02f);
-            Box(parent,"Bookcase",new Vector3((x0+x1)/2,at.y,(z0+z1)/2),new Vector3(x1-x0,size.y,z1-z0),m);
+            var box=Box(parent,"Bookcase",new Vector3((x0+x1)/2,at.y,(z0+z1)/2),new Vector3(x1-x0,size.y,z1-z0),m);
+            // The box stays as the wall's collision and NavMesh shape; the model bookcases dress both faces.
+            if(bookcase==null)return;
+            box.GetComponent<MeshRenderer>().enabled=false;
+            bool alongX=x1-x0>z1-z0;float length=alongX?x1-x0:z1-z0,thick=alongX?z1-z0:x1-x0;
+            Vector3 dir=alongX?Vector3.right:Vector3.forward,normal=alongX?Vector3.forward:Vector3.right,centre=box.transform.position;centre.y=0;
+            int bays=Mathf.Max(1,Mathf.RoundToInt(length/BayWidth));float bay=length/bays;
+            foreach(float side in new[]{-1f,1f})for(int k=0;k<bays;k++)
+            {
+                var g=(GameObject)PrefabUtility.InstantiatePrefab(bookcase,box.transform.parent);g.name="Bookcase model";
+                // Pivot at the bottom centre of its back: back to back on the wall's centre line, fronts facing out.
+                g.transform.SetPositionAndRotation(centre+dir*(-length/2+(k+.5f)*bay),Quaternion.LookRotation(normal*side));
+                g.transform.localScale=new Vector3(bay/bookcaseSize.x,ShelfHeight/bookcaseSize.y,(thick/2)/bookcaseSize.z);
+                var lods=g.GetComponent<LODGroup>();
+                if(lods!=null){var r0=g.GetComponentsInChildren<Renderer>().Where(r=>r.name.EndsWith("LOD0")).ToArray();var r1=g.GetComponentsInChildren<Renderer>().Where(r=>r.name.EndsWith("LOD1")).ToArray();
+                    lods.SetLODs(new[]{new LOD(.28f,r0),new LOD(.01f,r1)});}
+                foreach(var r in g.GetComponentsInChildren<Renderer>())r.sharedMaterial=r.name.EndsWith("LOD1")?bookcaseCard:bookcaseLit;
+            }
+        }
+        // The Tripo bookcase (Docs/LibraryMaze.md): LOD0 the full model, LOD1 a box carrying a flat render of it.
+        const string BookcaseModel="Assets/Art/Models/Library/Bookcase.fbx",BookcaseTextures="Assets/Art/Models/Library/Textures/";
+        const float BayWidth=1.2f;
+        static GameObject bookcase;static Material bookcaseLit,bookcaseCard;static Vector3 bookcaseSize;
+        static void LoadBookcase()
+        {
+            bookcase=AssetDatabase.LoadAssetAtPath<GameObject>(BookcaseModel);if(bookcase==null){Debug.LogWarning("[Library] No bookcase model; placeholder shelves.");return;}
+            var normalImport=(TextureImporter)AssetImporter.GetAtPath(BookcaseTextures+"T_Bookcase_Normal.png");
+            if(normalImport!=null&&normalImport.textureType!=TextureImporterType.NormalMap){normalImport.textureType=TextureImporterType.NormalMap;normalImport.SaveAndReimport();}
+            bookcaseLit=Lit("M_Library_Bookcase","T_Bookcase_Color","T_Bookcase_Normal");bookcaseCard=Lit("M_Library_BookcaseCard","T_Bookcase_Card",null);
+            // Size from the mesh at rest (LOD0), so any re-export keeps fitting.
+            var probe=(GameObject)Object.Instantiate(bookcase);var rs=probe.GetComponentsInChildren<Renderer>();var b=rs[0].bounds;foreach(var r in rs)b.Encapsulate(r.bounds);
+            bookcaseSize=b.size;Object.DestroyImmediate(probe);
+        }
+        static Material Lit(string name,string colour,string normal)
+        {
+            string path="Assets/Art/Materials/"+name+".mat";var m=AssetDatabase.LoadAssetAtPath<Material>(path);
+            if(m==null){m=new Material(Shader.Find("Universal Render Pipeline/Lit"));AssetDatabase.CreateAsset(m,path);}
+            m.SetTexture("_BaseMap",AssetDatabase.LoadAssetAtPath<Texture2D>(BookcaseTextures+colour+".png"));m.SetColor("_BaseColor",Color.white);
+            if(normal!=null){m.SetTexture("_BumpMap",AssetDatabase.LoadAssetAtPath<Texture2D>(BookcaseTextures+normal+".png"));m.EnableKeyword("_NORMALMAP");}
+            m.SetFloat("_Smoothness",.08f);m.SetFloat("_Metallic",0);m.enableInstancing=true;EditorUtility.SetDirty(m);return m;
         }
         static void Generate(int seed,out bool[,] east,out bool[,] north)
         {
