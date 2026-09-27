@@ -18,7 +18,7 @@ namespace Confiscated.EditorTools
     public static class LibraryShadowSmokeTest
     {
         const string Marker="Temp/library_shadow_test",Report="../Docs/LibraryShadow_Validation.txt";
-        static int stage,lastFrame;static double at,started;static bool background;
+        static int stage,lastFrame;static bool jumpscare;static double at,started;static bool background;
         static Vector3 stand,shadowSpot,walk;
         static SchoolRunController R=>SchoolRunController.Instance;
         static PlayerInteractor P=>R.period.Player;
@@ -78,6 +78,8 @@ namespace Confiscated.EditorTools
                         Check(Shade.entrances.Length==3&&Shade.exits.Length==3&&Shade.entrances.All(e=>InLibrary(e.position))&&Shade.exits.All(e=>!InLibrary(e.position)),"three doors: a point inside and a point outside each");
                         Check(Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None).Count(t=>t.text==LibrarySetup.NoticeText)==3,"a SILENT STUDY notice beside each library door");
                         Check(Object.FindFirstObjectByType<LibraryDarkness>()!=null,"the library darkness is installed");
+                        Check(new[]{"LibraryShadowISeeYou","LibraryShadowSpotted","LibraryShadowScream","LibraryShadowBreathLoop","LibraryMusicLoop"}.All(n=>Resources.Load<AudioClip>("Audio/"+n)!=null),"its sounds and the library music load");
+                        jumpscare=false;
                         // Bookcases stay inside the room (their corner overlap used to poke through the outer walls).
                         Check(Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r=>r.name=="Bookcase").All(r=>r.bounds.min.x>=LibrarySetup.Interior.min.x-.01f&&r.bounds.max.x<=LibrarySetup.Interior.max.x+.01f&&r.bounds.min.z>=LibrarySetup.Interior.min.z-.01f&&r.bounds.max.z<=LibrarySetup.Interior.max.z+.01f),"no bookcase pokes out through the library walls");
                         // Windows: the caretaker sees in only where a window's light falls.
@@ -111,8 +113,10 @@ namespace Confiscated.EditorTools
                         Aisle(0);Warp(stand);PlaceShadow();Next();break;
                     case 2:
                         // Walk about in front of it: noticed, then hunted, then caught.
+                        if(Shade.Catching&&Vector3.Distance(Shade.transform.position+Vector3.up*1.95f,P.ViewCamera.transform.position)<1)jumpscare=true;
                         if(Shade.Catches==0){Move(elapsed%1.2<.6?-walk:walk,2.2f);if(elapsed>12)throw new Exception("moving in front of it never got caught: "+Shade.Current);return;}
-                        Check(Shade.Notices>=1,"moving in front of it gets you noticed (it shushes)");
+                        Check(Shade.Notices>=1,"moving in front of it gets you noticed (\"I see you\")");
+                        Check(jumpscare,"the catch is a jumpscare: it is right in your face, screaming, before you are thrown out");
                         Check(!InLibrary(P.transform.position)&&Shade.exits.Any(x=>Vector3.Distance(x.position,P.transform.position)<.5f),"caught: thrown out of a library door");
                         var handheld=Object.FindObjectsByType<RunPickup>(FindObjectsSortMode.None).First(p=>p.itemId==LibraryShadow.LibraryItem);
                         Check(!R.Has(LibraryShadow.LibraryItem)&&handheld.visual.activeSelf&&Shade.ReturnedItems==1,"the handheld game goes back in its CONFISCATED box");

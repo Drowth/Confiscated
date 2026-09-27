@@ -36,7 +36,13 @@ namespace Confiscated
         /// <summary>Tests (and the autopilot) that are about something else in the library hold it still.</summary>
         public bool Paused {get;set;}
         public float PlayerSpeed {get;private set;}
-        float phaseEnds,repath;int corner,target;NavMeshPath path;Material skin;AudioSource voice;bool wasRound;
+        float phaseEnds,repath;int corner,target;NavMeshPath path;Material skin;AudioSource voice,breath,sting;bool wasRound,catching;
+        // Sounds: its breathing (3D loop), "I see you" when it notices you, a wire-scrape sting when it comes into view,
+        // and a scream for the catch jumpscare.
+        AudioClip seeYou,spotted,scream;float spottedReady,outOfViewSince;bool inView;
+        public const float JumpscareSeconds=.9f,SpottedCooldown=20,SpottedRange=14;
+        public int Spotted {get;private set;}
+        public bool Catching=>catching;
         Vector3 lastPlayer;bool havePlayer;float alpha;AudioClip catchClip;
 
         void Start()
@@ -46,6 +52,10 @@ namespace Confiscated
             voice=gameObject.AddComponent<AudioSource>();voice.playOnAwake=false;voice.spatialBlend=1;voice.rolloffMode=AudioRolloffMode.Linear;
             voice.minDistance=2;voice.maxDistance=20;voice.dopplerLevel=0;
             catchClip=Resources.Load<AudioClip>("Audio/LibraryShadowGetOut");
+            seeYou=Resources.Load<AudioClip>("Audio/LibraryShadowISeeYou");spotted=Resources.Load<AudioClip>("Audio/LibraryShadowSpotted");scream=Resources.Load<AudioClip>("Audio/LibraryShadowScream");
+            breath=gameObject.AddComponent<AudioSource>();breath.clip=Resources.Load<AudioClip>("Audio/LibraryShadowBreathLoop");breath.loop=true;breath.playOnAwake=false;
+            breath.spatialBlend=1;breath.rolloffMode=AudioRolloffMode.Linear;breath.minDistance=1.5f;breath.maxDistance=14;breath.dopplerLevel=0;breath.volume=0;
+            sting=gameObject.AddComponent<AudioSource>();sting.playOnAwake=false;sting.spatialBlend=0;
             Place(0);Wander();Visual(true);
         }
         void OnDestroy(){if(skin!=null)Destroy(skin);}
@@ -57,7 +67,8 @@ namespace Confiscated
             // A new round (or a retry) starts it over in a random alcove.
             if(round&&!wasRound){Place(Random.Range(0,alcoves.Length));Wander();}wasRound=round;
             bool live=round&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&!Paused&&!ComicDialogue.IsActive&&Time.timeScale>0;
-            if(!live){havePlayer=false;Visual(false);return;}
+            if(!live){havePlayer=false;Visual(false);Breathe(false);return;}
+            if(catching){Visual(false);return;}
             var player=run.period.Player;Vector3 at=player.transform.position;
             // Walking speed from the player's own movement; warps (a throw-out, a retry) are not movement.
             Vector3 step=at-lastPlayer;step.y=0;float speed=havePlayer&&Time.deltaTime>0?step.magnitude/Time.deltaTime:0;
@@ -83,13 +94,14 @@ namespace Confiscated
                     break;
                 case Phase.Hunt:
                     Follow(at,huntSpeed);
-                    if(Time.time>=phaseEnds){phaseEnds=Time.time+1.6f;Whisper(.7f,.8f);}
                     break;
                 case Phase.Gone:
                     if(Time.time>=phaseEnds)Wander();
                     break;
             }
-            if(Current==Phase.Hunt){Vector3 gap=at-transform.position;gap.y=0;if(gap.magnitude<catchRadius)Catch(player);}
+            if(Current==Phase.Hunt){Vector3 gap=at-transform.position;gap.y=0;if(gap.magnitude<catchRadius){StartCoroutine(Catch(player));return;}}
+            if(inside)Sighting(player);
+            Breathe(Current!=Phase.Gone);
             Visual(false);
         }
 
@@ -118,25 +130,51 @@ namespace Confiscated
         void Notice(Vector3 at)
         {
             Notices++;Current=Phase.Notice;phaseEnds=Time.time+noticeSeconds;Face(at-transform.position);
-            Whisper(1,1);
+            if(seeYou!=null){voice.pitch=1;voice.PlayOneShot(seeYou,1);}else Whisper(1,1);
         }
         void Hunt(){Current=Phase.Hunt;repath=0;phaseEnds=Time.time+1.6f;}
-        void Catch(PlayerInteractor player)
+        /// <summary>The jumpscare: it is suddenly right in your face, screaming; then you are out of the nearest door.</summary>
+        System.Collections.IEnumerator Catch(PlayerInteractor player)
         {
-            Catches++;
+            catching=true;Current=Phase.Hunt;
+            var body=player.GetComponent<CharacterController>();var legs=player.GetComponent<FirstPersonController>();
+            if(legs!=null){legs.MovementLocked=true;legs.LookLocked=true;}
+            var eye=player.ViewCamera.transform;Vector3 look=eye.forward;look.y=0;if(look.sqrMagnitude<.01f)look=transform.forward;look.Normalize();
+            // Eyes level with the player's, a hand's breadth from the face.
+            transform.SetPositionAndRotation(eye.position+look*.75f+Vector3.down*1.95f,Quaternion.LookRotation(-look));
+            alpha=.95f;Breathe(false);
+            if(scream!=null)sting.PlayOneShot(scream,1);else if(catchClip!=null)voice.PlayOneShot(catchClip,1);else TempAudio.PlayAt(TempAudio.Caught,eye.position,.8f);
+            HudController.Instance?.SetBark(CatchLine,2.5f);
+            yield return new WaitForSeconds(JumpscareSeconds);
             Vector3 at=player.transform.position;int door=0;float best=float.MaxValue;
             for(int i=0;i<exits.Length;i++){float d=Flat(entrances[i].position-at);if(d<best){best=d;door=i;}}
-            if(catchClip!=null)voice.PlayOneShot(catchClip,1);else{Whisper(.5f,1);TempAudio.PlayAt(TempAudio.Caught,at,.6f);}
-            HudController.Instance?.SetBark(CatchLine,2.5f);
-            if(SchoolRunController.Instance.ReturnToBox(LibraryItem)){ReturnedItems++;HudController.Instance?.SetStatus("The handheld game is back in its CONFISCATED box on the returns desk.",4);}
-            // Out of the nearest door, facing away from it. Everything carried is kept; the caretaker is not told.
-            var body=player.GetComponent<CharacterController>();if(body!=null)body.enabled=false;
+            if(SchoolRunController.Instance!=null&&SchoolRunController.Instance.ReturnToBox(LibraryItem)){ReturnedItems++;HudController.Instance?.SetStatus("The handheld game is back in its CONFISCATED box on the returns desk.",4);}
+            // Out of the nearest door, facing away from it. Everything else carried is kept; the caretaker is not told.
+            if(body!=null)body.enabled=false;
             Vector3 away=exits[door].position-entrances[door].position;away.y=0;
             player.transform.SetPositionAndRotation(exits[door].position,Quaternion.LookRotation(away.sqrMagnitude>.01f?away:Vector3.forward));
             if(body!=null)body.enabled=true;Physics.SyncTransforms();lastPlayer=player.transform.position;
-            // Off to the far side of the maze.
+            if(legs!=null){legs.MovementLocked=false;legs.LookLocked=false;}
             int far=0;best=-1;for(int i=0;i<alcoves.Length;i++){float d=Flat(alcoves[i].position-exits[door].position);if(d>best){best=d;far=i;}}
-            Place(far);Current=Phase.Gone;phaseEnds=Time.time+goneSeconds;
+            Place(far);Current=Phase.Gone;phaseEnds=Time.time+goneSeconds;Catches++;catching=false;
+        }
+        /// <summary>A scrape of wire the moment it comes into view (on screen, unobstructed, near); then not again for a while.</summary>
+        void Sighting(PlayerInteractor player)
+        {
+            if(Current==Phase.Gone||spotted==null)return;
+            var cam=player.ViewCamera;Vector3 chest=transform.position+Vector3.up*1.4f;Vector3 v=cam.WorldToViewportPoint(chest);
+            bool seen=v.z>0&&v.z<SpottedRange&&v.x>.1f&&v.x<.9f&&v.y>.05f&&v.y<.95f&&
+                (!Physics.Linecast(cam.transform.position,chest,out var hit,~(1<<2),QueryTriggerInteraction.Ignore)||hit.transform.IsChildOf(transform)||hit.transform.IsChildOf(player.transform));
+            if(seen&&!inView&&Time.time>=spottedReady&&Time.time-outOfViewSince>6){Spotted++;spottedReady=Time.time+SpottedCooldown;sting.PlayOneShot(spotted,.8f);}
+            if(!seen&&inView)outOfViewSince=Time.time;
+            inView=seen;
+        }
+        void Breathe(bool on)
+        {
+            if(breath==null||breath.clip==null)return;
+            float want=on?(Current==Phase.Hunt?1f:.7f):0;
+            breath.volume=Mathf.MoveTowards(breath.volume,want,Time.deltaTime*2);breath.pitch=Current==Phase.Hunt?1.15f:1;
+            if(breath.volume>0&&!breath.isPlaying)breath.Play();else if(breath.volume<=0&&breath.isPlaying)breath.Pause();
         }
         /// <summary>Glides along the library floor toward a point; true once there.</summary>
         bool Follow(Vector3 goal,float speed)

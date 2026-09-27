@@ -41,6 +41,8 @@ namespace Confiscated
             bool exploring=ExplorationActive;
             float target=exploring?volume:0;
             if(ComicDialogue.IsActive||(bells!=null&&bells.IsRinging)||(phone!=null&&phone.Emitter!=null&&phone.Emitter.isPlaying))target*=.3f;
+            // The library has its own music (LibraryDarkness): the school underscore fades out as you walk in.
+            target*=1-LibraryDarkness.Weight;
             if(exploring&&!Source.isPlaying)
             {
                 if(started&&paused)Source.UnPause();else {Source.Play();started=true;}
