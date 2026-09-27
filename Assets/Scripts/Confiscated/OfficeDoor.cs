@@ -31,6 +31,10 @@ namespace Confiscated
         DoorSounds doorSounds;
         bool requestedOpen, openedForRound;
         float openAmount;
+        // +1 swings the leaves towards the door's +Z side (the authored openAngle), -1 towards -Z. Picked each time the door
+        // starts opening from shut, so it always swings away from whoever opens it: the push plate moves away from you.
+        float swing = 1;
+        public float Swing => swing;
         Quaternion closedRotation;
         Quaternion secondClosedRotation;
 
@@ -93,6 +97,13 @@ namespace Confiscated
                 HudController.Instance?.SetStatus(runRequiredLevel > 0 ? "Unlocked. This door stays available." : "Unlocked. Find your phone before he comes back.", 3f);
             }
             else requestedOpen = !requestedOpen;
+            if (requestedOpen) SwingAwayFrom(player.transform.position);
+        }
+        /// <summary>Only while shut: a door already swinging finishes its arc rather than snapping through the frame.</summary>
+        public void SwingAwayFrom(Vector3 opener)
+        {
+            if (openAmount > .02f) return;
+            swing = transform.InverseTransformPoint(opener).z <= 0 ? 1 : -1;
         }
 
         void Update()
@@ -100,6 +111,11 @@ namespace Confiscated
             bool staffPassing = caretaker != null && Vector3.Distance(caretaker.transform.position, transform.position) < 2.2f;
             var run = SchoolRunController.Instance;
             if (run != null && run.secondStaff != null && run.secondStaff.enabled && Vector3.Distance(run.secondStaff.transform.position, transform.position) < 2.2f) staffPassing = true;
+            if (staffPassing && !requestedOpen)
+            {
+                var nearest = caretaker != null && Vector3.Distance(caretaker.transform.position, transform.position) < 2.2f ? caretaker.transform : run?.secondStaff?.transform;
+                if (nearest != null) SwingAwayFrom(nearest.position);
+            }
             if (run != null && (closedForRun || runRequiredLevel > 0 && !IsUnlocked)) staffPassing = false;
             if (run != null && closedForRun) requestedOpen = false;
             if (LessonLocked) { staffPassing = false; requestedOpen = false; }
@@ -118,9 +134,9 @@ namespace Confiscated
             float previousAmount=openAmount;
             openAmount = Mathf.MoveTowards(openAmount, shouldOpen ? 1f : 0f, Time.deltaTime * 3f);
             doorSounds.Movement(previousAmount,openAmount);
-            hinge.localRotation = closedRotation * Quaternion.Euler(0, openAngle * Mathf.SmoothStep(0, 1, openAmount), 0);
+            hinge.localRotation = closedRotation * Quaternion.Euler(0, swing * openAngle * Mathf.SmoothStep(0, 1, openAmount), 0);
             if (secondHinge != null)
-                secondHinge.localRotation = secondClosedRotation * Quaternion.Euler(0, secondOpenAngle * Mathf.SmoothStep(0, 1, openAmount), 0);
+                secondHinge.localRotation = secondClosedRotation * Quaternion.Euler(0, swing * secondOpenAngle * Mathf.SmoothStep(0, 1, openAmount), 0);
         }
     }
 }

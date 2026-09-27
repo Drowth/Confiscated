@@ -269,7 +269,7 @@ namespace Confiscated
             twitchStatus.text=state switch
             {
                 TwitchChat.Status.Connecting=>"Connecting to #"+chat.Channel+"...",
-                TwitchChat.Status.Connected=>"<color=#6A2FD0>Connected to #"+chat.Channel+".</color> "+chat.MessagesReceived+" messages read.\nVotes start once the chase begins.",
+                TwitchChat.Status.Connected=>"Connected to #"+chat.Channel+". "+chat.MessagesReceived+" messages read.\nVotes start once the chase begins.",
                 TwitchChat.Status.Failed=>"<color=#A03A2A>"+(string.IsNullOrEmpty(chat.LastError)?"Couldn't reach Twitch.":chat.LastError)+"</color>",
                 _=>"Not connected.",
             };

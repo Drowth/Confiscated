@@ -16,7 +16,7 @@ namespace Confiscated.EditorTools
         static int step,errors;static double at,started;static bool pass,background;
         static readonly List<(Vector3 pos,float radius,string source)> heard=new();
         static string savedChannel;static int savedEnabled,savedHelp,savedNames;
-        static List<float> before;static List<(Light l,float i)> lit;static Color ambientBefore;static List<(MeshRenderer r,Material m)> panels;static int wetBefore,yawTries;
+        static List<float> before;static List<(Light l,float i)> lit;static Color ambientBefore;static Vector3 aliceSpot;static List<(MeshRenderer r,Material m)> panels;static int wetBefore,yawTries;
         static SchoolRunController R=>SchoolRunController.Instance;
         static TwitchChaos T=>TwitchChaos.Instance;
         static Transform Player=>R.period.Player.transform;
@@ -51,6 +51,8 @@ namespace Confiscated.EditorTools
                 {
                     case 0:
                         if(elapsed<1)return;
+                        // The streamer's own saved channel auto-connects on Play; go offline for the test (Finish restores it).
+                        if(TwitchChat.Instance!=null&&TwitchChat.Instance.State!=TwitchChat.Status.Off)TwitchChat.Instance.Disconnect();
                         Check(SchoolTitleMenu.IsActive,"title screen is up");
                         SchoolTitleMenu.Instance.ShowTwitch(true);Next(1);break;
                     case 1:
@@ -94,7 +96,23 @@ namespace Confiscated.EditorTools
                     case 6:
                         if(elapsed<.4)return;
                         Check(T.Tallies.SequenceEqual(new[]{2,1,1}),"one vote each, latest counts, !3 accepted, chatter and 9 ignored ("+string.Join(",",T.Tallies)+")");
-                        ScreenCapture.CaptureScreenshot(Dir+"/Vote.png");Next(7);break;
+                        ScreenCapture.CaptureScreenshot(Dir+"/Vote.png");Next(60);break;
+                    case 60:
+                        if(elapsed<.3)return;
+                        var names=TwitchNameCards.Instance;
+                        Check(names!=null&&names.SlotCount==83,"name cards found every corridor locker and pupil desk ("+(names!=null?names.SlotCount:0)+" of 63 + 20)");
+                        Check(new[]{"viewer","alice","bob","carol","dave","eve","frank"}.All(u=>names.CardFor(u)!=null)&&names.Visible,"every chatter claimed a locker or desk, shown while chat is live");
+                        Check(names.FreeSlots==83-7,"voting again doesn't give anyone a second spot");
+                        Check(!names.Claim("Nightbot")&&names.CardFor("Nightbot")==null,"chat bots don't claim anything");
+                        names.Claim("AVeryLongTwitchUsername25");
+                        var longCard=names.CardFor("AVeryLongTwitchUsername25");
+                        var paper=longCard.transform.Find("Paper").GetComponent<Renderer>().bounds;var ink=longCard.GetComponentInChildren<TextMesh>().GetComponent<Renderer>().bounds;
+                        Check(ink.size.x<=paper.size.x+.001f&&ink.size.z<=paper.size.z+.001f,"a 25-letter name shrinks to fit its card");
+                        // Make sure there's one of each to photograph.
+                        for(int i=0;i<200&&!(Enumerable.Range(0,i).Any(n=>names.KindFor("Viewer"+n)==TwitchNameCards.Kind.Locker)&&Enumerable.Range(0,i).Any(n=>names.KindFor("Viewer"+n)==TwitchNameCards.Kind.Desk));i++)names.Claim("Viewer"+i);
+                        Photo(names,TwitchNameCards.Kind.Locker,"LockerName.png",.75f);
+                        Photo(names,TwitchNameCards.Kind.Desk,"DeskName.png",.6f);
+                        Next(7);break;
                     case 7:
                         if(elapsed<.4)return;
                         var top=T.Options[0];T.CloseVote();
@@ -161,6 +179,7 @@ namespace Confiscated.EditorTools
                         T.OpenVote();Vote(("secretname","1"));Next(12);break;
                     case 12:
                         if(elapsed<.3)return;
+                        Check(!TwitchNameCards.Instance.Visible,"viewer names off hides the name cards");
                         T.CloseVote();
                         Check(!Bark.Contains("secretname")&&Bark.StartsWith("Chat"),"viewer names off hides the name: \""+Bark+"\"");
                         TwitchChat.ShowNames=true;
@@ -172,11 +191,13 @@ namespace Confiscated.EditorTools
                     case 21:
                         if(elapsed<.4)return;
                         Check(!T.Panel.activeSelf,"votes pause during detention");
+                        aliceSpot=TwitchNameCards.Instance.TargetFor("alice").position;
                         GameManager.Instance.RestartRun();Next(13);break;
                     case 13:
                         if(elapsed<2)return;
                         Check(TwitchChat.Instance!=null&&T!=null&&SchoolRunController.Instance!=null&&T.gameObject==SchoolRunController.Instance.gameObject,"chat and votes survive a restart");
                         Check(!T.Voting,"a restart starts with no vote open");
+                        Check(TwitchNameCards.Instance!=null&&TwitchNameCards.Instance.CardFor("alice")!=null&&TwitchNameCards.Instance.TargetFor("alice").position==aliceSpot,"viewers keep their locker or desk after a restart");
                         TwitchChat.EndTestFeed();
                         // Network: a real anonymous guest JOIN. Needs no live stream, only that Twitch answers.
                         TwitchChat.Instance.Connect("twitch");Next(14);break;
@@ -190,6 +211,19 @@ namespace Confiscated.EditorTools
                 }
             }
             catch(Exception e){Check(false,e.ToString());Finish();}
+        }
+        static void Photo(TwitchNameCards names,TwitchNameCards.Kind kind,string file,float distance)
+        {
+            string user=Enumerable.Range(0,200).Select(n=>"Viewer"+n).Concat(new[]{"alice","bob","carol"}).FirstOrDefault(u=>names.KindFor(u)==kind);
+            if(user==null){Check(false,"no "+kind+" card to photograph");return;}
+            var card=names.CardFor(user).transform;
+            // Front of a locker card is -forward; a desk card reads from both sides, so -forward works for it too.
+            var cam=new GameObject("Name card camera").AddComponent<Camera>();cam.fieldOfView=45;
+            cam.transform.position=card.position-card.forward*distance+Vector3.up*(kind==TwitchNameCards.Kind.Desk?.25f:.05f);
+            cam.transform.LookAt(card.position);
+            HallwayPropLibrary.Capture(cam,1200,800,Path.GetFullPath(Dir+"/"+file));
+            Object.Destroy(cam.gameObject);
+            Check(true,kind+" card photographed for "+user);
         }
         static void Finish()
         {

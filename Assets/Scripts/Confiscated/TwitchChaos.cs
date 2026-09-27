@@ -32,7 +32,7 @@ namespace Confiscated
         readonly Dictionary<string,int> ballots=new();
         float resultUntil;
         GameObject panel;Text heading,body;
-        static readonly Color Cream=new(.97f,.94f,.83f),Ink=new(.055f,.075f,.105f),Twitch=new(.57f,.27f,1f);
+        static readonly Color Cream=new(.97f,.94f,.83f),Ink=Color.black,Twitch=new(.57f,.27f,1f);
 
         static bool hooked;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -47,6 +47,7 @@ namespace Confiscated
         {
             var run=SchoolRunController.Instance!=null?SchoolRunController.Instance:Object.FindFirstObjectByType<SchoolRunController>();
             if(run!=null&&run.GetComponent<TwitchChaos>()==null)run.gameObject.AddComponent<TwitchChaos>();
+            if(run!=null&&run.GetComponent<TwitchNameCards>()==null)run.gameObject.AddComponent<TwitchNameCards>();
         }
 
         public static string Label(Effect e)=>e switch
@@ -254,8 +255,8 @@ namespace Confiscated
                 for(int i=0;i<Options.Length;i++)
                 {
                     int bars=Mathf.RoundToInt(10f*Tallies[i]/total);
-                    sb.Append("<b>"+(i+1)+"</b>  "+Label(Options[i])+(Helpful(Options[i])?"  <color=#3E7D4A>(help)</color>":"")+"\n");
-                    sb.Append("    <color=#8F4BFF>"+new string('|',bars)+"</color><color=#B9B3A0>"+new string('|',10-bars)+"</color>  "+Tallies[i]+"\n");
+                    sb.Append("<b>"+(i+1)+"</b>  "+Label(Options[i])+(Helpful(Options[i])?"  (help)":"")+"\n");
+                    sb.Append("    <color=#8F4BFF>"+new string('|',bars)+"</color><color=#C9C2AE>"+new string('|',10-bars)+"</color>  "+Tallies[i]+"\n");
                 }
                 sb.Append("<size=17>Type 1, 2 or 3 in chat</size>");
                 body.text=sb.ToString();

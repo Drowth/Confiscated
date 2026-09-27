@@ -700,7 +700,7 @@ namespace Confiscated.EditorTools
                 hinge.transform.localPosition = new Vector3(hingeX, 0, 0);
                 hinge.transform.localRotation = Quaternion.Euler(0, openAngle, 0);
                 // Leaf texture covers exactly one leaf (1 x 2 m); edges show a thin slice of the texture border.
-                Box("Leaf", hinge.transform, new Vector3(leafW * 0.5f, H * 0.5f, 0.0f), new Vector3(leafW, H, 0.05f), new Vector2(leafW, H), leaf);
+                Box("Leaf", hinge.transform, new Vector3(leafW * 0.5f, H * 0.5f, 0.0f), new Vector3(leafW, H, 0.05f), new Vector2(leafW, H), leaf, mirrorBack: leaves == 1);
             }
             if (signMat != null)
             {
@@ -727,18 +727,20 @@ namespace Confiscated.EditorTools
         /// every face. Unity's built-in cube flips V on its side faces and squashes the full texture onto end caps,
         /// so all textured architecture uses this instead. The mesh is saved as an asset so prefabs can reference it.
         /// </summary>
-        public static GameObject Box(string name, Transform parent, Vector3 localPos, Vector3 size, Vector2 texWorldSize, Material mat, bool collider = true)
+        public static GameObject Box(string name, Transform parent, Vector3 localPos, Vector3 size, Vector2 texWorldSize, Material mat, bool collider = true, bool mirrorBack = false)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
-            go.AddComponent<MeshFilter>().sharedMesh = BoxMesh(size, texWorldSize);
+            go.AddComponent<MeshFilter>().sharedMesh = BoxMesh(size, texWorldSize, mirrorBack);
             go.AddComponent<MeshRenderer>().sharedMaterial = mat;
             if (collider) go.AddComponent<BoxCollider>().size = size;
             return go;
         }
 
-        static Mesh BoxMesh(Vector3 size, Vector2 texWorldSize)
+        // mirrorBack: the back (+Z) face shows the artwork mirrored, so a feature painted near one edge (a door's window
+        // and push plate, on the latch side) sits in the same place seen from either side instead of jumping to the hinge.
+        static Mesh BoxMesh(Vector3 size, Vector2 texWorldSize, bool mirrorBack = false)
         {
             var ci = System.Globalization.CultureInfo.InvariantCulture;
             string name = string.Format(ci, "Box_{0}x{1}x{2}_Tex{3}x{4}", size.x, size.y, size.z, texWorldSize.x, texWorldSize.y);
@@ -781,7 +783,8 @@ namespace Confiscated.EditorTools
                 {
                     verts.Add(v);
                     norms.Add(f.n);
-                    uvs.Add(new Vector2((Vector3.Dot(v - c, r) + hr) / texWorldSize.x, (Vector3.Dot(v - c, f.up) + hu) / texWorldSize.y));
+                    float across = mirrorBack && f.n == Vector3.forward ? hr - Vector3.Dot(v - c, r) : Vector3.Dot(v - c, r) + hr;
+                    uvs.Add(new Vector2(across / texWorldSize.x, (Vector3.Dot(v - c, f.up) + hu) / texWorldSize.y));
                 }
                 tris.AddRange(new[] { b, b + 1, b + 2, b, b + 2, b + 3 }); // clockwise = front face in Unity
             }

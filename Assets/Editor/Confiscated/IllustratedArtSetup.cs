@@ -53,6 +53,8 @@ namespace Confiscated.EditorTools
                                     int half = normal.z > 0 ? 1 - index : index;
                                     uv.x = uv.x * .5f + half * .5f;
                                 }
+                                // Single office leaf: mirror the back face so its window/handle stay on the latch side from both sides.
+                                else if (normal.z > 0) uv.x = 1 - uv.x;
                                 return uv;
                             }, true);
                     }
