@@ -45,6 +45,8 @@ namespace Confiscated
         void Start()
         {
             if(retryChase && SchoolRunController.Instance != null) { retryChase=false; StartCoroutine(BeginChaseRetry()); return; }
+            // A new school day (title screen or a full restart), not a chase retry: the key has to be fetched again.
+            SchoolRunController.KeyEarned=false;
             var menu=GetComponent<SchoolTitleMenu>();
             if(menu!=null&&menu.enabled){Current=State.Menu;menu.Show(this);}
             else BeginSchoolDay();

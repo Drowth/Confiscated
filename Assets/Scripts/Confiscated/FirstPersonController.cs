@@ -79,6 +79,9 @@ namespace Confiscated
             direction.y=0;
             if(IsFallen&&direction.sqrMagnitude>.01f)fallDirection=direction.normalized;
         }
+        /// <summary>Stand straight back up, now. Anything that saves and later restores the camera (dialogue) calls this
+        /// first, or it would save the floor-level fall pose and put the player back on the floor afterwards.</summary>
+        public void EndFall()=>CancelFall();
         void CancelFall()
         {
             if(!IsFallen)return;

@@ -16,6 +16,7 @@ namespace Confiscated
             var inventory = player.GetComponent<PlayerInventory>();
             if (inventory != null && !inventory.Collect(inventory.keyItem)) return;
             if (!mission.TakeKey()) return;
+            SchoolRunController.KeyEarned = true;
             TempAudio.PlayAt(TempAudio.Pickup, transform.position, .5f);
             gameObject.SetActive(false);
         }

@@ -51,6 +51,9 @@ namespace Confiscated
             (!RoundStarted ? Dining.Contains(p) : Serving.Contains(p));
         /// <summary>Somewhere the caretaker treats as an offence on sight. Only before the round: after it he chases on sight everywhere.</summary>
         public bool Trespassing => !RoundStarted && period != null && period.IsRoaming && period.Player != null && Restricted(period.Player.transform.position);
+        /// <summary>The player has taken the office key themselves at least once since the school day began. Survives the
+        /// retry scene reload; cleared when a new school day starts (GameManager.BeginSchoolDay).</summary>
+        public static bool KeyEarned { get; set; }
         public void PrepareChaseRetry()
         {
             trolley.SetPositionAndRotation(trolleyDock.position,trolleyDock.rotation);
@@ -62,9 +65,10 @@ namespace Confiscated
             // His usual first patrol stop ("Collect phone", index 0) sits right on the player's new post-key-grant
             // route out of the classroom. Resume further round the loop so a retry doesn't spawn him on the way out.
             caretaker.ResumePatrolFrom(5,26);
-            // A retry already showed the player the dining-hall key trip once; skip repeating it every death.
+            // Once the player has fetched the key from the dining-hall trolley, a retry skips repeating that trip. Caught
+            // before they ever had it (e.g. during the newsletter errand), they still have to go and get it.
             var keyPickup = Object.FindFirstObjectByType<OfficeKeyPickup>(FindObjectsInactive.Include);
-            bool keyGranted = keyPickup != null && keyPickup.CanInteract(period.Player);
+            bool keyGranted = KeyEarned && keyPickup != null && keyPickup.CanInteract(period.Player);
             if (keyGranted) keyPickup.Interact(period.Player);
             HudController.Instance?.SetStatus(keyGranted ? "You already have the office key. Recover five belongings and escape." : "Recover five belongings and escape. The caretaker is on patrol.",6);
         }

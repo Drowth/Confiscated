@@ -156,7 +156,9 @@ namespace Confiscated.EditorTools
         {
             hold=false;Interactable target;
             var all=Object.FindObjectsByType<Interactable>(FindObjectsSortMode.None);
-            if(!R.Has(0))target=R.period.phonePickup;
+            // A retry only hands over the office key if it was fetched before; otherwise get it from the dining-hall trolley.
+            if(!R.Has(0)&&!P.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey)){target=all.OfType<OfficeKeyPickup>().FirstOrDefault();hold=target!=null&&target.holdSeconds>0;}
+            else if(!R.Has(0))target=R.period.phonePickup;
             else if(!R.HasBoltCutters&&!R.Has(1))target=all.OfType<AccessToolPickup>().FirstOrDefault(t=>t.tool==AccessToolPickup.Tool.BoltCutters);
             else if(!R.CageOpen&&!R.Has(1)){target=all.OfType<RunGate>().FirstOrDefault(g=>g.kind==RunGate.Kind.Chain);hold=true;}
             else if(!R.Has(1))target=Pickup(all,1);

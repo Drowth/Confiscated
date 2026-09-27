@@ -96,29 +96,34 @@ namespace Confiscated.EditorTools
                 floor.shadowCastingMode = ShadowCastingMode.Off;
                 floor.receiveShadows = false;
 
-                var body = player.transform.Find("Shadow-only body");
-                if (body == null)
-                {
-                    var capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                    capsule.name = "Shadow-only body";
-                    Object.DestroyImmediate(capsule.GetComponent<Collider>());
-                    capsule.transform.SetParent(player.transform, false);
-                    body = capsule.transform;
-                }
-                body.localPosition = new Vector3(0, .7f, 0);
-                body.localRotation = Quaternion.identity;
-                body.localScale = new Vector3(.45f, .7f, .45f);
-                var caster = body.GetComponent<MeshRenderer>();
-                caster.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-                caster.receiveShadows = false;
+                // A child-sized figure (head, body, arms, legs) instead of a single capsule, which cast a "bean" shadow.
+                var old = player.transform.Find("Shadow-only body");
+                if (old != null) Object.DestroyImmediate(old.gameObject);
+                var body = new GameObject("Shadow-only body").transform;
+                body.SetParent(player.transform, false);
+                ShadowPart(body, "Head", PrimitiveType.Sphere, new Vector3(0, 1.25f, 0), new Vector3(.23f, .25f, .23f));
+                ShadowPart(body, "Body", PrimitiveType.Capsule, new Vector3(0, .93f, 0), new Vector3(.34f, .27f, .2f));
+                ShadowPart(body, "Left arm", PrimitiveType.Capsule, new Vector3(-.23f, .9f, 0), new Vector3(.1f, .26f, .1f), 6);
+                ShadowPart(body, "Right arm", PrimitiveType.Capsule, new Vector3(.23f, .9f, 0), new Vector3(.1f, .26f, .1f), -6);
+                ShadowPart(body, "Left leg", PrimitiveType.Capsule, new Vector3(-.09f, .36f, 0), new Vector3(.13f, .36f, .13f));
+                ShadowPart(body, "Right leg", PrimitiveType.Capsule, new Vector3(.09f, .36f, 0), new Vector3(.13f, .36f, .13f));
                 EditorUtility.SetDirty(shadow);
-                EditorUtility.SetDirty(body);
                 EditorUtility.SetDirty(floor);
-                EditorUtility.SetDirty(caster);
                 count++;
             }
             ConfigureFixtureShadows();
             return count;
+        }
+
+        /// <summary>A shadow-only primitive: casts a shadow, never drawn, no collider.</summary>
+        static void ShadowPart(Transform body, string name, PrimitiveType shape, Vector3 at, Vector3 scale, float tilt = 0)
+        {
+            var part = GameObject.CreatePrimitive(shape);part.name = name;
+            Object.DestroyImmediate(part.GetComponent<Collider>());
+            part.transform.SetParent(body, false);part.transform.localPosition = at;part.transform.localScale = scale;
+            part.transform.localRotation = Quaternion.Euler(0, 0, tilt);
+            var r = part.GetComponent<MeshRenderer>();r.shadowCastingMode = ShadowCastingMode.ShadowsOnly;r.receiveShadows = false;
+            EditorUtility.SetDirty(part);
         }
 
         static void ConfigureFixtureShadows()

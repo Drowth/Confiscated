@@ -109,6 +109,8 @@ namespace Confiscated
         {
             player=FindFirstObjectByType<PlayerInteractor>();if(player==null){queue.Clear();return;}
             movement=player.GetComponent<FirstPersonController>();view=player.ViewCamera;
+            // Up off the floor before the camera pose is saved below (a slip then a pass check left players lying down for good).
+            if(movement!=null)movement.EndFall();
             if(canvas==null)Build();
             oldTime=Time.timeScale;oldCursor=Cursor.visible;cursorMode=Cursor.lockState;
             oldPosition=view.transform.localPosition;oldRotation=view.transform.localRotation;oldFov=view.fieldOfView;
