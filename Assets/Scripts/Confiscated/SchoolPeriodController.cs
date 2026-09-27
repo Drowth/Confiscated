@@ -201,6 +201,11 @@ namespace Confiscated
             Objective();worksheetUI.Open();
         }
         public static bool InClass(Vector3 p)=>p.x>-32.11f&&p.x<-14.89f&&p.z>19.11f&&p.z<32.45f;
+        /// <summary>The classroom plus a metre or so outside each of its two doors (Year 6 north, Year 6 west): during the
+        /// errand, a player standing in the doorway is still "in class" (young players hovered there and were caught).</summary>
+        public static bool InClassOrDoorway(Vector3 p)=>InClass(p)||
+            (p.x>-18.8f&&p.x<-16.8f&&p.z>=32.45f&&p.z<33.7f)||   // Year 6 north door
+            (p.z>24.9f&&p.z<26.9f&&p.x<=-32.11f&&p.x>-33.4f);     // Year 6 west door
         void Update()
         {
             if(Player==null||movement==null)return;

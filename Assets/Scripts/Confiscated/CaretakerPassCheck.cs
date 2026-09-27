@@ -40,7 +40,14 @@ namespace Confiscated
             if(!period.IsRoaming){CancelCheck();return true;}
             // Once witnessed, stepping back over the threshold or showing a pass cannot erase an offence.
             if(WitnessedOffence)return false;
-            if(SchoolPeriodController.InClass(period.Player.transform.position)&&!period.Player.HasPhone){CancelCheck();return true;}
+            // Back in class (or its doorway) during the errand: safe, and any chase or search after an ignored pass check is
+            // called off at once, rather than him searching on until he walks into the player.
+            if(SchoolPeriodController.InClassOrDoorway(period.Player.transform.position)&&!period.Player.HasPhone)
+            {
+                CancelCheck();
+                if(ai.Current==CaretakerAI.State.Chase||ai.Current==CaretakerAI.State.Search)ai.EndPassApproach();
+                return true;
+            }
             if(ai.Current==CaretakerAI.State.Chase)return false;
             bool unlocking=Time.time<unlockSeenUntil;
             bool offence=unlocking||period.Player.HasPhone||period.OfficeBounds.Contains(period.Player.transform.position)||(run != null && run.Restricted(period.Player.transform.position));
