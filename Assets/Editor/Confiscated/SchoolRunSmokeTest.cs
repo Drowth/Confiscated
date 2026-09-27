@@ -200,16 +200,16 @@ namespace Confiscated.EditorTools
                                 "maze: the returns desk and the glue are reachable on foot from "+libraryDoor.name);
                         }
                         Need(Chatter!=null,"one chatterbox is installed");Chatter.cooldownSeconds=3;
-                        Warp(Chatter.transform.position+Chatter.transform.forward*2);F.LookLocked=false;P.InputLocked=false;Next(31);break;
+                        Warp(SchoolPlan.Point(465,1100));F.LookLocked=false;P.InputLocked=false;Next(31);break;
                     case 31:
-                        Need(Chatter.Interruptions==0&&!F.IsDistracted&&!Chatter.ToldRumour,"before his rumour, passing outside arm's reach is safe");
+                        Need(Chatter.Interruptions==0&&!F.IsDistracted&&!Chatter.ToldRumour,"a player far away is safe");
                         Need(Chatter.seats!=null&&Chatter.seats.Length==4&&Chatter.seats.All(t=>t!=null&&NavMesh.SamplePosition(t.position+t.forward*.9f,out _,1,NavMesh.AllAreas)),"four chokepoint benches for the chatterbox");
                         Warp(Chatter.transform.position+Chatter.transform.forward*.75f);Next(32);break;
                     case 32:
-                        Need(Chatter.Interruptions==1&&Chatter.Talking&&ComicDialogue.IsActive&&Chatter.ToldRumour,"his first chat is the library rumour");Next(33);break;
+                        Need(Chatter.Interruptions==1&&Chatter.Talking&&Chatter.Words==ChatterboxStudent.RumourLine&&!ComicDialogue.IsActive&&Time.timeScale==1,"his first chat is the library rumour, told in the world while the game runs");Next(33);break;
                     case 33:
-                        if(Chatter.Talking){if(now-at>10)throw new Exception("chatterbox conversation did not finish");return;}
-                        Need(!ComicDialogue.IsActive&&!Chatter.MouthOpen&&Chatter.Interruptions==1,"conversation releases player, closes mouth and cannot retrigger while nearby");
+                        if(Chatter.Talking){if(now-at>18)throw new Exception("chatterbox conversation did not finish");return;}
+                        Need(Chatter.ToldRumour&&!Chatter.MouthOpen&&Chatter.Interruptions==1,"the rumour is told in full, and he cannot retrigger while you stay nearby");
                         Warp(Chatter.transform.position+Chatter.transform.forward*1.8f+Vector3.forward*14);Next(34);break;
                     case 34:
                         if(now-at<3.2)return;
@@ -223,7 +223,7 @@ namespace Confiscated.EditorTools
                     case 36:
                         Need(Chatter.Interruptions==2&&Chatter.Talking,"after the rumour he calls you over from 2.2 m (not just arm's reach)");Next(37);break;
                     case 37:
-                        if(Chatter.Talking){if(now-at>10)throw new Exception("second chatterbox conversation did not finish");return;}
+                        if(Chatter.Talking){if(now-at>14)throw new Exception("second chatterbox conversation did not finish");return;}
                         {
                             // Sweets from the jar on the school office counter.
                             var jar=Object.FindFirstObjectByType<SweetJar>();Need(jar!=null&&SchoolOfficeSetup.Interior.Contains(new Vector3(jar.transform.position.x,1.5f,jar.transform.position.z)),"a sweet jar on the school office counter");

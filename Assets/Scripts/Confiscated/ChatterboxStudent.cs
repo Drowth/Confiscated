@@ -3,18 +3,35 @@ using UnityEngine;
 
 namespace Confiscated
 {
-    /// <summary>A seated pupil holds a short conversation within arm's reach. A wide berth avoids it; the wind-up toy does not interest him.</summary>
+    /// <summary>
+    /// A seated pupil who talks at you. He speaks in the world, not in a cutscene: a slow subtitle and his voice from where
+    /// he sits while you carry on moving, and during the run he is loud enough for the caretaker to hear. Walk away and he
+    /// stops mid-sentence. His first chat is the library rumour; after that he roams chokepoint benches and calls you over
+    /// from across the corridor. A sweet buys a quiet pass. The wind-up toy does not interest him.
+    /// </summary>
     public sealed class ChatterboxStudent : MonoBehaviour
     {
         public float reach=.9f, warningDistance=3.5f, interruptionSeconds=4.2f, cooldownSeconds=25;
+        [Tooltip("Before the rumour: how close you pass before he calls you over (the first meeting must not be missed).")]
+        public float firstCallout=3.5f;
+        [Tooltip("Subtitle speed: slower than the comic dialogue, so it can be read while moving.")]
+        public float lettersPerSecond=15f;
+        [Tooltip("He stops mid-sentence if you get this far away.")]
+        public float cutOffDistance=12f;
+        [Tooltip("During the run his chatter is a noise the caretaker can hear.")]
+        public float noiseEvery=2.5f,noiseRadius=14f;
         public Renderer artwork;
-        public bool Talking=>ComicDialogue.IsActive&&ComicDialogue.Instance.Actor==transform;
+        public bool Talking=>talking;
+        /// <summary>What he is saying, and how much of it the subtitle shows so far.</summary>
+        public string Words {get;private set;}="";
+        public string Shown {get;private set;}="";
+        public int CutOffs {get;private set;}
         public bool MouthOpen {get;private set;}
         public int Interruptions {get;private set;}
         public bool Distracted=>Time.time<distractedUntil;
         public bool Available=>Time.time>=availableAt&&!needsSpace&&!Distracted;
-        float distractedUntil,availableAt;
-        bool needsSpace,warned;
+        float distractedUntil,availableAt,talkStart,talkEnds,nextNoise;
+        bool needsSpace,warned,talking;
         FirstPersonController movement;
         PlayerInteractor player;
         MaterialPropertyBlock appearance;
@@ -41,15 +58,9 @@ namespace Confiscated
         public int Seat {get;private set;}
         public int Moves {get;private set;}
         public int SweetsEaten {get;private set;}
-        public float Reach=>ToldRumour?calloutDistance:reach;
+        public float Reach=>ToldRumour?calloutDistance:firstCallout;
         bool movePending,wasTalking;
-        void OnDisable()
-        {
-            if(Talking)ComicDialogue.Cancel();
-            SetMouth(false);
-            if(voice!=null)voice.Stop();
-            if(speech!=null)speech.Stop();
-        }
+        void OnDisable(){Hush();}
         int PickLine(out AudioClip clip)
         {
             if(DarkModeDialogue.Active)
@@ -67,9 +78,9 @@ namespace Confiscated
         void OnDestroy(){if(chatterClip!=null)Destroy(chatterClip);}
         void Awake()
         {
-            voice=gameObject.AddComponent<AudioSource>();voice.playOnAwake=false;voice.loop=true;
-            voice.spatialBlend=0;voice.volume=.12f;voice.ignoreListenerPause=true;
-            // Quiet, original cartoon syllables; the actual words are shown in the dialogue balloon.
+            // Both voices come from where he sits: quieter as you walk away.
+            voice=gameObject.AddComponent<AudioSource>();voice.playOnAwake=false;voice.loop=true;Spatial(voice);voice.volume=.18f;
+            // Quiet, original cartoon syllables for lines without a recording.
             const int rate=22050;float[] samples=new float[rate/2];
             for(int i=0;i<samples.Length;i++)
             {
@@ -79,17 +90,17 @@ namespace Confiscated
                 samples[i]=envelope*(.5f*Mathf.Sin(2*Mathf.PI*hz*t)+.22f*Mathf.Sin(4*Mathf.PI*hz*t)+.12f*Mathf.Sin(6*Mathf.PI*hz*t));
             }
             chatterClip=AudioClip.Create("Chatterbox syllables",samples.Length,1,rate,false);chatterClip.SetData(samples,0);voice.clip=chatterClip;
-            speech=gameObject.AddComponent<AudioSource>();speech.playOnAwake=false;speech.loop=false;speech.spatialBlend=0;speech.ignoreListenerPause=true;
+            speech=gameObject.AddComponent<AudioSource>();speech.playOnAwake=false;speech.loop=false;Spatial(speech);
         }
+        static void Spatial(AudioSource s){s.spatialBlend=1;s.rolloffMode=AudioRolloffMode.Linear;s.minDistance=2;s.maxDistance=16;s.dopplerLevel=0;}
         void LateUpdate()
         {
             // A recorded clip drives the mouth and replaces the placeholder syllables for as long as it plays.
-            if(speech.isPlaying&&!Talking)speech.Stop();
             bool recorded=speech.isPlaying;
-            bool speaking=Talking&&(recorded||ComicDialogue.Instance.IsSpeaking);
+            bool speaking=talking&&(recorded||Shown.Length<Words.Length);
             bool syllables=speaking&&!recorded&&speech.clip==null;
             if(syllables){if(!voice.isPlaying)voice.Play();}else if(voice.isPlaying)voice.Stop();
-            SetMouth(speaking&&Mathf.FloorToInt(Time.unscaledTime*9)%2==0);
+            SetMouth(speaking&&Mathf.FloorToInt(Time.time*9)%2==0);
         }
         void SetMouth(bool open)
         {
@@ -98,8 +109,15 @@ namespace Confiscated
             appearance??=new MaterialPropertyBlock();artwork.GetPropertyBlock(appearance);
             appearance.SetFloat("_MouthOpen",open?1:0);artwork.SetPropertyBlock(appearance);
         }
-        bool Live=>SchoolRunController.Instance!=null&&SchoolRunController.Instance.RoundStarted&&
-            GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&!ComicDialogue.IsActive;
+        // From the moment you are free to roam (the newsletter errand), so the first meeting is not missed.
+        bool Live
+        {
+            get
+            {
+                var run=SchoolRunController.Instance;
+                return run!=null&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&!ComicDialogue.IsActive&&(run.RoundStarted||run.period.IsRoaming);
+            }
+        }
         bool Visible(Vector3 target)
         {
             // Start above the bench back; walls and shut doors still prevent an encounter.
@@ -113,22 +131,23 @@ namespace Confiscated
             Seat=next;Moves++;transform.SetPositionAndRotation(seats[Seat].position,seats[Seat].rotation);
             needsSpace=false;warned=false;
         }
-        /// <summary>A new run: back on his first bench, rumour untold is kept (it is told once).</summary>
-        public void ResetRun(){movePending=false;Seat=0;if(seats!=null&&seats.Length>0)transform.SetPositionAndRotation(seats[0].position,seats[0].rotation);distractedUntil=0;needsSpace=false;warned=false;}
+        /// <summary>A new run: back on his first bench (the rumour, once told, stays told).</summary>
+        public void ResetRun(){Hush();movePending=false;Seat=0;if(seats!=null&&seats.Length>0)transform.SetPositionAndRotation(seats[0].position,seats[0].rotation);distractedUntil=0;needsSpace=false;warned=false;}
         void Update()
         {
             // A chat just ended: once out of the player's sight, he moves on to another bench.
-            if(wasTalking&&!Talking&&ToldRumour)movePending=true;wasTalking=Talking;
-            if(!Live)return;
+            if(wasTalking&&!talking&&ToldRumour)movePending=true;wasTalking=talking;
+            if(!Live){if(talking&&(GameManager.Instance==null||!GameManager.Instance.IsPlaying))Hush();return;}
             if(player==null){player=SchoolRunController.Instance.period.Player;movement=player.GetComponent<FirstPersonController>();}
             var delta=player.transform.position-transform.position;delta.y=0;
             float distance=delta.magnitude,warnAt=Mathf.Max(warningDistance,Reach+3);
+            if(talking){Talk(distance);return;}
             if(movePending&&(distance>moveAwayDistance||!Visible(player.transform.position))){movePending=false;MoveSeat();return;}
             if(distance>warnAt+1){needsSpace=false;warned=false;}
             if(!Available||movement.MovementLocked||movement.ForcedCorridorRun||movement.IsFallen||player.InputLocked)return;
             // This pupil faces into the hall. Passing behind the bench never triggers a conversation.
             if(Vector3.Dot(transform.forward,delta)<0||!Visible(player.transform.position))return;
-            if(!warned&&distance<warnAt)
+            if(ToldRumour&&!warned&&distance<warnAt)
             {
                 warned=true;
                 HudController.Instance?.SetStatus("Chatterbox ahead. Give him space.",4);
@@ -139,18 +158,38 @@ namespace Confiscated
             {
                 SweetsEaten++;distractedUntil=Time.time+munchSeconds;needsSpace=true;movePending=true;
                 HudController.Instance?.SetBark("Chatterbox: Ooh, sweets! Mmf... fanks!",2.5f);
-                HudController.Instance?.SetStatus("He's too busy chewing to talk. Go!",3);
                 return;
             }
             AudioClip clip;string words;
-            if(!ToldRumour){ToldRumour=true;clip=Resources.Load<AudioClip>("Audio/"+RumourClip);words=RumourLine;}
+            if(!ToldRumour){clip=Resources.Load<AudioClip>("Audio/"+RumourClip);words=RumourLine;}
             else{int line=PickLine(out clip);words=DarkModeDialogue.Active?DarkModeDialogue.Chatterbox[line].text:lineTexts[line];}
-            // Hold him for the whole recording, plus a beat; lines without a recording get time to read.
-            float hold=clip!=null?clip.length+.5f:words==RumourLine?8f:interruptionSeconds;
-            if(!ComicDialogue.TrySpeakTimed(transform,"Chatterbox",words,hold)){if(words==RumourLine)ToldRumour=false;return;}
+            Words=words;Shown="";talking=true;talkStart=Time.time;nextNoise=Time.time+.5f;
+            // Long enough to read the whole subtitle, or to hear the whole recording.
+            talkEnds=Time.time+Mathf.Max(words.Length/lettersPerSecond+2.2f,clip!=null?clip.length+.5f:0);
             speech.clip=clip;if(clip!=null)speech.Play();
-            Interruptions++;availableAt=Time.time+cooldownSeconds;needsSpace=true;
-            HudController.Instance?.SetStatus(null);
+            Interruptions++;
+        }
+        void Talk(float distance)
+        {
+            int letters=Mathf.Min(Words.Length,Mathf.FloorToInt((Time.time-talkStart)*lettersPerSecond));
+            Shown=Words.Substring(0,letters);
+            HudController.Instance?.SetBark("Chatterbox: "+Shown,.3f);
+            if(SchoolRunController.Instance.RoundStarted&&Time.time>=nextNoise){nextNoise=Time.time+noiseEvery;NoiseEvents.Emit(transform.position,noiseRadius,"chatterbox");}
+            if(distance>cutOffDistance)
+            {
+                // Walked off mid-sentence. A rumour cut short is told again next time.
+                CutOffs++;Hush();HudController.Instance?.SetBark("Chatterbox: Hey! I wasn't finished!",2f);
+                availableAt=Time.time+cooldownSeconds;needsSpace=true;return;
+            }
+            if(Time.time<talkEnds)return;
+            if(Words==RumourLine)ToldRumour=true;
+            Hush();availableAt=Time.time+cooldownSeconds;needsSpace=true;
+        }
+        void Hush()
+        {
+            talking=false;SetMouth(false);
+            if(voice!=null)voice.Stop();
+            if(speech!=null)speech.Stop();
         }
     }
 }
