@@ -16,7 +16,7 @@ namespace Confiscated.EditorTools
         static int step,errors;static double at,started;static bool pass,background;
         static readonly List<(Vector3 pos,float radius,string source)> heard=new();
         static string savedChannel;static int savedEnabled,savedHelp,savedNames;
-        static List<float> before;static List<(Light l,float i)> lit;static int wetBefore,yawTries;
+        static List<float> before;static List<(Light l,float i)> lit;static Color ambientBefore;static List<(MeshRenderer r,Material m)> panels;static int wetBefore,yawTries;
         static SchoolRunController R=>SchoolRunController.Instance;
         static TwitchChaos T=>TwitchChaos.Instance;
         static Transform Player=>R.period.Player.transform;
@@ -46,7 +46,7 @@ namespace Confiscated.EditorTools
             double elapsed=EditorApplication.timeSinceStartup-at;
             try
             {
-                if(EditorApplication.timeSinceStartup-started>90)throw new Exception("Twitch test timeout at step "+step);
+                if(EditorApplication.timeSinceStartup-started>120)throw new Exception("Twitch test timeout at step "+step);
                 switch(step)
                 {
                     case 0:
@@ -135,14 +135,24 @@ namespace Confiscated.EditorTools
                         Check(T.LastSpill!=null&&T.LastSpill.GetComponentsInChildren<Collider>().Length==0,"spilled sign cannot block a corridor");
                         lit=Object.FindObjectsByType<Light>(FindObjectsSortMode.None).Where(l=>l.transform.parent!=null&&l.transform.parent.name.StartsWith("P_CeilingLight")).Select(l=>(l,l.intensity)).ToList();
                         Check(lit.Count>10,"found "+lit.Count+" ceiling fixtures for lights out");
+                        ambientBefore=RenderSettings.ambientLight;
+                        panels=Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r=>r.sharedMaterial!=null&&r.sharedMaterial.shader.name=="Universal Render Pipeline/Unlit"&&!r.transform.IsChildOf(Player)&&r.GetComponentInParent<Canvas>()==null&&r.GetComponentInParent<LibraryShadow>()==null).Take(20).Select(r=>(r,r.sharedMaterial)).ToList();
+                        // The outage is long; keep staff from catching the test player while it waits.
+                        R.caretaker.Freeze();R.PauseStaff();
                         T.Apply(TwitchChaos.Effect.Flicker,"tester");Next(10);break;
                     case 10:
                         if(elapsed<3)return;
-                        Check(T.BlackoutActive&&lit.All(f=>f.l.intensity<=f.i*.2f),"lights out darkens every fixture");
+                        Check(T.BlackoutActive&&lit.All(f=>!f.l.enabled||f.l.intensity<=.001f),"lights out switches every ceiling fixture off");
+                        Check(T.Outage.Lights.All(e=>e.light==null||!e.light.enabled),"every non-player light in the school is off, as in Dark Mode");
+                        Check(RenderSettings.ambientLight.maxColorComponent<.03f&&Mathf.Approximately(Shader.GetGlobalFloat("_SchoolDarkness"),1),"ambient is Dark Mode black and characters go dark (glowing eyes)");
+                        var glowing=panels.Where(p=>p.r.sharedMaterial.shader.name=="Universal Render Pipeline/Unlit").Select(p=>p.r.name).ToList();
+                        Check(panels.Count>0&&glowing.Count==0,"flat unlit art stops glowing in the dark ("+panels.Count+" sampled"+(glowing.Count>0?", still unlit: "+string.Join(", ",glowing):"")+")");
                         ScreenCapture.CaptureScreenshot(Dir+"/LightsOut.png");Next(11);break;
                     case 11:
-                        if(elapsed<5)return;
+                        if(T.BlackoutActive&&elapsed<25)return;
                         Check(!T.BlackoutActive&&lit.All(f=>Mathf.Approximately(f.l.intensity,f.i)),"lights come back to exactly their old brightness");
+                        Check(RenderSettings.ambientLight==ambientBefore&&Shader.GetGlobalFloat("_SchoolDarkness")==0,"ambient and character shading restored");
+                        Check(panels.All(p=>p.r.sharedMaterial==p.m),"original art materials put back");
                         // Settings.
                         TwitchChat.ChatCanHelp=false;bool anyHelp=false;
                         for(int i=0;i<30;i++){T.OpenVote();anyHelp|=T.Options.Any(TwitchChaos.Helpful);T.CloseVote();}

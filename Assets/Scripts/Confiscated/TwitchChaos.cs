@@ -32,7 +32,6 @@ namespace Confiscated
         readonly Dictionary<string,int> ballots=new();
         float resultUntil;
         GameObject panel;Text heading,body;
-        List<(Light light,float intensity)> fixtures;
         static readonly Color Cream=new(.97f,.94f,.83f),Ink=new(.055f,.075f,.105f),Twitch=new(.57f,.27f,1f);
 
         static bool hooked;
@@ -107,7 +106,7 @@ namespace Confiscated
             if(!helpful)
             {
                 list.Add(Effect.Noise);list.Add(Effect.TellTale);
-                if(!SchoolGameMode.Dark&&Fixtures().Count>0)list.Add(Effect.Flicker);
+                if(!SchoolGameMode.Dark)list.Add(Effect.Flicker);
                 if(Object.FindFirstObjectByType<WetFloorHazard>()!=null)list.Add(Effect.WetFloor);
                 list.Add(Effect.GlueFeet);list.Add(Effect.Teleport);
             }
@@ -222,35 +221,23 @@ namespace Confiscated
             Destroy(spill,40);LastSpill=spill;
         }
 
-        List<(Light light,float intensity)> Fixtures()
-        {
-            fixtures??=Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude,FindObjectsSortMode.None)
-                .Where(l=>l.transform.parent!=null&&l.transform.parent.name.StartsWith("P_CeilingLight")).Select(l=>(l,l.intensity)).ToList();
-            return fixtures;
-        }
+        public readonly SchoolBlackout Outage=new();
         public bool BlackoutActive {get;private set;}
+        [Tooltip("Seconds of full Dark Mode darkness, between a short stutter going out and coming back.")]
+        public float blackoutSeconds=11;
         IEnumerator Blackout()
         {
             if(BlackoutActive)yield break;BlackoutActive=true;
-            // Snapshot now, not at load: other systems (library darkness, the lighting rework) may have retuned them since.
-            var lights=Fixtures();for(int i=0;i<lights.Count;i++)if(lights[i].light!=null)lights[i]=(lights[i].light,lights[i].light.intensity);
-            float end=Time.time+7;
-            while(Time.time<end)
-            {
-                float left=end-Time.time;
-                // Stutter, then a few seconds of near dark, then stutter back on.
-                bool dark=left<5.5f&&left>1.5f;
-                foreach(var f in lights)if(f.light!=null)f.light.intensity=dark?f.intensity*.04f:f.intensity*(Random.value<.5f?.1f:1f);
-                yield return new WaitForSeconds(dark?.25f:.07f);
-            }
+            var player=SchoolRunController.Instance.period.Player;
+            Outage.Begin(player.transform,player.ViewCamera);
+            // Stutter out, hold near-black, stutter back on.
+            // Timed on the clock, not by counting waits, so a slow frame rate can't stretch the outage.
+            for(float end=Time.time+1.5f;Time.time<end;){Outage.SetPower(Random.value<.5f?.1f:1);yield return new WaitForSeconds(.07f);}
+            Outage.SetPower(0);yield return new WaitForSeconds(blackoutSeconds);
+            for(float end=Time.time+1.5f;Time.time<end;){Outage.SetPower(Random.value<.6f?1:.1f);yield return new WaitForSeconds(.07f);}
             RestoreLights();
         }
-        void RestoreLights()
-        {
-            if(!BlackoutActive||fixtures==null)return;
-            foreach(var f in fixtures)if(f.light!=null)f.light.intensity=f.intensity;
-            BlackoutActive=false;
-        }
+        void RestoreLights(){Outage.End();BlackoutActive=false;}
 
         // ------------------------------------------------------------------ panel
 
