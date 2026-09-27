@@ -43,6 +43,9 @@ namespace Confiscated
             Instance = this; gameObject.AddComponent<EscapeRunFeedback>();gameObject.AddComponent<SchoolNoiseMarks>();gameObject.AddComponent<HuntVhsEffect>();gameObject.AddComponent<HuntFaces>();
             if (secondStaff != null && secondStaff.GetComponent<ReedDirectionalArt>() == null)
                 secondStaff.gameObject.AddComponent<ReedDirectionalArt>();
+            // Mr Reed (the lesson teacher and, from three items, the second hunter) is one object; give him footsteps.
+            if (secondStaff != null && secondStaff.GetComponent<StaffFootsteps>() == null)
+                secondStaff.gameObject.AddComponent<StaffFootsteps>();
             CopycatStudent.Install(this);
             cartColliders = trolley != null ? trolley.GetComponentsInChildren<Collider>() : new Collider[0];
         }
