@@ -14,7 +14,7 @@ namespace Confiscated.EditorTools
         const string Marker="Temp/run_school_chase", Report="../Docs/SchoolRun/Validation.txt";
         static int stage,errors,lastFrame,decoyNoises;
         static double started,at;
-        static bool background,chaseNoiseChecked;
+        static bool background,chaseNoiseChecked,toySmashChecked;static GameObject testToy;static double toyHeardAt;
         static float introStarted;
         static ChatterboxStudent Chatter=>Object.FindFirstObjectByType<ChatterboxStudent>();
         static SchoolRunController R=>Object.FindFirstObjectByType<SchoolRunController>();
@@ -33,7 +33,7 @@ namespace Confiscated.EditorTools
         static void Begin()
         {
             SteamLeaderboard.Suppress=true; // a warped audit run must never post a time
-            stage=errors=decoyNoises=0;chaseNoiseChecked=false;lastFrame=-1;started=at=EditorApplication.timeSinceStartup;
+            stage=errors=decoyNoises=0;chaseNoiseChecked=toySmashChecked=false;lastFrame=-1;started=at=EditorApplication.timeSinceStartup;
             background=Application.runInBackground;Application.runInBackground=true;
             File.WriteAllText(Report,"School run integration: real scene, natural NPC navigation, player warped between checkpoints; direct interaction calls after ray checks.\nThe caretaker is placed down the corridor for the pass check and the capture; he then sees, walks and catches under his own AI.\n");
             Application.logMessageReceived+=Log;NoiseEvents.OnNoise+=Noise;EditorApplication.update+=Tick;
@@ -211,10 +211,9 @@ namespace Confiscated.EditorTools
                     case 34:
                         if(now-at<3.2)return;
                         Need(Chatter.Available,"pupil rearms only after leaving and cooldown (shortened to 3s for test)");
-                        NoiseEvents.Emit(Chatter.transform.position+Vector3.forward*2,38,"clockwork toy");
-                        Warp(Chatter.transform.position+Chatter.transform.forward*.75f);Next(35);break;
+                        NoiseEvents.Emit(Chatter.transform.position+Vector3.forward*2,38,"clockwork toy");Next(35);break;
                     case 35:
-                        Need(Chatter.Distracted&&Chatter.Interruptions==1&&!F.IsDistracted,"rattling decoy allows safe passage within arm's reach");
+                        Need(!Chatter.Distracted&&Chatter.Available&&Chatter.Interruptions==1,"the wind-up toy does not distract the chatterbox");
                         Chatter.cooldownSeconds=25;Warp(DeskStand(S.phonePickup.transform));Next(5);break;
                     case 5:
                         if(!Gates.All(g=>g.IsOpen)){if(now-at>5)throw new Exception("lesson gates did not open after the run started");return;}
@@ -269,7 +268,7 @@ namespace Confiscated.EditorTools
                     case 11:
                         if(now-at<2.6)return;
                         var toy=GameObject.Find("Ticking wind-up decoy");Need(toy!=null,"decoy remains in world during delayed activation");
-                        Need(decoyNoises>0&&R.caretaker.Current==CaretakerAI.State.Investigate,"delayed toy noise attracts caretaker investigation");R.caretaker.Freeze();
+                        Need(decoyNoises>0&&R.caretaker.HuntingToy&&R.caretaker.Current==CaretakerAI.State.Investigate,"delayed toy noise sends the caretaker after the toy");R.caretaker.Freeze();Object.Destroy(toy);
                         var cover=GameObject.Find("SchoolRun").GetComponentsInChildren<Transform>().First(t=>t.name=="Opaque fabric");
                         Vector3 a=cover.position-cover.forward*2,b=cover.position+cover.forward*2;
                         Need(Physics.Linecast(a,b,out var obstruction)&&obstruction.collider.transform==cover,"opaque cafeteria screen physically blocks sight");
@@ -302,12 +301,22 @@ namespace Confiscated.EditorTools
                         Warp(Corridor);PlaceCaretaker(Corridor+Vector3.left*5.5f,Corridor);R.caretaker.ResumeAfterDetention(0);NoiseEvents.Emit(P.transform.position,12,"dropped satchel");Next(13);break;
                     case 13:
                         if(!chaseNoiseChecked&&R.caretaker.Current==CaretakerAI.State.Chase)
-                        {NoiseEvents.Emit(R.caretaker.transform.position,38,"clockwork toy");Need(R.caretaker.Current==CaretakerAI.State.Chase,"toy cannot cancel active visual pursuit");chaseNoiseChecked=true;}
+                        {
+                            // A toy comes first, even mid-chase: he goes and stamps on it, then comes back for the player.
+                            Vector3 spot=R.caretaker.transform.position+R.caretaker.transform.right*2.5f;if(NavMesh.SamplePosition(spot,out var toyFloor,2,NavMesh.AllAreas))spot=toyFloor.position;
+                            testToy=new GameObject("Test wind-up toy");testToy.transform.position=spot;toyHeardAt=now;R.caretaker.HearToy(testToy,spot);
+                            Need(R.caretaker.HuntingToy&&R.caretaker.Current!=CaretakerAI.State.Chase,"a toy pulls him off an active chase");chaseNoiseChecked=true;
+                        }
+                        if(chaseNoiseChecked&&!toySmashChecked&&!R.caretaker.HuntingToy)
+                        {Need(testToy==null&&R.caretaker.ToysSmashed==1&&now-toyHeardAt>=CaretakerAI.ToySmashSeconds,"he stamps the toy flat ("+(now-toyHeardAt).ToString("F1")+" s) before going back to his business");toySmashChecked=true;
+                        // The toy did its job and he lost the player; a fresh noise brings him back for the capture check.
+                        at=now;NoiseEvents.Emit(P.transform.position,40,"dropped satchel");}
                         if(GameManager.Instance.Current!=GameManager.State.Caught)
                         {
                             if(now-at>20)throw new Exception("caretaker never caught the player: "+R.caretaker.Current+" at "+Gap.ToString("F1")+" m, game "+GameManager.Instance.Current);
                             return;
                         }
+                        Need(toySmashChecked,"the toy was destroyed before the capture");
                         Need(!GameManager.Instance.detention.Active&&R.Detentions==0,"caretaker capture ends the run; no detention");
                         Need(R.Count==1&&R.Has(0)&&P.HasPhone,"caretaker capture applies no item penalty");
                         Need(!F.enabled&&P.InputLocked&&R.caretaker.Current==CaretakerAI.State.Frozen,"capture stops the player and the caretaker");Next(14);break;

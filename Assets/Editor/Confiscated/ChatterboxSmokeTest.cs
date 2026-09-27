@@ -83,13 +83,13 @@ namespace Confiscated.EditorTools
                             InputSystem.QueueStateEvent(mouse,new MouseState{delta=new Vector2(20,10)});
                             if(C.MouthOpen&&!sawOpen&&ComicDialogue.Instance.VisibleText.Length>32){sawOpen=true;ScreenCapture.CaptureScreenshot("../Docs/Chatterbox_Talking_Open.png");}
                             if(sawOpen&&!C.MouthOpen&&ComicDialogue.Instance.IsSpeaking&&!sawClosed){sawClosed=true;ScreenCapture.CaptureScreenshot("../Docs/Chatterbox_Talking_Closed.png");}
-                            sawVoice|=C.GetComponent<AudioSource>().isPlaying;
+                            sawVoice|=C.GetComponents<AudioSource>().Any(a=>a.isPlaying); // recorded line or placeholder syllables
                             if(Vector3.Distance(P.transform.position,lockedPosition)>.01f||Quaternion.Angle(P.transform.rotation,lockedYaw)>.1f)throw new Exception("movement/look escaped dialogue lock");
-                            if(elapsed>7)throw new Exception("conversation failed to release");return;
+                            if(elapsed>9)throw new Exception("conversation failed to release");return;
                         }
                         InputSystem.QueueStateEvent(keys,new KeyboardState());InputSystem.QueueStateEvent(mouse,new MouseState());
                         Check(sawOpen&&sawClosed&&sawVoice,"exactly two mouth states observed with audible chatter during speech");
-                        Check(elapsed>=3.5&&elapsed<6,"conversation automatically ends after a few seconds");
+                        Check(elapsed>=3.5&&elapsed<9,"conversation automatically ends after its line ("+elapsed.ToString("F1")+" s; recorded lines run longer than the old 4.2 s)");
                         Check(Time.timeScale==1&&!C.MouthOpen&&!C.GetComponent<AudioSource>().isPlaying,"time, closed mouth and silence restored");
                         Check(R.Timing.Milliseconds-runStart>=3500,"real run timer includes conversation");Next();break;
                     case 4:
@@ -107,7 +107,7 @@ namespace Confiscated.EditorTools
                         NoiseEvents.Emit(C.transform.position,38,"clockwork toy");Warp(C.transform.position+C.transform.forward*.75f);Next();break;
                     case 7:
                         if(elapsed<.4)return;
-                        Check(C.Distracted&&!C.Talking&&C.Interruptions==1,"decoy still prevents close-range conversation");
+                        Check(!C.Distracted&&C.Talking&&C.Interruptions==2,"the wind-up toy does not distract him: he still talks at close range");ComicDialogue.Cancel();
                         Check(ComicDialogue.TrySpeakTimed(C.transform,"Chatterbox","Wait, one more thing!",4.2f),"second timed line starts for cancellation test");
                         C.enabled=false;Check(!ComicDialogue.IsActive&&Time.timeScale==1&&!C.MouthOpen,"disabling speaker releases dialogue and closes mouth");
                         ComicDialogue.TrySpeak("Mr Reed: Hello, Smith.");Next();break;

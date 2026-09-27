@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Confiscated
 {
-    /// <summary>A seated pupil holds a short conversation within arm's reach. A wide berth or toy avoids it.</summary>
+    /// <summary>A seated pupil holds a short conversation within arm's reach. A wide berth avoids it; the wind-up toy does not interest him.</summary>
     public sealed class ChatterboxStudent : MonoBehaviour
     {
         public float reach=.9f, warningDistance=3.5f, interruptionSeconds=4.2f, cooldownSeconds=25;
@@ -29,10 +29,8 @@ namespace Confiscated
             "Did you see Mr Reed today? He looks funny, doesn't he? Anyway... where are you going?"
         };
         static readonly string[] lineClips={"ChatterboxYoYo","ChatterboxMrReed"};
-        void OnEnable()=>NoiseEvents.OnNoise+=Hear;
         void OnDisable()
         {
-            NoiseEvents.OnNoise-=Hear;
             if(Talking)ComicDialogue.Cancel();
             SetMouth(false);
             if(voice!=null)voice.Stop();
@@ -88,14 +86,6 @@ namespace Confiscated
         }
         bool Live=>SchoolRunController.Instance!=null&&SchoolRunController.Instance.RoundStarted&&
             GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&!ComicDialogue.IsActive;
-        void Hear(Vector3 position,float radius,string source)
-        {
-            if(!Live||source!="clockwork toy"||Vector3.Distance(position,transform.position)>Mathf.Min(radius,10))return;
-            bool first=!Distracted;
-            distractedUntil=Time.time+6;
-            if(first&&player!=null&&Vector3.Distance(player.transform.position,transform.position)<8)
-                HudController.Instance?.SetStatus("The chatterbox is listening to the toy. Slip past.",3);
-        }
         bool Visible(Vector3 target)
         {
             // Start above the bench back; walls and shut doors still prevent an encounter.
@@ -114,7 +104,7 @@ namespace Confiscated
             if(!warned&&distance<warningDistance)
             {
                 warned=true;
-                HudController.Instance?.SetStatus("Chatterbox ahead. Give him space, or distract him with a wind-up toy.",4);
+                HudController.Instance?.SetStatus("Chatterbox ahead. Give him space.",4);
             }
             if(distance>reach)return;
             int line=PickLine(out var clip);

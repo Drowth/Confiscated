@@ -12,9 +12,11 @@ namespace Confiscated
         PlayerInteractor player;
         static AudioClip quackClip;
         public static int TotalDeployedThisRun { get; private set; }
+        /// <summary>Each rattle tick: the toy and where it sits. Staff who hear it go and stamp on it (CaretakerAI).</summary>
+        public static event System.Action<GameObject, Vector3> Rattling;
         public static void ResetRunTally() => TotalDeployedThisRun = 0;
         void Awake() { player = GetComponent<PlayerInteractor>(); if (quackClip == null) quackClip = Resources.Load<AudioClip>("Audio/ToyDuck"); }
-        public void Collect() { Charges = Mathf.Min(3, Charges + 1); HudController.Instance?.SetStatus("1 / right click: leave a toy, then turn a corner. It rattles in 2 seconds. He must lose sight of you first.", 8); }
+        public void Collect() { Charges = Mathf.Min(3, Charges + 1); HudController.Instance?.SetStatus("1 / right click: drop a wind-up toy. It quacks in 2 seconds, and the caretaker drops everything to stamp on it.", 8); }
         void Update() { if ((Keyboard.current != null && Keyboard.current.digit1Key.wasPressedThisFrame)||(Mouse.current!=null&&Mouse.current.rightButton.wasPressedThisFrame)) Deploy(); }
         public bool Deploy()
         {
@@ -31,14 +33,14 @@ namespace Confiscated
             // A flat cutout must stay square-on to whoever is looking; a modelled toy reads from any side.
             if (toy.transform.Find("Cutout card") != null) toy.AddComponent<BillboardY>();
             StartCoroutine(Rattle(toy));
-            HudController.Instance?.SetStatus("Toy wound. Turn a corner before it rattles!", 2); return true;
+            HudController.Instance?.SetStatus("Toy wound. It quacks in 2 seconds!", 2); return true;
         }
         IEnumerator Rattle(GameObject toy)
         {
             yield return new WaitForSeconds(2);
             Vector3 origin = toy.transform.position;
             Quaternion originalRotation = toy.transform.rotation;
-            bool diverted = false, explained = false;
+            bool diverted = false;
             bool canTilt = toy.GetComponent<BillboardY>() == null;
             AudioSource quack = null;
             if (quackClip != null)
@@ -64,11 +66,10 @@ namespace Confiscated
                     {
                         nextNoiseAt += .5f;
                         NoiseEvents.Emit(origin, 38, "clockwork toy");
+                        Rattling?.Invoke(toy, origin);
                         var caretaker=SchoolRunController.Instance?.caretaker;
-                        if(!diverted&&caretaker!=null&&caretaker.Investigating(origin))
-                        {diverted=true;HudController.Instance?.SetStatus("He is checking the toy. Keep moving!",3);}
-                        else if(!explained&&!diverted&&caretaker!=null&&caretaker.Current==CaretakerAI.State.Chase)
-                        {explained=true;HudController.Instance?.SetStatus("He is still following you. Get behind a wall or closed door!",3);}
+                        if(!diverted&&caretaker!=null&&caretaker.HuntingToy)
+                        {diverted=true;HudController.Instance?.SetStatus("He's gone for the toy! Keep moving!",3);}
                         if (quackClip == null) TempAudio.PlayAt(TempAudio.Warn, origin, .35f);
                     }
                 }

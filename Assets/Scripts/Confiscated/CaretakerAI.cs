@@ -91,8 +91,8 @@ namespace Confiscated
             agent.updateRotation = false; // we rotate the root ourselves so facing can be held while dwelling
         }
 
-        void OnEnable() { NoiseEvents.OnNoise += OnNoise; }
-        void OnDisable() { NoiseEvents.OnNoise -= OnNoise; CanCurrentlySeePlayer=false; }
+        void OnEnable() { NoiseEvents.OnNoise += OnNoise; ClockworkDecoy.Rattling += HearToy; }
+        void OnDisable() { NoiseEvents.OnNoise -= OnNoise; ClockworkDecoy.Rattling -= HearToy; CanCurrentlySeePlayer=false; }
 
         void Start()
         {
@@ -105,7 +105,7 @@ namespace Confiscated
 
         public void Freeze()
         {
-            state = State.Frozen;chatting = false;
+            state = State.Frozen;chatting = false;toyHunt = false;smashing = false;toyTarget = null;
             if(voice!=null)voice.Stop();
             cutoutMotion?.SetFrozen(true);
             if (agent.isOnNavMesh) agent.isStopped = true;
@@ -146,6 +146,8 @@ namespace Confiscated
             if (ComicDialogue.IsActive || state == State.Frozen || player == null) return;
             var gm = GameManager.Instance;
             if (gm != null && !gm.IsPlaying) { Freeze(); return; }
+            // A quacking toy comes first, before the player, even mid-chase.
+            if (toyHunt) { TickToy(); TickRotation(); return; }
 
             bool sees = Time.time >= ignorePlayerUntil && CanSeePlayer();
             CanCurrentlySeePlayer=sees;
@@ -372,8 +374,49 @@ namespace Confiscated
             lastSeenTime=Time.time;lastSeenPos=player.position;suspicion=1f;EnterChase();
         }
 
+        // ------------------------------------------------------------------ wind-up toy
+        // He cannot stand the thing: any toy he can hear, he drops everything (a chase included) to go and stamp on it,
+        // ignoring the player until it is destroyed (ToySmashSeconds), then looks about and gets back to his routine.
+        public const float ToyHearingRange=38,ToySmashSeconds=3;
+        GameObject toyTarget;bool toyHunt,smashing;float smashEnds,nextStomp;
+        public bool HuntingToy=>toyHunt;
+        public bool SmashingToy=>toyHunt&&smashing;
+        public int ToysSmashed {get;private set;}
+        public void HearToy(GameObject toy,Vector3 at)
+        {
+            if(toyHunt||toy==null||IsGlued||state==State.Frozen||player==null)return;
+            if(GameManager.Instance!=null&&!GameManager.Instance.IsPlaying)return;
+            if(Vector3.Distance(transform.position,at)>ToyHearingRange)return;
+            toyHunt=true;smashing=false;toyTarget=toy;dwelling=false;chatting=false;
+            state=State.Investigate;arrivedAtPoi=false;pointOfInterest=at;
+            Say(heardTake++ % 2 == 0 ? "CaretakerWhosThere" : "CaretakerHeardThat");
+            GoTo(at,chaseSpeed);
+        }
+        void TickToy()
+        {
+            // It wound down on its own before he got there.
+            if(toyTarget==null){EndToy();return;}
+            Vector3 at=toyTarget.transform.position,gap=at-transform.position;gap.y=0;
+            if(!smashing)
+            {
+                if(gap.magnitude>1.1f&&!Arrived())return;
+                smashing=true;smashEnds=Time.time+ToySmashSeconds;nextStomp=0;GoTo(transform.position,investigateSpeed);
+            }
+            SetFacing(gap);
+            if(Time.time>=nextStomp){nextStomp=Time.time+.55f;TempAudio.PlayAt(TempAudio.Thud,at,.9f);}
+            if(Time.time<smashEnds)return;
+            ToysSmashed++;TempAudio.PlayAt(TempAudio.Caught,at,.35f);Destroy(toyTarget);EndToy();
+        }
+        void EndToy()
+        {
+            toyHunt=false;smashing=false;toyTarget=null;
+            state=State.Investigate;arrivedAtPoi=true;lookUntil=Time.time+lookAroundSeconds*.5f;
+        }
+
         void OnNoise(Vector3 pos, float radius, string source)
         {
+            // The toy is handled by HearToy (it needs the toy itself, to destroy it).
+            if (source == "clockwork toy") return;
             if (IsGlued || state == State.Chase || state == State.Frozen || Time.time < ignorePlayerUntil) return;
             if (Vector3.Distance(transform.position, pos) > radius) return;
             state = State.Investigate;
