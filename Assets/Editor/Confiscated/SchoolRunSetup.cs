@@ -76,6 +76,7 @@ namespace Confiscated.EditorTools
             CharacterShadowSetup.ApplyToScene();
             // Last: it moves furniture the builders above lay out, and switches off plant-room ceiling lights.
             OfficeRefitSetup.ApplyToScene();
+            SchoolOfficeSetup.ApplyToScene();
             LibrarySetup.ApplyToScene();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene()); EditorSceneManager.SaveOpenScenes(); AssetDatabase.SaveAssets();
             Debug.Log("[SchoolRun] Built five-item loop, cafeteria cover, locked rooms, furnished shortcuts and generated-art displays.");
@@ -381,7 +382,7 @@ namespace Confiscated.EditorTools
             var desk=Group("Equipment checkout desk",kit,new Vector3(23.5f,0,61.4f));
             Box("Desktop",desk,new Vector3(0,.78f,0),new Vector3(1.5f,.08f,.8f),"M_Wood_Desk");
             foreach(float x in new[]{-.6f,.6f})foreach(float z in new[]{-.3f,.3f})Box("Leg",desk,new Vector3(x,.38f,z),new Vector3(.06f,.76f,.06f),"M_Chapter_Green");
-            CreateTool(kit,AccessToolPickup.Tool.StoreKey,new Vector3(23.5f,.91f,61.4f));
+            // The store key hangs in the school office key cabinet (SchoolOfficeSetup).
             foreach(var pickup in root.GetComponentsInChildren<RunPickup>())
                 foreach(var child in pickup.transform.Cast<Transform>().Where(t=>t.name=="Property label"||t.GetComponent<TextMesh>()!=null).ToArray())Object.DestroyImmediate(child.gameObject);
             // No collectibles or decoy rewards in the opening classroom.
@@ -483,7 +484,7 @@ namespace Confiscated.EditorTools
                 foreach(var old in door.GetComponentsInChildren<Transform>().Where(t=>t.name=="School door notice").ToArray())Object.DestroyImmediate(old.gameObject);
                 string n=door.name;
                 // The library (old classrooms 9 and 10) keeps only its north-east door shut; LibrarySetup opens the other three.
-                door.closedForRun=n==LibrarySetup.ShutDoor||n.StartsWith("South room A")||n.StartsWith("South classroom")||n=="East room A north"||n=="East room A south"||n=="Dining west A"||n=="Dining east A"||n=="North yard doors"||n=="East yard doors";
+                door.closedForRun=n==LibrarySetup.ShutDoor||n.StartsWith("South room A")||n=="East room A north"||n=="East room A south"||n=="Dining west A"||n=="Dining east A"||n=="North yard doors"||n=="East yard doors";
                 door.runRequiredLevel=n.StartsWith("North room B")?2:n.StartsWith("East room B")?3:n=="Store cupboard"?4:0;
                 door.runLockName=door.runRequiredLevel==2?"RESOURCES":door.runRequiredLevel==3?"EQUIPMENT":"STORE";
                 if(door.closedForRun||door.runRequiredLevel>0)door.startsUnlocked=false;

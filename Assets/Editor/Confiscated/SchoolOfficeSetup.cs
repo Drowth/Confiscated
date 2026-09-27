@@ -1,0 +1,272 @@
+using System;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.Rendering;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using Object=UnityEngine.Object;
+
+namespace Confiscated.EditorTools
+{
+    /// <summary>
+    /// The school office: the closed "South classroom" (CLASSROOM 4, next to the main entrance and the store) opens for the
+    /// run as the office. A reception counter with a glass screen and a serving hatch splits a small waiting area by the
+    /// door from the back office, with a staff gap at its east end. The store key lives in the key cabinet on the back wall:
+    /// ten tagged keys, the STORE hook shuffled each run (KeyCabinet), a wrong key jangles. Replaces the old floating store
+    /// key on the EQUIPMENT desk. Primitives and existing props for now. Chained into SchoolRunSetup.Build.
+    /// </summary>
+    public static class SchoolOfficeSetup
+    {
+        public const string RootName="School office",DoorName="South classroom north";
+        // Inner faces of the room walls; the door gap is x 13.01..14.77 on the north wall.
+        public const float West=4.41f,East=19.81f,South=3.63f,North=17.26f;
+        public const float CounterZ=12.6f,GapWest=15.2f,GapEast=16.4f,CabinetX=12f,CabinetY=1.45f;
+        public static readonly Bounds Interior=new Bounds(new Vector3((West+East)/2,1.5f,(South+North)/2),new Vector3(East-West,4f,North-South));
+        static Transform root;
+        static Material wood,paper,ink,grey,brass,teal,trim,glass,screen,blue,tag;
+
+        [MenuItem("Confiscated/School Run/Build School Office")]
+        public static void Install()
+        {
+            if(EditorApplication.isPlaying)throw new InvalidOperationException("Stop Play before installing.");
+            ApplyToScene();DiningHallSetup.Rebake();
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());EditorSceneManager.SaveOpenScenes();AssetDatabase.SaveAssets();
+            Debug.Log("[SchoolOffice] Office open, furnished, key cabinet installed; navigation rebaked.");
+        }
+
+        public static void ApplyToScene()
+        {
+            var run=Object.FindFirstObjectByType<SchoolRunController>();
+            if(run==null)throw new InvalidOperationException("Open the SchoolLayout scene first.");
+            var old=run.transform.Find(RootName);if(old!=null)Object.DestroyImmediate(old.gameObject);
+            root=new GameObject(RootName).transform;root.SetParent(run.transform,false);
+            wood=M("M_Wood_Desk");paper=M("M_Chapter_Paper");ink=M("M_Chapter_Ink");grey=M("M_Chapter_Grey");brass=M("M_Chapter_Brass");
+            teal=M("M_Entrance_Teal");trim=M("M_Painted_Trim_Pencil");blue=Tint("M_Office_Carpet",grey,new Color(.36f,.42f,.52f));
+            glass=Glass();tag=Tint("M_Office_KeyTag",paper,new Color(1f,.95f,.8f));screen=Tint("M_Office_Screen",ink,new Color(.16f,.22f,.26f));
+
+            OpenDoor(run);RetireEquipmentKey();
+            Waiting();Counter();BackOffice();Cabinet();CorridorHatch();
+            foreach(var sign in Object.FindObjectsByType<TextMesh>(FindObjectsInactive.Include,FindObjectsSortMode.None).Where(t=>t.text=="CLASSROOM 4"))
+            {sign.text="OFFICE";EditorUtility.SetDirty(sign);}
+        }
+
+        static void OpenDoor(SchoolRunController run)
+        {
+            var door=Object.FindObjectsByType<OfficeDoor>(FindObjectsInactive.Include,FindObjectsSortMode.None).FirstOrDefault(d=>d.name==DoorName);
+            if(door==null)throw new InvalidOperationException("Office door "+DoorName+" is missing.");
+            // Shut while the errand is on, an ordinary door for the run.
+            door.closedForRun=false;door.closedDuringLessons=true;door.startsUnlocked=true;door.runRequiredLevel=0;
+            EditorUtility.SetDirty(door);PrefabUtility.RecordPrefabInstancePropertyModifications(door);
+            var blocker=run.transform.Find("Door blocker - "+DoorName);if(blocker!=null)Object.DestroyImmediate(blocker.gameObject);
+            foreach(var t in door.GetComponentsInChildren<Transform>(true).Where(t=>t.name==ClosedDoorSignageSetup.GroupName||t.name=="School door notice").ToArray())
+                Object.DestroyImmediate(t.gameObject);
+        }
+
+        /// <summary>The store key used to float over the EQUIPMENT desk; it lives in the cabinet now.</summary>
+        static void RetireEquipmentKey()
+        {
+            foreach(var tool in Object.FindObjectsByType<AccessToolPickup>(FindObjectsInactive.Include,FindObjectsSortMode.None).Where(t=>t.tool==AccessToolPickup.Tool.StoreKey).ToArray())
+                Object.DestroyImmediate(tool.gameObject);
+        }
+
+        // ---------- Waiting area (north strip, by the door) ----------
+        static void Waiting()
+        {
+            var g=Group("Waiting area");
+            Box(g,"Waiting carpet",new Vector3(9.2f,.006f,15.1f),new Vector3(8.6f,.012f,3.6f),blue,false);
+            for(int i=0;i<5;i++)Prefab("Assets/Prefabs/Props/P_Chair.prefab",g,"Waiting chair "+(i+1),new Vector3(6.1f+i*.95f,0,16.72f),0);
+            Solid(g,"Low table",new Vector3(8.0f,.22f,15.2f),new Vector3(1.2f,.44f,.6f),wood);
+            for(int i=0;i<3;i++){var mag=Box(g,"Magazine",new Vector3(7.7f+i*.28f,.452f,15.15f+(i%2)*.08f),new Vector3(.21f,.008f,.28f),i==1?teal:paper,false);mag.transform.rotation=Quaternion.Euler(0,-12+i*14,0);}
+            Prefab("Assets/Prefabs/Props/P_Noticeboard.prefab",g,"Office noticeboard",new Vector3(8.5f,1.65f,North-.03f),180);
+            Prefab("Assets/Prefabs/Hallway/P_Hall_TrophyCabinet_Generated.prefab",g,"Office trophy cabinet",new Vector3(18.3f,0,North-.35f),180);
+            Prefab("Assets/Prefabs/Hallway/P_Hall_LitterBin.prefab",g,"Waiting bin",new Vector3(11.8f,0,16.8f),0);
+            Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(.95f,.36f),180,.011f);
+        }
+
+        // ---------- Reception counter with a glass screen and a serving hatch ----------
+        static void Counter()
+        {
+            var g=Group("Reception counter");
+            Segment(g,"West counter",West,GapWest);Segment(g,"East counter",GapEast,East);
+            // Glass screen over the west run, open at the hatch.
+            const float hatchWest=7.6f,hatchEast=8.8f,top=2.05f;
+            foreach(var (a,b) in new[]{(West,hatchWest),(hatchEast,GapWest)})
+            {
+                Box(g,"Screen glass",new Vector3((a+b)/2,(1.08f+top)/2,CounterZ),new Vector3(b-a,top-1.08f,.02f),glass,true).GetComponent<MeshRenderer>().shadowCastingMode=ShadowCastingMode.Off;
+            }
+            foreach(float x in new[]{West+.03f,hatchWest,hatchEast,GapWest-.03f})Box(g,"Screen post",new Vector3(x,(1.08f+top)/2,CounterZ),new Vector3(.05f,top-1.08f,.06f),trim,false);
+            Box(g,"Screen top rail",new Vector3((West+GapWest)/2,top+.025f,CounterZ),new Vector3(GapWest-West,.05f,.06f),trim,false);
+            Box(g,"Hatch lintel",new Vector3((hatchWest+hatchEast)/2,1.72f,CounterZ),new Vector3(hatchEast-hatchWest,.04f,.06f),trim,false);
+            Box(g,"Hatch glass",new Vector3((hatchWest+hatchEast)/2,(1.74f+top)/2,CounterZ),new Vector3(hatchEast-hatchWest,top-1.74f,.02f),glass,true);
+            Plaque(g,"RECEPTION",new Vector3((hatchWest+hatchEast)/2,2.25f,CounterZ),new Vector2(1.3f,.28f),180,.02f);
+            // Bell and sign-in book at the hatch.
+            Box(g,"Bell base",new Vector3(8.4f,1.1f,CounterZ+.12f),new Vector3(.1f,.02f,.1f),ink,false);
+            var bell=GameObject.CreatePrimitive(PrimitiveType.Sphere);bell.name="Desk bell";bell.transform.SetParent(g,false);bell.transform.position=new Vector3(8.4f,1.13f,CounterZ+.12f);bell.transform.localScale=new Vector3(.085f,.05f,.085f);
+            Object.DestroyImmediate(bell.GetComponent<Collider>());bell.GetComponent<MeshRenderer>().sharedMaterial=brass;
+            Box(g,"Sign-in book",new Vector3(8.0f,1.1f,CounterZ+.08f),new Vector3(.4f,.02f,.28f),paper,false);
+            Plaque(g,"STAFF\nONLY",new Vector3(GapWest-.3f,1.6f,CounterZ+.025f),new Vector2(.34f,.26f),180,.009f);
+            // Staff side: a monitor at each desk position behind the screen.
+            Box(g,"Counter monitor",new Vector3(6.0f,1.28f,CounterZ-.12f),new Vector3(.46f,.32f,.04f),screen,false);
+            Box(g,"Counter monitor",new Vector3(11.0f,1.28f,CounterZ-.12f),new Vector3(.46f,.32f,.04f),screen,false);
+        }
+        static void Segment(Transform g,string name,float a,float b)
+        {
+            Solid(g,name,new Vector3((a+b)/2,.525f,CounterZ),new Vector3(b-a,1.05f,.62f),teal);
+            Box(g,name+" top",new Vector3((a+b)/2,1.07f,CounterZ),new Vector3(b-a+.04f,.04f,.7f),wood,false);
+        }
+
+        // ---------- Back office ----------
+        static void BackOffice()
+        {
+            var g=Group("Back office");
+            foreach(float x in new[]{8.2f,11.6f})
+            {
+                Prefab("Assets/Prefabs/Props/P_Desk.prefab",g,"Office desk",new Vector3(x,0,9.4f),0);
+                Prefab("Assets/Prefabs/Props/P_Chair.prefab",g,"Office chair",new Vector3(x,0,8.68f),180);
+                Box(g,"Desk monitor",new Vector3(x,.98f,9.55f),new Vector3(.42f,.28f,.035f),screen,false);
+                Box(g,"Monitor stand",new Vector3(x,.8f,9.6f),new Vector3(.05f,.1f,.05f),ink,false);
+                Box(g,"Keyboard",new Vector3(x,.77f,9.25f),new Vector3(.36f,.015f,.12f),ink,false);
+                Box(g,"Paper tray",new Vector3(x+.34f,.78f,9.35f),new Vector3(.24f,.04f,.3f),paper,false);
+            }
+            // Filing cabinets down the west wall.
+            for(int i=0;i<4;i++)
+            {
+                var at=new Vector3(West+.3f,.66f,4.6f+i*.62f);Solid(g,"Filing cabinet",at,new Vector3(.58f,1.32f,.58f),grey);
+                for(int d=0;d<4;d++){Box(g,"Drawer line",new Vector3(at.x+.292f,.33f+d*.32f,at.z),new Vector3(.005f,.008f,.52f),ink,false);Box(g,"Drawer handle",new Vector3(at.x+.3f,.2f+d*.32f,at.z),new Vector3(.02f,.025f,.14f),brass,false);}
+            }
+            // Photocopier and a stack of newsletters against the east wall.
+            Solid(g,"Photocopier",new Vector3(East-.42f,.5f,7.2f),new Vector3(.8f,1.0f,.7f),grey);
+            Box(g,"Photocopier lid",new Vector3(East-.42f,1.02f,7.2f),new Vector3(.74f,.04f,.62f),ink,false);
+            Box(g,"Newsletter stack",new Vector3(East-.42f,1.08f,7.05f),new Vector3(.21f,.08f,.3f),paper,false);
+            // Staff pigeonholes on the east wall, a meeting table in the south-east corner.
+            var holes=new Vector3(East-.2f,1.3f,10.3f);Solid(g,"Pigeonholes",new Vector3(holes.x,.9f,holes.z),new Vector3(.4f,1.8f,1.6f),wood);
+            for(int r=0;r<4;r++)for(int k=0;k<4;k++)
+            {
+                Box(g,"Pigeonhole",new Vector3(holes.x-.2f,.55f+r*.36f,holes.z-.6f+k*.4f),new Vector3(.01f,.3f,.34f),ink,false);
+                if((r+k)%3!=0)Box(g,"Post",new Vector3(holes.x-.15f,.46f+r*.36f,holes.z-.6f+k*.4f),new Vector3(.1f,.08f,.24f),paper,false);
+            }
+            Solid(g,"Meeting table",new Vector3(16.6f,.37f,5.4f),new Vector3(1.6f,.74f,.9f),wood);
+            Prefab("Assets/Prefabs/Props/P_Chair.prefab",g,"Meeting chair",new Vector3(16.1f,0,6.1f),0);
+            Prefab("Assets/Prefabs/Props/P_Chair.prefab",g,"Meeting chair",new Vector3(17.1f,0,6.1f),0);
+            Box(g,"Mug",new Vector3(16.3f,.79f,5.3f),new Vector3(.08f,.1f,.08f),teal,false);
+            Box(g,"Register folder",new Vector3(16.9f,.755f,5.5f),new Vector3(.32f,.03f,.24f),Tint("M_Office_Folder",paper,new Color(.8f,.3f,.25f)),false);
+            Prefab("Assets/Prefabs/Hallway/P_Hall_Clock.prefab",g,"Office clock",new Vector3(16.2f,2.35f,South+.03f),0);
+            Plaque(g,"FIRE DRILL\nMeet on the yard",new Vector3(17.6f,1.62f,South+.03f),new Vector2(.8f,.44f),0,.011f,true);
+        }
+
+        // ---------- Key cabinet on the back (south) wall ----------
+        static void Cabinet()
+        {
+            var c=new GameObject("Key cabinet").transform;c.SetParent(root,false);c.position=new Vector3(CabinetX,CabinetY,South);c.rotation=Quaternion.identity;
+            var cabinet=c.gameObject.AddComponent<KeyCabinet>();
+            Local(c,"Back board",new Vector3(0,0,.02f),new Vector3(1.4f,.9f,.04f),wood,true);
+            foreach(int s in new[]{-1,1})
+            {
+                Local(c,"Side",new Vector3(s*.72f,0,.08f),new Vector3(.04f,.94f,.16f),wood,false);
+                Local(c,"Rail",new Vector3(0,s*.47f,.08f),new Vector3(1.48f,.04f,.16f),wood,false);
+                // Doors hang wide open against the wall.
+                Local(c,"Open door",new Vector3(s*1.1f,0,.02f),new Vector3(.7f,.9f,.03f),wood,false);
+                Local(c,"Door knob",new Vector3(s*1.38f,0,.045f),new Vector3(.03f,.03f,.03f),brass,false);
+            }
+            Plaque(c,"KEYS",c.position+new Vector3(0,.62f,.02f),new Vector2(.5f,.18f),180,.014f);
+            // A strip light over the cabinet so the tags can be read.
+            Local(c,"Strip light",new Vector3(0,.85f,.1f),new Vector3(1.1f,.05f,.1f),Tint("M_Office_StripLight",paper,new Color(1f,.98f,.9f)),false);
+            var lamp=new GameObject("Cabinet light").AddComponent<Light>();lamp.transform.SetParent(c,false);lamp.transform.localPosition=new Vector3(0,.7f,.55f);
+            lamp.type=LightType.Point;lamp.range=2.6f;lamp.intensity=1.6f;lamp.color=new Color(1f,.95f,.85f);lamp.shadows=LightShadows.None;
+            var hooks=new KeyHook[10];
+            for(int i=0;i<10;i++)
+            {
+                int col=i%5,row=i/5;
+                var h=new GameObject("Key hook "+(i+1)).transform;h.SetParent(c,false);h.localPosition=new Vector3(-.48f+col*.24f,.22f-row*.42f,.06f);
+                Local(h,"Peg",new Vector3(0,0,-.01f),new Vector3(.014f,.014f,.05f),brass,false);
+                var key=new GameObject("Key").transform;key.SetParent(h,false);key.localPosition=new Vector3(0,0,.012f);
+                var ring=GameObject.CreatePrimitive(PrimitiveType.Cylinder);ring.name="Ring";ring.transform.SetParent(key,false);
+                ring.transform.localPosition=new Vector3(0,-.03f,0);ring.transform.localRotation=Quaternion.Euler(90,0,0);ring.transform.localScale=new Vector3(.045f,.003f,.045f);
+                Object.DestroyImmediate(ring.GetComponent<Collider>());ring.GetComponent<MeshRenderer>().sharedMaterial=brass;
+                Local(key,"Shaft",new Vector3(0,-.09f,0),new Vector3(.012f,.075f,.006f),brass,false);
+                Local(key,"Bit",new Vector3(.011f,-.118f,0),new Vector3(.02f,.018f,.006f),brass,false);
+                Local(key,"String",new Vector3(0,-.14f,.004f),new Vector3(.003f,.03f,.003f),ink,false);
+                Local(key,"Tag",new Vector3(0,-.182f,.005f),new Vector3(.17f,.065f,.004f),tag,false);
+                var text=Text(key,KeyCabinet.Labels[i],new Vector3(0,-.182f,.0075f),.0045f);
+                var hook=h.gameObject.AddComponent<KeyHook>();hook.cabinet=cabinet;hook.key=key;hook.tagText=text;hook.holdSeconds=.6f;
+                var box=h.gameObject.AddComponent<BoxCollider>();box.center=new Vector3(0,-.11f,.02f);box.size=new Vector3(.21f,.26f,.06f);
+                hooks[i]=hook;EditorUtility.SetDirty(hook);
+            }
+            cabinet.hooks=hooks;EditorUtility.SetDirty(cabinet);
+        }
+
+        /// <summary>From the corridor by the main entrance: a shut serving hatch in the office's south wall and a sign.</summary>
+        static void CorridorHatch()
+        {
+            var g=Group("Corridor hatch");const float face=3.48f,x=7.4f;
+            Box(g,"Hatch frame",new Vector3(x,1.35f,face-.02f),new Vector3(1.3f,.9f,.04f),trim,false);
+            Box(g,"Hatch frosted glass",new Vector3(x,1.35f,face-.045f),new Vector3(1.14f,.74f,.01f),Tint("M_Office_Frosted",paper,new Color(.82f,.86f,.86f)),false);
+            Box(g,"Hatch ledge",new Vector3(x,.9f,face-.13f),new Vector3(1.4f,.04f,.26f),wood,true);
+            Plaque(g,"SCHOOL OFFICE",new Vector3(x,2.08f,face-.03f),new Vector2(1.5f,.3f),0,.019f);
+            Plaque(g,"Hatch closed.\nDoor is round the back.",new Vector3(x,1.35f,face-.06f),new Vector2(.95f,.3f),0,.01f,true);
+        }
+
+        // ---------- Helpers ----------
+        static Transform Group(string name){var g=new GameObject(name).transform;g.SetParent(root,false);return g;}
+        static GameObject Box(Transform parent,string name,Vector3 at,Vector3 size,Material m,bool collide)
+        {
+            var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(parent,false);g.transform.position=at;g.transform.localScale=size;
+            if(!collide)Object.DestroyImmediate(g.GetComponent<Collider>());g.GetComponent<MeshRenderer>().sharedMaterial=m;return g;
+        }
+        static GameObject Local(Transform parent,string name,Vector3 at,Vector3 size,Material m,bool collide)
+        {
+            var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(parent,false);g.transform.localPosition=at;g.transform.localScale=size;
+            if(!collide)Object.DestroyImmediate(g.GetComponent<Collider>());g.GetComponent<MeshRenderer>().sharedMaterial=m;return g;
+        }
+        /// <summary>Floor furniture: solid, and carved out of the NavMesh so staff walk round it.</summary>
+        static void Solid(Transform parent,string name,Vector3 at,Vector3 size,Material m)
+        {
+            var g=Box(parent,name,at,size,m,true);
+            var nav=g.AddComponent<NavMeshObstacle>();nav.shape=NavMeshObstacleShape.Box;nav.center=Vector3.zero;nav.size=Vector3.one;nav.carving=true;
+        }
+        static GameObject Prefab(string path,Transform parent,string name,Vector3 at,float yaw)
+        {
+            var asset=AssetDatabase.LoadAssetAtPath<GameObject>(path);if(asset==null)throw new InvalidOperationException("Missing prefab "+path);
+            var go=(GameObject)PrefabUtility.InstantiatePrefab(asset,parent);go.name=name;
+            go.transform.SetPositionAndRotation(at,Quaternion.Euler(0,yaw,0));PrefabUtility.RecordPrefabInstancePropertyModifications(go.transform);return go;
+        }
+        static TextMesh Text(Transform parent,string value,Vector3 local,float size)
+        {
+            var g=new GameObject("Tag lettering");g.transform.SetParent(parent,false);g.transform.localPosition=local;g.transform.localRotation=Quaternion.Euler(0,180,0);
+            var t=g.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.text=value;t.fontSize=80;t.characterSize=size;t.color=new Color(.12f,.12f,.16f);
+            t.anchor=TextAnchor.MiddleCenter;t.alignment=TextAlignment.Center;g.AddComponent<WorldLabel>();return t;
+        }
+        /// <summary>A plaque with lettering; yaw 180 reads from the north (+z) side, 0 from the south.</summary>
+        static void Plaque(Transform parent,string text,Vector3 at,Vector2 size,float yaw,float letters,bool plain=false)
+        {
+            var facing=Quaternion.Euler(0,yaw,0);
+            var p=Box(parent,text.Split('\n')[0]+" plaque",at,new Vector3(size.x,size.y,.02f),plain?paper:trim,false);p.transform.rotation=facing;
+            var g=new GameObject(text.Split('\n')[0]);g.transform.SetParent(parent,false);g.transform.SetPositionAndRotation(at+facing*Vector3.back*.014f,facing);
+            var t=g.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.text=text;t.fontSize=80;t.characterSize=letters;t.color=Color.black;
+            t.anchor=TextAnchor.MiddleCenter;t.alignment=TextAlignment.Center;g.AddComponent<WorldLabel>();
+        }
+        static Material M(string n)
+        {
+            var m=AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/"+n+".mat");
+            if(m==null)throw new InvalidOperationException("Missing material "+n);return m;
+        }
+        static Material Tint(string name,Material source,Color colour)
+        {
+            string path="Assets/Art/Materials/"+name+".mat";var result=AssetDatabase.LoadAssetAtPath<Material>(path);
+            if(result==null){result=new Material(source);result.name=name;AssetDatabase.CreateAsset(result,path);}
+            result.SetColor("_BaseColor",colour);EditorUtility.SetDirty(result);return result;
+        }
+        /// <summary>URP Lit, transparent: the reception screen.</summary>
+        static Material Glass()
+        {
+            const string path="Assets/Art/Materials/M_Office_ScreenGlass.mat";var m=AssetDatabase.LoadAssetAtPath<Material>(path);
+            if(m==null){m=new Material(Shader.Find("Universal Render Pipeline/Lit"));AssetDatabase.CreateAsset(m,path);}
+            m.SetFloat("_Surface",1);m.SetFloat("_Blend",0);m.SetFloat("_ZWrite",0);m.SetFloat("_Smoothness",.85f);m.SetFloat("_Metallic",0);
+            m.SetFloat("_SrcBlend",(float)BlendMode.SrcAlpha);m.SetFloat("_DstBlend",(float)BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_SrcBlendAlpha",(float)BlendMode.One);m.SetFloat("_DstBlendAlpha",(float)BlendMode.OneMinusSrcAlpha);
+            m.SetOverrideTag("RenderType","Transparent");m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");m.renderQueue=(int)RenderQueue.Transparent;
+            m.SetColor("_BaseColor",new Color(.78f,.88f,.92f,.16f));EditorUtility.SetDirty(m);return m;
+        }
+    }
+}

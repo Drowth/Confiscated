@@ -71,6 +71,7 @@ namespace Confiscated.EditorTools
             ("dining property cage", new Vector3(-10, 0, 47)),
             ("resources corridor", SchoolPlan.Point(659, 467)),
             ("equipment corridor", SchoolPlan.Point(892, 672)),
+            ("school office key cabinet", new Vector3(SchoolOfficeSetup.CabinetX, 0, SchoolOfficeSetup.South + 1.1f)),
             ("store approach", SchoolPlan.Point(779, 1092)),
             ("main entrance", SchoolPlan.Point(586, 1167))
         };

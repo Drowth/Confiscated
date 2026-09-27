@@ -191,7 +191,7 @@ namespace Confiscated
             else if (!Has(1)) next = CageOpen?"Find the CONFISCATED box in DINING HALL.":"Hold F on the dining cage chain.";
             else if (!Has(2)) next = "Find the CONFISCATED box in the LIBRARY.";
             else if (!Has(3)) next = "Find the CONFISCATED box in EQUIPMENT.";
-            else next = HasStoreKey?"Find the CONFISCATED box in STORE.":"Take the store key from the EQUIPMENT desk.";
+            else next = HasStoreKey?"Find the CONFISCATED box in STORE.":"Take the STORE key from the key cabinet in the SCHOOL OFFICE.";
             HudController.Instance?.SetObjective("Belongings recovered: " + Count + "/5\n" + next);
         }
         public void Escape()

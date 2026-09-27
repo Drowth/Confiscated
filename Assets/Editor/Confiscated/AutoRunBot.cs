@@ -164,7 +164,7 @@ namespace Confiscated.EditorTools
             else if(!R.Has(1))target=Pickup(all,1);
             else if(!R.Has(equipmentFirst?3:2))target=Pickup(all,equipmentFirst?3:2);
             else if(!R.Has(equipmentFirst?2:3))target=Pickup(all,equipmentFirst?2:3);
-            else if(!R.HasStoreKey)target=all.OfType<AccessToolPickup>().FirstOrDefault(t=>t.tool==AccessToolPickup.Tool.StoreKey);
+            else if(!R.HasStoreKey){target=Object.FindFirstObjectByType<KeyCabinet>()?.StoreHook;hold=true;} // the bot reads the tags perfectly
             else if(!R.Has(4))target=Pickup(all,4);
             else{target=all.OfType<OfficeDoor>().FirstOrDefault(d=>d.mainExit);hold=true;}
             if(target==null)return null;

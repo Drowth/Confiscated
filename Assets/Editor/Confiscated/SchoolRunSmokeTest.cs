@@ -67,6 +67,8 @@ namespace Confiscated.EditorTools
         static RunPickup Item(int id)=>R.pickups.First(p=>p.itemId==id);
         // Where a player stands to use something on the caretaker's desk (desk against the south wall; OfficeRefitSetup).
         static Vector3 DeskStand(Transform t)=>new Vector3(t.position.x,0,t.position.z+1.2f);
+        // Standing spot in front of a key hook, clear of the wall.
+        static Vector3 Stand(KeyHook hook)=>new Vector3(hook.transform.position.x,0,hook.transform.position.z+1.0f);
         static void Reach(Interactable target,Vector3 from,Vector3 aim)
         {
             Path(P.transform.position,from,"route to "+target.name);Warp(from);F.LookLocked=true;P.ViewCamera.transform.LookAt(aim);Physics.SyncTransforms();
@@ -239,7 +241,14 @@ namespace Confiscated.EditorTools
                         Passage(Door("East room B east").transform.position,Door("East room B east").transform.forward,true,"equipment door");
                         Path(SchoolPlan.Point(702,654),SchoolPlan.Point(892,672),"equipment room shortcut unlocked");
                         Reach(Item(3),Item(3).transform.position+new Vector3(0,-Item(3).transform.position.y,-1.3f),Item(3).transform.position+Vector3.up*.15f);Item(3).Interact(P);Need(R.Count==4&&!R.HasStoreKey,"skateboard counts but grants no magic key");Need(!Door("Store cupboard").CanInteract(P),"four items alone do not open store");
-                        var storeKey=Tool(AccessToolPickup.Tool.StoreKey);Reach(storeKey,new Vector3(23.5f,0,60),storeKey.transform.position);storeKey.Interact(P);Need(R.HasStoreKey,"equipment checkout key opens the store");Door("Store cupboard").Interact(P);R.caretaker.Freeze();R.secondStaff.Freeze();Next(9);break;
+                        Need(!Object.FindObjectsByType<AccessToolPickup>(FindObjectsSortMode.None).Any(t=>t.tool==AccessToolPickup.Tool.StoreKey),"no floating store key on the EQUIPMENT desk any more");
+                        var cabinet=Object.FindFirstObjectByType<KeyCabinet>();var wrong=cabinet.hooks.First(h=>!h.IsStore);var right=cabinet.StoreHook;
+                        Need(SchoolOfficeSetup.Interior.Contains(cabinet.transform.position)&&cabinet.hooks.Length==10&&cabinet.hooks.Count(h=>h.IsStore)==1&&cabinet.hooks.All(h=>h.tagText.text==h.Label),"school office key cabinet: ten tagged keys, one STORE");
+                        Need(right.GetPrompt(P)!=null&&!right.GetPrompt(P).Contains("STORE"),"a hook's prompt does not give its tag away");
+                        Reach(wrong,Stand(wrong),wrong.transform.position+Vector3.down*.09f);
+                        int jingles=0;System.Action<Vector3,float,string> ear=(at,radius,source)=>{if(source=="key jingle")jingles++;};NoiseEvents.OnNoise+=ear;wrong.Interact(P);NoiseEvents.OnNoise-=ear;
+                        Need(!R.HasStoreKey&&cabinet.WrongPicks==1&&jingles==1,"a wrong key jangles (noise) and goes back on its hook");
+                        Reach(right,Stand(right),right.transform.position+Vector3.down*.09f);right.Interact(P);Need(R.HasStoreKey,"the STORE key from the office cabinet opens the store");Door("Store cupboard").Interact(P);R.caretaker.Freeze();R.secondStaff.Freeze();Next(9);break;
                     case 9:
                         Passage(Door("Store cupboard").transform.position,Door("Store cupboard").transform.forward,true,"store door");
                         Reach(Item(4),Item(4).transform.position+new Vector3(0,-Item(4).transform.position.y,-1.25f),Item(4).transform.position+Vector3.up*.15f);Item(4).Interact(P);Need(R.Count==5&&R.ReadyToEscape,"all five enable escape");

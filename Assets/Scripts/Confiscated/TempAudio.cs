@@ -10,7 +10,7 @@ namespace Confiscated
     {
         const int Rate = 22050;
 
-        static AudioClip ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip;
+        static AudioClip ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip, jingleClip;
 
         public static AudioClip Ring => ringClip ??= Build("Temp_Ring", 1.6f, t =>
         {
@@ -37,6 +37,20 @@ namespace Confiscated
 
         public static AudioClip Pickup => pickupClip ??= Build("Temp_Pickup", 0.15f, t =>
             0.35f * Mathf.Sin(2f * Mathf.PI * (600f + 1200f * t) * t) * (1f - t / 0.15f));
+
+        // A bunch of keys shaken: metal clinks (inharmonic partials, fast decay) scattered over 0.7 s.
+        static readonly float[] Clinks = { 0f, .07f, .16f, .21f, .33f, .41f, .52f, .6f };
+        public static AudioClip Jingle => jingleClip ??= Build("Temp_Jingle", 0.8f, t =>
+        {
+            float v = 0f;
+            for (int i = 0; i < Clinks.Length; i++)
+            {
+                float d = t - Clinks[i]; if (d < 0f) continue;
+                float f = 2600f + 370f * (i % 4);
+                v += (Mathf.Sin(2f * Mathf.PI * f * d) + .6f * Mathf.Sin(2f * Mathf.PI * f * 1.73f * d) + .35f * Mathf.Sin(2f * Mathf.PI * f * 2.61f * d)) * Mathf.Exp(-d * 38f);
+            }
+            return .22f * v;
+        });
 
         static AudioClip Build(string name, float seconds, System.Func<float, float> f)
         {
