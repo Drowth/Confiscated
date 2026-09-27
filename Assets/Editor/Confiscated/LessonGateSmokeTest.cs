@@ -106,6 +106,7 @@ namespace Confiscated.EditorTools
                         Reachable(Classroom, SchoolPlan.Point(465, 1100), "south-west loop for evading a pre-run chase");
                         Reachable(Classroom, SchoolPlan.Point(415, 467), "dining corridor with its puddle and dinner trolley");
                         Need(Object.FindObjectsByType<WetFloorHazard>(FindObjectsSortMode.None).Length >= 2 && Object.FindFirstObjectByType<DinnerTrolleyPatrol>() != null, "puddles and the dinner trolley are installed");
+                        Need(GameObject.Find(ExteriorBrickSetup.RootName)!=null, "exterior brick skin is installed");
                         Need(Object.FindObjectsByType<WetFloorHazard>(FindObjectsSortMode.None).All(w => w.transform.Cast<Transform>().Count(t => t.name == "Wet floor sign") == 2 && w.transform.Find("Yellow caution stand") == null), "each puddle has an illustrated sign at both ends and no placeholder stand");
                         Need(!Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None).Any(t => t.GetComponent<WorldLabel>() == null && t.GetComponentInParent<WetFloorHazard>() != null), "no wet-floor lettering that draws through walls");
                         Need(Object.FindObjectsByType<ProgressPropFeedback>(FindObjectsSortMode.None).Any(f => f.gate != null && f.padlock != null), "cage padlock feedback is installed");

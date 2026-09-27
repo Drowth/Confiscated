@@ -72,6 +72,7 @@ namespace Confiscated.EditorTools
             SchoolMapPosterSetup.ApplyToScene();
             DarkModeSetup.ApplyToScene();
             SchoolLightingSetup.ApplyToScene();
+            ExteriorBrickSetup.Apply(); // cosmetic brick on outward-facing walls (needs the final walls and ceilings)
             PeCoachSetup.ApplyToScene();
             CharacterShadowSetup.ApplyToScene();
             // Last: it moves furniture the builders above lay out, and switches off plant-room ceiling lights.
