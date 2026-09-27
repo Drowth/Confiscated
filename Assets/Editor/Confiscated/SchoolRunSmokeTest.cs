@@ -213,10 +213,12 @@ namespace Confiscated.EditorTools
                     case 9:
                         Passage(Door("Store cupboard").transform.position,Door("Store cupboard").transform.forward,true,"store door");
                         Reach(Item(4),Item(4).transform.position+new Vector3(0,-Item(4).transform.position.y,-1.25f),Item(4).transform.position+Vector3.up*.15f);Item(4).Interact(P);Need(R.Count==5&&R.ReadyToEscape,"all five enable escape");
+                        var watchers=R.GetComponent<WindowWatchers>();watchers.Refresh();Need(watchers.Showing&&watchers.WindowCount==8&&watchers.HeadCount==16,"grinning heads watch from all eight exterior windows ("+watchers.WindowCount+" windows, "+watchers.HeadCount+" heads)");
                         Need(R.caretaker.SuspicionSeconds<0.7f,"late game keeps the tight base reaction time ("+R.caretaker.SuspicionSeconds.ToString("F2")+"s)");
                         // Only a non-caretaker captor gives detention; the caretaker's own capture is exercised after the win.
                         GameManager.Instance.Caught(R.secondStaff);Need(GameManager.Instance.Current==GameManager.State.Detention&&GameManager.Instance.detention.Active&&R.Detentions==1,"second-staff capture gives detention instead of ending the run");
                         Need(R.Count==4&&!R.Has(4)&&P.HasPhone,"detention removes only latest item and preserves earlier phone");
+                        R.GetComponent<WindowWatchers>().Refresh();Need(!R.GetComponent<WindowWatchers>().Showing,"window watchers leave during detention");
                         Need(R.HasStoreKey&&R.HasBoltCutters&&R.CageOpen&&Door("Store cupboard").IsUnlocked,"detention preserves tools and opened gates");
                         DetentionSmokeTest.CompleteForRegression(GameManager.Instance.detention);Next(10);break;
                     case 10:
