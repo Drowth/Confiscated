@@ -54,6 +54,7 @@ namespace Confiscated.EditorTools
             StaffArea(root);
             var walls=BuildMaze(root,out var desk,out var glueSpot);
             Lighting(root,desk);
+            Windows(root);
             MovePickups(run,desk,glueSpot);
             // Door signs said CLASSROOM 9 / 10.
             foreach(var sign in Object.FindObjectsByType<TextMesh>(FindObjectsInactive.Include).Where(t=>t.text=="CLASSROOM 9"||t.text=="CLASSROOM 10"))
@@ -118,8 +119,8 @@ namespace Confiscated.EditorTools
             var walls=new List<(Vector3,bool)>();
             for(int c=0;c<Cols;c++)for(int r=0;r<Rows;r++)
             {
-                if(east[c,r]){var p=new Vector3(X0+(c+1)*CellW,ShelfHeight/2,Z0+(r+.5f)*CellH);Box(maze,"Bookcase",p,new Vector3(ShelfDepth,ShelfHeight,CellH+ShelfDepth),shelf);walls.Add((p,false));}
-                if(north[c,r]){var p=new Vector3(X0+(c+.5f)*CellW,ShelfHeight/2,Z0+(r+1)*CellH);Box(maze,"Bookcase",p,new Vector3(CellW+ShelfDepth,ShelfHeight,ShelfDepth),shelf);walls.Add((p,true));}
+                if(east[c,r]){var p=new Vector3(X0+(c+1)*CellW,ShelfHeight/2,Z0+(r+.5f)*CellH);Shelf(maze,p,new Vector3(ShelfDepth,ShelfHeight,CellH+ShelfDepth),shelf);walls.Add((p,false));}
+                if(north[c,r]){var p=new Vector3(X0+(c+.5f)*CellW,ShelfHeight/2,Z0+(r+1)*CellH);Shelf(maze,p,new Vector3(CellW+ShelfDepth,ShelfHeight,ShelfDepth),shelf);walls.Add((p,true));}
             }
             // Returns desk in the clearing, open on its south side.
             desk=new Vector3(X0+Clearing.center.x*CellW,0,Z0+(Clearing.center.y+.35f)*CellH);
@@ -128,6 +129,12 @@ namespace Confiscated.EditorTools
             return walls;
         }
 
+        /// <summary>A bookcase, trimmed to the room: the overlap that joins shelves at corners must not poke through the outer walls.</summary>
+        static void Shelf(Transform parent,Vector3 at,Vector3 size,Material m)
+        {
+            float x0=Mathf.Max(at.x-size.x/2,X0+.02f),x1=Mathf.Min(at.x+size.x/2,X1-.02f),z0=Mathf.Max(at.z-size.z/2,Z0+.02f),z1=Mathf.Min(at.z+size.z/2,Z1-.02f);
+            Box(parent,"Bookcase",new Vector3((x0+x1)/2,at.y,(z0+z1)/2),new Vector3(x1-x0,size.y,z1-z0),m);
+        }
         static void Generate(int seed,out bool[,] east,out bool[,] north)
         {
             east=new bool[Cols,Rows];north=new bool[Cols,Rows];
@@ -226,6 +233,71 @@ namespace Confiscated.EditorTools
             glue.transform.position=glueSpot+new Vector3(0,.92f,0);glue.name="Glue bottle - Library";EditorUtility.SetDirty(glue.gameObject);
         }
 
+        // ---------- Windows (corridor side) ----------
+        // South wall looks onto the north cross hall, north wall onto the north hall. Centres along x (world).
+        public static readonly (float z,float x)[] WindowSpots={(81.445f,-27f),(81.445f,-20.5f),(81.445f,-13.5f),(99.665f,-27.5f),(99.665f,-21.5f),(99.665f,-9f)};
+        public const float WindowWidth=1.6f,Sill=1.0f,Lintel=2.05f;
+        static void Windows(Transform root)
+        {
+            var group=new GameObject("Windows").transform;group.SetParent(root,false);
+            var walls=Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include).Where(r=>r.transform.parent!=null&&r.transform.parent.name=="Walls").ToList();
+            var glass=AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/M_Office_ScreenGlass.mat");
+            var frame=AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/M_Painted_Trim_Pencil.mat");
+            foreach(var line in WindowSpots.GroupBy(w=>w.z))
+            {
+                foreach(var wall in walls)
+                {
+                    // The layout builder's wall, even if an earlier run hid it: its box from the mesh, not the (inactive) renderer.
+                    var mesh=wall.GetComponent<MeshFilter>().sharedMesh;var local=mesh.bounds;
+                    Vector3 lo=wall.transform.TransformPoint(local.min),hi=wall.transform.TransformPoint(local.max);
+                    Vector3 min=Vector3.Min(lo,hi),max=Vector3.Max(lo,hi);
+                    if(Mathf.Abs((min.z+max.z)/2-line.Key)>.1f||max.y-min.y<2.9f)continue;
+                    var cuts=line.Select(w=>w.x).Where(x=>x-WindowWidth/2>min.x+.3f&&x+WindowWidth/2<max.x-.3f).OrderBy(x=>x).ToArray();
+                    if(cuts.Length==0)continue;
+                    wall.gameObject.SetActive(false);EditorUtility.SetDirty(wall.gameObject);
+                    var mat=wall.sharedMaterial;float z=(min.z+max.z)/2,depth=max.z-min.z,h=max.y;float from=min.x;
+                    void Piece(float x0,float x1,float y0,float y1)
+                    {
+                        var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name="Library wall ("+wall.name+")";g.transform.SetParent(group,false);
+                        g.transform.position=new Vector3((x0+x1)/2,(y0+y1)/2,z);g.transform.localScale=new Vector3(x1-x0,y1-y0,depth);
+                        g.GetComponent<MeshRenderer>().sharedMaterial=mat;g.layer=wall.gameObject.layer;
+                        GameObjectUtility.SetStaticEditorFlags(g,GameObjectUtility.GetStaticEditorFlags(wall.gameObject));
+                    }
+                    foreach(float x in cuts)
+                    {
+                        float a=x-WindowWidth/2,b=x+WindowWidth/2;
+                        Piece(from,a,0,h);Piece(a,b,0,Sill);Piece(a,b,Lintel,h);from=b;
+                        // Inward: toward the room's centre.
+                        Vector3 inward=new Vector3(0,0,Mathf.Sign(Interior.center.z-z));
+                        var w=new GameObject("Library window").transform;w.SetParent(group,false);w.position=new Vector3(x,0,z);
+                        // Glass on Ignore Raycast: blocks the player, not the caretaker's sight (his mask skips that layer).
+                        var pane=GameObject.CreatePrimitive(PrimitiveType.Cube);pane.name="Glass";pane.transform.SetParent(w,false);
+                        pane.transform.position=new Vector3(x,(Sill+Lintel)/2,z);pane.transform.localScale=new Vector3(WindowWidth,Lintel-Sill,.03f);
+                        pane.GetComponent<MeshRenderer>().sharedMaterial=glass;pane.GetComponent<MeshRenderer>().shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;pane.layer=2;
+                        foreach(float side in new[]{-1f,1f})
+                        {
+                            Trim(w,new Vector3(x+side*(WindowWidth/2-.03f),(Sill+Lintel)/2,z),new Vector3(.06f,Lintel-Sill,depth+.06f),frame);
+                            Trim(w,new Vector3(x,side<0?Sill:Lintel,z),new Vector3(WindowWidth,.06f,depth+.06f),frame);
+                        }
+                        Trim(w,new Vector3(x,(Sill+Lintel)/2,z),new Vector3(.04f,Lintel-Sill,depth+.02f),frame); // centre mullion
+                        Trim(w,new Vector3(x,Sill-.02f,z)+inward*(depth/2+.08f),new Vector3(WindowWidth+.1f,.04f,.16f),frame); // inside sill
+                        // Corridor light falls through it onto the library floor.
+                        var pool=new Vector3(x,0,z)+inward*1.5f;
+                        var lamp=new GameObject("Window light").AddComponent<Light>();lamp.transform.SetParent(w,false);
+                        lamp.transform.position=new Vector3(x,2.0f,z)+inward*.3f;lamp.transform.LookAt(pool);
+                        lamp.type=LightType.Spot;lamp.spotAngle=62;lamp.innerSpotAngle=35;lamp.range=6;lamp.intensity=5.5f;lamp.color=new Color(.86f,.9f,1f);lamp.shadows=LightShadows.Soft;
+                        var marker=w.gameObject.AddComponent<LibraryWindow>();marker.room=Interior;marker.pool=pool;marker.radius=2.2f;EditorUtility.SetDirty(marker);
+                    }
+                    Piece(from,max.x,0,h);
+                }
+            }
+        }
+        static void Trim(Transform parent,Vector3 at,Vector3 size,Material m)
+        {
+            var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name="Window frame";g.transform.SetParent(parent,false);g.transform.position=at;g.transform.localScale=size;
+            Object.DestroyImmediate(g.GetComponent<Collider>());g.GetComponent<MeshRenderer>().sharedMaterial=m;
+        }
+
         // ---------- The shadow (LibraryShadow) ----------
         public const int AlcoveCount=10;
         public const string NoticeText="SILENT STUDY\nPlease keep still\nand quiet.\nNo torches near\nthe books.";
@@ -282,13 +354,18 @@ namespace Confiscated.EditorTools
             var skip=shade.AddComponent<NavMeshModifier>();skip.ignoreFromBuild=true;
             var body=Unlit("M_Library_Shadow",new Color(.01f,.01f,.015f,.75f),true,null,false);
             // The smoke emits from the figure's surface, which needs a readable mesh.
-            var modelImport=(ModelImporter)AssetImporter.GetAtPath(ShadowModel);
-            if(modelImport!=null&&!modelImport.isReadable){modelImport.isReadable=true;modelImport.SaveAndReimport();}
+            ImportRig();
             var model=AssetDatabase.LoadAssetAtPath<GameObject>(ShadowModel);
             if(model==null)throw new InvalidOperationException("Missing "+ShadowModel+" (Docs/LibraryMaze.md: made in Blender).");
             var figure=(GameObject)PrefabUtility.InstantiatePrefab(model,shade.transform);figure.name="Figure";
-            figure.transform.localPosition=Vector3.zero;figure.transform.localRotation=Quaternion.identity;
+            figure.transform.localPosition=Vector3.zero;figure.transform.localRotation=Quaternion.Euler(0,180,0); // the rigged export faces -Z; the shadow faces +Z
             var parts=figure.GetComponentsInChildren<Renderer>().ToList();
+            // Rigged (Blender): Drift while it wanders, Hunt when it comes for you (LibraryShadow drives "Hunting").
+            var animator=figure.GetComponent<Animator>();if(animator==null)animator=figure.AddComponent<Animator>();
+            animator.runtimeAnimatorController=Controller();animator.cullingMode=AnimatorCullingMode.AlwaysAnimate;animator.applyRootMotion=false;
+            foreach(var skinned in figure.GetComponentsInChildren<SkinnedMeshRenderer>()){skinned.updateWhenOffscreen=true;}
+            var headBone=figure.GetComponentsInChildren<Transform>().FirstOrDefault(t=>t.name=="Head");
+            if(headBone==null)throw new InvalidOperationException("The shadow rig has no Head bone.");
             foreach(var r in parts){r.sharedMaterial=body;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;r.receiveShadows=false;}
             foreach(var c in figure.GetComponentsInChildren<Collider>())Object.DestroyImmediate(c);
             // HDR colours: the library darkness pulls exposure down, and the eyes must still burn through it (and bloom).
@@ -300,6 +377,8 @@ namespace Confiscated.EditorTools
                 // Quads face +Z (out of the face); mirrored so both slant down toward the nose.
                 eyes.Add(Quad(shade.transform,"Eye",new Vector3(s*.058f,1.99f,.365f),new Vector3(-s*.1f,.05f,1),eyeMat));
                 eyes.Add(Quad(shade.transform,"Eye glow",new Vector3(s*.058f,1.99f,.375f),new Vector3(.34f,.2f,1),glowMat));
+                // Riding on the head bone, so they follow the lunge.
+                eyes[eyes.Count-2].transform.SetParent(headBone,true);eyes[eyes.Count-1].transform.SetParent(headBone,true);
             }
             // Smoke: puffs off the figure's surface, drifting up and trailing in world space as it glides.
             var smokeGo=new GameObject("Smoke");smokeGo.transform.SetParent(shade.transform,false);
@@ -309,7 +388,7 @@ namespace Confiscated.EditorTools
             main.startSize=new ParticleSystem.MinMaxCurve(.45f,1.05f);main.startRotation=new ParticleSystem.MinMaxCurve(0,Mathf.PI*2);
             main.startColor=new ParticleSystem.MinMaxGradient(new Color(.015f,.015f,.02f,1f),new Color(.05f,.045f,.07f,.85f));
             var emission=smoke.emission;emission.rateOverTime=60;
-            var shape=smoke.shape;shape.shapeType=ParticleSystemShapeType.MeshRenderer;shape.meshRenderer=(MeshRenderer)parts[0];shape.normalOffset=.02f;
+            var shape=smoke.shape;if(parts[0] is SkinnedMeshRenderer skin){shape.shapeType=ParticleSystemShapeType.SkinnedMeshRenderer;shape.skinnedMeshRenderer=skin;}else{shape.shapeType=ParticleSystemShapeType.MeshRenderer;shape.meshRenderer=(MeshRenderer)parts[0];}shape.normalOffset=.02f;
             var rise=smoke.velocityOverLifetime;rise.enabled=true;rise.space=ParticleSystemSimulationSpace.World;
             rise.x=new ParticleSystem.MinMaxCurve(-.04f,.04f);rise.y=new ParticleSystem.MinMaxCurve(.06f,.16f);rise.z=new ParticleSystem.MinMaxCurve(-.04f,.04f);
             var grow=smoke.sizeOverLifetime;grow.enabled=true;grow.size=new ParticleSystem.MinMaxCurve(1,AnimationCurve.Linear(0,.6f,1,1.5f));
@@ -319,10 +398,37 @@ namespace Confiscated.EditorTools
             fade.color=gradient;
             var puff=smokeGo.GetComponent<ParticleSystemRenderer>();puff.renderMode=ParticleSystemRenderMode.Billboard;puff.sortMode=ParticleSystemSortMode.Distance;
             puff.sharedMaterial=Particles("M_Library_ShadowSmoke",Texture("T_ShadowSmoke"),false);puff.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;puff.receiveShadows=false;
-            var ai=shade.AddComponent<LibraryShadow>();
+            var ai=shade.AddComponent<LibraryShadow>();ai.animator=animator;
             ai.alcoves=alcoves.ToArray();ai.entrances=entrances.ToArray();ai.exits=exits.ToArray();ai.silhouette=parts.ToArray();ai.eyes=eyes.ToArray();ai.smoke=smoke;
             ai.room=Interior;ai.areaMask=1<<NavArea;
             shade.transform.SetPositionAndRotation(alcoves[0].position,alcoves[0].rotation);EditorUtility.SetDirty(ai);
+        }
+        const string ShadowController="Assets/Art/Models/Library/LibraryShadow.controller";
+        /// <summary>Generic rig, readable mesh (the smoke emits from it), axis conversion baked, both clips looping.</summary>
+        static void ImportRig()
+        {
+            var importer=(ModelImporter)AssetImporter.GetAtPath(ShadowModel);if(importer==null)throw new InvalidOperationException("Missing "+ShadowModel);
+            bool dirty=!importer.isReadable||importer.animationType!=ModelImporterAnimationType.Generic||!importer.bakeAxisConversion||!importer.importAnimation;
+            importer.isReadable=true;importer.animationType=ModelImporterAnimationType.Generic;importer.bakeAxisConversion=true;importer.importAnimation=true;
+            if(dirty)importer.SaveAndReimport();
+            var clips=importer.clipAnimations.Length>0?importer.clipAnimations:importer.defaultClipAnimations;
+            if(clips.Any(c=>!c.loopTime||c.name!=ClipName(c.takeName)))
+            {foreach(var c in clips){c.loopTime=true;c.name=ClipName(c.takeName);}importer.clipAnimations=clips;importer.SaveAndReimport();}
+        }
+        static string ClipName(string take)=>take.Contains("Hunt")?"Hunt":take.Contains("Drift")?"Drift":take;
+        static RuntimeAnimatorController Controller()
+        {
+            var clips=AssetDatabase.LoadAllAssetsAtPath(ShadowModel).OfType<AnimationClip>().Where(c=>!c.name.StartsWith("__preview")).ToArray();
+            var drift=clips.FirstOrDefault(c=>c.name=="Drift");var hunt=clips.FirstOrDefault(c=>c.name=="Hunt");
+            if(drift==null||hunt==null)throw new InvalidOperationException("The shadow FBX is missing its Drift/Hunt clips.");
+            AssetDatabase.DeleteAsset(ShadowController);
+            var controller=UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(ShadowController);
+            controller.AddParameter("Hunting",AnimatorControllerParameterType.Bool);
+            var sm=controller.layers[0].stateMachine;
+            var driftState=sm.AddState("Drift");driftState.motion=drift;var huntState=sm.AddState("Hunt");huntState.motion=hunt;sm.defaultState=driftState;
+            var go=driftState.AddTransition(huntState);go.hasExitTime=false;go.duration=.2f;go.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If,0,"Hunting");
+            var back=huntState.AddTransition(driftState);back.hasExitTime=false;back.duration=.5f;back.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot,0,"Hunting");
+            AssetDatabase.SaveAssets();return controller;
         }
         const string ShadowModel="Assets/Art/Models/Library/LibraryShadow.fbx",ShadowTextures="Assets/Art/Textures/Library/";
         static Texture2D Texture(string name)

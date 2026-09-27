@@ -78,6 +78,24 @@ namespace Confiscated.EditorTools
                         Check(Shade.entrances.Length==3&&Shade.exits.Length==3&&Shade.entrances.All(e=>InLibrary(e.position))&&Shade.exits.All(e=>!InLibrary(e.position)),"three doors: a point inside and a point outside each");
                         Check(Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None).Count(t=>t.text==LibrarySetup.NoticeText)==3,"a SILENT STUDY notice beside each library door");
                         Check(Object.FindFirstObjectByType<LibraryDarkness>()!=null,"the library darkness is installed");
+                        // Bookcases stay inside the room (their corner overlap used to poke through the outer walls).
+                        Check(Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r=>r.name=="Bookcase").All(r=>r.bounds.min.x>=LibrarySetup.Interior.min.x-.01f&&r.bounds.max.x<=LibrarySetup.Interior.max.x+.01f&&r.bounds.min.z>=LibrarySetup.Interior.min.z-.01f&&r.bounds.max.z<=LibrarySetup.Interior.max.z+.01f),"no bookcase pokes out through the library walls");
+                        // Windows: the caretaker sees in only where a window's light falls.
+                        var windows=LibraryWindow.All;
+                        Check(windows.Count==LibrarySetup.WindowSpots.Length,"six windows in the library's corridor walls ("+windows.Count+")");
+                        var glass=windows[0].transform.Find("Glass").GetComponent<Collider>();
+                        var mask=new SerializedObject(R.caretaker).FindProperty("sightBlockers").intValue;
+                        Check(glass!=null&&glass.gameObject.layer==2&&(mask&(1<<2))==0,"window glass stops the player but not the caretaker's sight");
+                        Check(!LibraryWindow.HiddenInLibrary(windows[0].pool)&&LibraryWindow.HiddenInLibrary(LibrarySetup.Interior.center)&&!LibraryWindow.HiddenInLibrary(Shade.exits[0].position),"in the library only a window's light pool is visible from outside");
+                        {
+                            // Real sight: the caretaker outside a window, the player in its light, then in the dark beside it.
+                            var w=windows[0];Vector3 outward=(w.transform.position-w.pool);outward.y=0;outward.Normalize();
+                            var see=typeof(CaretakerAI).GetMethod("CanSeePlayer",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
+                            R.caretaker.transform.SetPositionAndRotation(w.transform.position+outward*2.5f,Quaternion.LookRotation(-outward));
+                            Warp(w.pool);Physics.SyncTransforms();bool lit=(bool)see.Invoke(R.caretaker,null);
+                            Vector3 dark=w.pool-outward*3.2f;Warp(dark);Physics.SyncTransforms();bool unseen=!(bool)see.Invoke(R.caretaker,null);
+                            Check(lit&&unseen,"through the window he sees you in its light, not in the dark behind it (lit "+lit+", hidden "+unseen+")");
+                        }
                         Check(Bag.Contains(InventoryContainer.Locker,InventoryItemKind.Torch)&&PlayerTorch.Limited,"day play: the torch waits in the locker, on a battery");
                         // Carry something, to check it survives being thrown out.
                         int slot=0;while(slot<8&&!Bag.Move(InventoryContainer.Locker,Bag.Find(InventoryContainer.Locker,InventoryItemKind.Torch),InventoryContainer.Satchel,slot,out _))slot++;

@@ -438,6 +438,8 @@ namespace Confiscated
             Vector3 to = target - eye;
             float dist = to.magnitude;
             if (dist > sightRange) return false;
+            // The library is dark: from outside he only sees a player standing in a window's light (LibraryWindow).
+            if (LibraryWindow.HiddenInLibrary(player.position) && !LibraryWindow.InLibrary(transform.position)) return false;
             Vector3 flat = new Vector3(to.x, 0f, to.z);
             var office=GameManager.Instance?.officeMission;
             bool inOwnOffice=office!=null&&office.officeBounds.Contains(transform.position)&&office.officeBounds.Contains(player.position);

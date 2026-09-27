@@ -19,6 +19,8 @@ namespace Confiscated
         public Renderer[] eyes;
         [Tooltip("Dark smoke that rolls off it and trails behind as it moves.")]
         public ParticleSystem smoke;
+        [Tooltip("Rigged figure: Drift while wandering, Hunt (bool \"Hunting\") while it comes for you.")]
+        public Animator animator;
         public Bounds room;
         public int areaMask=1<<3;
         public float wanderSpeed=1.1f,huntSpeed=3.3f,noticeSeconds=1.3f,reactionSeconds=.3f,lingerSeconds=3;
@@ -164,6 +166,7 @@ namespace Confiscated
             alpha=snap?want:Mathf.MoveTowards(alpha,want,Time.deltaTime*(Current==Phase.Gone?6:2));
             if(skin!=null){var c=skin.GetColor("_BaseColor");c.a=alpha;skin.SetColor("_BaseColor",c);}
             foreach(var r in silhouette)if(r!=null)r.enabled=alpha>.01f;
+            if(animator!=null&&animator.runtimeAnimatorController!=null)animator.SetBool("Hunting",Current==Phase.Hunt);
             if(smoke!=null)
             {
                 var emission=smoke.emission;emission.enabled=Current!=Phase.Gone;
