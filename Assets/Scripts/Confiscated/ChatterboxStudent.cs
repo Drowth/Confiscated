@@ -5,8 +5,8 @@ namespace Confiscated
 {
     /// <summary>
     /// A seated pupil who talks at you. He speaks in the world, not in a cutscene: a slow subtitle and his voice from where
-    /// he sits while you carry on moving, and during the run he is loud enough for the caretaker to hear. Walk away and he
-    /// stops mid-sentence. His first chat is the library rumour; after that he roams chokepoint benches and calls you over
+    /// he sits, and during the run he is loud enough for the caretaker to hear. You're stuck listening (rooted to the spot,
+    /// free to look around) until he finishes; only something dragging you away (a chat teleport) cuts him off. His first chat is the library rumour; after that he roams chokepoint benches and calls you over
     /// from across the corridor. A sweet buys a quiet pass. The wind-up toy does not interest him.
     /// </summary>
     public sealed class ChatterboxStudent : MonoBehaviour
@@ -171,6 +171,8 @@ namespace Confiscated
         }
         void Talk(float distance)
         {
+            // Rooted until he's done. A short rolling hold, not the shared MovementLocked, so it can never outlive the chat.
+            movement?.GlueFeet(.2f);
             int letters=Mathf.Min(Words.Length,Mathf.FloorToInt((Time.time-talkStart)*lettersPerSecond));
             Shown=Words.Substring(0,letters);
             HudController.Instance?.SetBark("Chatterbox: "+Shown,.3f);

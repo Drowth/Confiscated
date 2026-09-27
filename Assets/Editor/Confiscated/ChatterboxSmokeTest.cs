@@ -77,13 +77,14 @@ namespace Confiscated.EditorTools
                     case 2:
                         if(!C.Talking){if(elapsed>2)throw new Exception("passing him did not start his chat");return;}
                         Check(C.Words==ChatterboxStudent.RumourLine,"the first meeting is his library rumour");
-                        Check(Time.timeScale==1&&!ComicDialogue.IsActive&&!P.InputLocked&&!F.MovementLocked,"his chat does not pause the game or lock the player");
+                        Check(Time.timeScale==1&&!ComicDialogue.IsActive&&!P.InputLocked&&!F.MovementLocked,"his chat does not pause the game or take over the player (a cutscene)");
                         // Strafe along the corridor (backwards would hit the far wall).
                         lockedPosition=P.transform.position;InputSystem.QueueStateEvent(keys,new KeyboardState(Key.D));Next();break;
                     case 3:
                         if(C.Talking)
                         {
-                            if(elapsed>.6&&!moved){moved=Vector3.Distance(P.transform.position,lockedPosition)>.3f;InputSystem.QueueStateEvent(keys,new KeyboardState());}
+                            if(elapsed>.6&&!moved){moved=Vector3.Distance(P.transform.position,lockedPosition)>.3f;if(elapsed>1.5)InputSystem.QueueStateEvent(keys,new KeyboardState());}
+                            if(elapsed>1.5&&!moved)moved|=Vector3.Distance(P.transform.position,lockedPosition)>.3f;
                             if(shownAt2<0&&elapsed>=2)shownAt2=C.Shown.Length;
                             if(C.MouthOpen&&!sawOpen&&C.Shown.Length>32){sawOpen=true;ScreenCapture.CaptureScreenshot("../Docs/Chatterbox_Talking_Open.png");}
                             if(sawOpen&&!C.MouthOpen&&!sawClosed){sawClosed=true;ScreenCapture.CaptureScreenshot("../Docs/Chatterbox_Talking_Closed.png");}
@@ -91,7 +92,7 @@ namespace Confiscated.EditorTools
                             if(elapsed>20)throw new Exception("conversation failed to end");return;
                         }
                         InputSystem.QueueStateEvent(keys,new KeyboardState());
-                        Check(moved,"the player can walk while he talks");
+                        Check(!moved,"the player is held on the spot while he talks");
                         Check(shownAt2>=20&&shownAt2<=40,"the subtitle types slowly ("+shownAt2+" letters after 2 s)");
                         Check(sawOpen&&sawClosed&&sawVoice,"two mouth states with audible chatter during speech");
                         Check(noises>0,"his chatter is loud: the caretaker can hear it ("+noises+" noises)");
@@ -112,7 +113,7 @@ namespace Confiscated.EditorTools
                         Warp(SchoolPlan.Point(465,1100));Next();break;
                     case 7:
                         if(elapsed<.3)return;
-                        Check(!C.Talking&&C.CutOffs==1&&!C.MouthOpen,"walking away cuts him off mid-sentence");
+                        Check(!C.Talking&&C.CutOffs==1&&!C.MouthOpen,"being dragged away (e.g. a chat teleport) cuts him off mid-sentence");
                         ComicDialogue.TrySpeak("Mr Reed: Hello, Smith.");Next();break;
                     case 8:
                         if(elapsed<.8)return;
