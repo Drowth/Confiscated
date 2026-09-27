@@ -31,7 +31,7 @@ namespace Confiscated.EditorTools
             EditorApplication.playModeStateChanged+=s=>
             {
                 if(s!=PlayModeStateChange.EnteredPlayMode||!File.Exists(Marker))return;
-                File.Delete(Marker);stage=0;lastFrame=-1;started=at=EditorApplication.timeSinceStartup;
+                File.Delete(Marker);stage=0;lastFrame=-1;LibraryShadow.ResetSession();started=at=EditorApplication.timeSinceStartup;
                 File.WriteAllText(Report,"Library shadow: real scene, real player movement, the shadow under its own AI; checkpoint warps for setup.\n");
                 background=Application.runInBackground;Application.runInBackground=true;EditorApplication.update+=Tick;
             };
@@ -110,6 +110,7 @@ namespace Confiscated.EditorTools
                         if(elapsed<3)return;
                         Check(Object.FindFirstObjectByType<LibraryDarkness>().GetComponent<UnityEngine.Rendering.Volume>().weight>.5f,"inside the library it is dark");
                         Check(Shade.Notices==0&&Shade.Catches==0&&Shade.Current!=LibraryShadow.Phase.Hunt,"standing still in the dark, it ignores you ("+Shade.Current+")");
+                        Check(LibraryShadow.Shushed&&Resources.Load<AudioClip>("Audio/LibraryShush")!=null,"the library shushes you the first time you walk in");
                         Aisle(0);Warp(stand);PlaceShadow();Next();break;
                     case 2:
                         // Walk about in front of it: noticed, then hunted, then caught.

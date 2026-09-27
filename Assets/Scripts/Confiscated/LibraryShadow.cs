@@ -43,6 +43,9 @@ namespace Confiscated
         public const float JumpscareSeconds=.9f,SpottedCooldown=20,SpottedRange=14;
         public int Spotted {get;private set;}
         public bool Catching=>catching;
+        /// <summary>The library shushes you the first time you walk in (once per session).</summary>
+        public static bool Shushed {get;private set;}
+        public static void ResetSession()=>Shushed=false;
         Vector3 lastPlayer;bool havePlayer;float alpha;AudioClip catchClip;
 
         void Start()
@@ -74,6 +77,7 @@ namespace Confiscated
             Vector3 step=at-lastPlayer;step.y=0;float speed=havePlayer&&Time.deltaTime>0?step.magnitude/Time.deltaTime:0;
             PlayerSpeed=speed>12?0:Mathf.Lerp(PlayerSpeed,speed,Mathf.Clamp01(Time.deltaTime*12));lastPlayer=at;havePlayer=true;
             bool inside=Inside(at);
+            if(inside&&!Shushed){Shushed=true;var shush=Resources.Load<AudioClip>("Audio/LibraryShush");if(shush!=null)sting.PlayOneShot(shush,.9f);}
             // Out of the library: it forgets the player and goes back to drifting.
             if(!inside&&(Current==Phase.Notice||Current==Phase.Hunt))Wander();
             switch(Current)
