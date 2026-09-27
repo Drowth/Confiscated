@@ -56,7 +56,7 @@ namespace Confiscated.EditorTools
             center.y = .05f; Warp(center - forward * 1.3f);
             for (int i = 0; i < 100; i++) F.Controller.Move(forward * .026f);
             float crossed = Vector3.Dot(P.transform.position - center, forward);
-            Need((crossed > F.Controller.radius) == open, label + " player collider " + (open ? "passes" : "blocked") + " (beyond threshold: " + crossed.ToString("F2") + " m)");
+            Need((crossed > F.Controller.radius) == open, label + " player collider " + (open ? "passes" : "blocked") + " (beyond threshold: " + crossed.ToString("F2") + " m" + (open && crossed <= F.Controller.radius ? "; blocked by " + string.Join(",", Physics.OverlapSphere(P.transform.position + Vector3.up + forward * .5f, .45f).Where(c => !c.transform.IsChildOf(P.transform)).Select(c => c.name + "@" + c.transform.parent?.name)) : "") + ")");
         }
         static string LookPrompt(Vector3 from, Vector3 target)
         {
@@ -139,6 +139,10 @@ namespace Confiscated.EditorTools
                         if (now - at < 1.2) return;
                         R.caretaker.Freeze();
                         Need(Doors.All(d => d.IsOpen && !d.barrier.activeSelf), "every corridor gate has swung open and dropped its barrier");
+                        // The dinner lady's trolley rolls through the north cross hall doors on her round: pause it and take its
+                        // body out of the way so the check measures the doors, not whether she happens to be passing.
+                        var dinner = Object.FindFirstObjectByType<DinnerTrolleyPatrol>(); var dinnerBody = dinner.GetComponentsInChildren<Collider>().Where(c => c.enabled).ToArray();
+                        dinner.enabled = false; foreach (var c in dinnerBody) c.enabled = false;
                         foreach (var g in LessonGateSetup.Gates)
                         {
                             var d = Doors.First(x => x.name == g.name);
@@ -149,6 +153,7 @@ namespace Confiscated.EditorTools
                             }
                             Passage(g.Position, -g.wing, true, g.name);
                         }
+                        dinner.enabled = true; foreach (var c in dinnerBody) c.enabled = true;
                         // The caretaker's desk (OfficeRefitSetup moved it; the old spot is behind the plant-room partition).
                         Vector3 office = R.period.officeDrop.position;
                         foreach (var o in Objectives) Reachable(office, o.point, "run objective: " + o.label);

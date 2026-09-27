@@ -176,7 +176,7 @@ namespace Confiscated
             if(Current!=Phase.Delivery||!inventory.HasCarried(InventoryItemKind.Newsletters)||Vector3.Distance(Player.transform.position,deliveryTray.transform.position)>3)return;
             inventory.RemoveCarried(InventoryItemKind.Newsletters);PapersDelivered=true;Current=Phase.Return;Objective();
             TempAudio.PlayAt(TempAudio.Pickup,Player.ViewCamera.transform.position,.65f);
-            HudController.Instance?.SetStatus(QuickOpening ? "Newsletters delivered! Now find the office key on the dining-hall trolley." : "Newsletters delivered! Return to Mr Reed in Year 6.",5);
+            HudController.Instance?.SetStatus(QuickOpening ? "Newsletters delivered! The office key is on the caretaker's trolley - follow it, unseen." : "Newsletters delivered! Return to Mr Reed in Year 6.",5);
             var stack=deliveryTray.transform.Find("Delivered papers");if(stack!=null)stack.gameObject.SetActive(true);
         }
         public void PrepareChaseRetry()
@@ -228,7 +228,10 @@ namespace Confiscated
                 string next=Current==Phase.PhoneRinging?"Your phone is ringing...":Current==Phase.Confiscation?"Your phone is being taken to the caretaker's office.":
                     !PapersDelivered?"Deliver the newsletters to the office tray.":
                     GameManager.Instance.officeMission.OfficeUnlocked?"Recover your phone from the CONFISCATED box.":
-                    inventory.HasCarried(InventoryItemKind.OfficeKey)?"Unlock the caretaker's office door.":"Find the office key on the DINING HALL trolley.";
+                    inventory.HasCarried(InventoryItemKind.OfficeKey)?"Unlock the caretaker's office door.":
+                    SchoolRunController.Instance!=null&&!SchoolRunController.Instance.TrolleyParked?"Follow the caretaker's trolley to the DINING HALL. Stay out of sight.":
+                    SchoolRunController.Instance!=null&&SchoolRunController.Instance.KeyWindowOpen?"His back is turned - take the office key from his trolley, quick!":
+                    "Take the office key from his trolley in the DINING HALL.";
                 HudController.Instance?.SetObjective((PapersDelivered?"Belongings recovered: 0/5\n":"")+next);
                 return;
             }

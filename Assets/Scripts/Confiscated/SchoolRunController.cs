@@ -57,6 +57,20 @@ namespace Confiscated
         /// <summary>The player has taken the office key themselves at least once since the school day began. Survives the
         /// retry scene reload; cleared when a new school day starts (GameManager.BeginSchoolDay).</summary>
         public static bool KeyEarned { get; set; }
+        public const float KeyWindowSeconds = 15f;
+        bool keyWindowOffered;
+        /// <summary>The caretaker is at the serving hatch with his back to his parked trolley.</summary>
+        public bool KeyWindowOpen => keyWindowOffered && caretaker != null && caretaker.ChatArrived;
+        void Start()
+        {
+            // The errand: he takes the phone to his office and wheels the trolley to the dining hall at a pace the player can
+            // follow, with short stops, so there is no dead time. SetRunPressure restores the run's pace and dwells.
+            if (!RoundStarted && caretaker != null && caretaker.patrol.Count > 1)
+            {
+                caretaker.SetErrandPace(2.3f);
+                caretaker.patrol[0].dwellSeconds = 2; caretaker.patrol[1].dwellSeconds = 2;
+            }
+        }
         public void PrepareChaseRetry()
         {
             trolley.SetPositionAndRotation(trolleyDock.position,trolleyDock.rotation);
@@ -146,6 +160,17 @@ namespace Confiscated
                     TrolleyParked = true;
                     foreach (var c in cartColliders) c.enabled = true;
                 }
+            }
+            // Once the newsletters are in and his trolley is parked, the dinner lady calls him over to the serving hatch: he
+            // stands with his back to the trolley for a short while - the window to lift the office key.
+            if (!RoundStarted && !keyWindowOffered && TrolleyParked && period.PapersDelivered && !period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey))
+            {
+                keyWindowOffered = true;
+                Vector3 dock = trolleyDock.position, spot = dock + new Vector3(5f, 0, -3.6f);
+                if (NavMesh.SamplePosition(spot, out var hatch, 1.5f, NavMesh.AllAreas)) spot = hatch.position;
+                Vector3 away = spot - dock; away.y = 0;
+                caretaker.Chat(spot, away.normalized, KeyWindowSeconds);
+                HudController.Instance?.SetBark("Dinner lady: Have you got a minute, love? The freezer's making that noise again.", 5f);
             }
             if (RoundStarted && Time.time >= pursuitPulse)
             {

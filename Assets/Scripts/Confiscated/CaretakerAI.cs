@@ -105,7 +105,7 @@ namespace Confiscated
 
         public void Freeze()
         {
-            state = State.Frozen;
+            state = State.Frozen;chatting = false;
             if(voice!=null)voice.Stop();
             cutoutMotion?.SetFrozen(true);
             if (agent.isOnNavMesh) agent.isStopped = true;
@@ -162,7 +162,7 @@ namespace Confiscated
 
             switch (state)
             {
-                case State.Patrol: TickPatrol(); break;
+                case State.Patrol: if (chatting) TickChat(); else TickPatrol(); break;
                 case State.Investigate: TickInvestigate(); break;
                 case State.Chase: TickChase(sees); break;
                 case State.Search: TickSearch(); break;
@@ -252,7 +252,7 @@ namespace Confiscated
         void EnterChase()
         {
             state = State.Chase;
-            dwelling = false;
+            dwelling = false;chatting = false;
             if(passCheck==null||!passCheck.WitnessedOffence){HudController.Instance?.SetStatus("The caretaker has seen you! LEG IT!", 2.5f);ShoutSpotted();}
             GoTo(player.position, chaseSpeed);
         }
@@ -342,6 +342,26 @@ namespace Confiscated
             ignorePlayerUntil=0;
             OnNoise(position,float.MaxValue,"copycat");
         }
+        // A scripted pause in his patrol: walk to a spot, stand there facing one way for a while (the dinner lady calling
+        // him over after he parks his trolley). Anything that would end his patrol (a noise, seeing the player) ends it too.
+        bool chatting,chatArrived;Vector3 chatSpot,chatFacing;float chatSeconds,chatEnds;
+        public bool Chatting=>chatting&&state==State.Patrol;
+        /// <summary>At the chat spot, facing away (not still walking there).</summary>
+        public bool ChatArrived=>Chatting&&chatArrived;
+        /// <summary>During the newsletter errand he is a brisk walker the player can follow (SetRunPressure resets it).</summary>
+        public void SetErrandPace(float speed){patrolSpeed=speed;if(state==State.Patrol&&!dwelling&&agent.isOnNavMesh)agent.speed=speed;}
+        public void Chat(Vector3 spot,Vector3 facing,float seconds)
+        {
+            if(state==State.Frozen||state==State.Chase)return;
+            chatting=true;chatArrived=false;chatSpot=spot;chatFacing=facing;chatSeconds=seconds;
+            state=State.Patrol;dwelling=false;GoTo(spot,patrolSpeed);
+        }
+        void TickChat()
+        {
+            if(!chatArrived){if(Arrived()){chatArrived=true;chatEnds=Time.time+chatSeconds;}return;}
+            SetFacing(chatFacing);
+            if(Time.time>=chatEnds){chatting=false;ResumePatrol();}
+        }
         public void PauseForPass(bool pause){if(agent.isOnNavMesh&&(pause||state!=State.Frozen))agent.isStopped=pause||IsGlued;}
         public void ApproachForPass(Vector3 position){GoTo(position,chaseSpeed);}
         public float PassApproachMemorySeconds=>loseSightSeconds;
@@ -357,7 +377,7 @@ namespace Confiscated
             if (IsGlued || state == State.Chase || state == State.Frozen || Time.time < ignorePlayerUntil) return;
             if (Vector3.Distance(transform.position, pos) > radius) return;
             state = State.Investigate;
-            dwelling = false;
+            dwelling = false;chatting = false;
             arrivedAtPoi = false;
             pointOfInterest = pos;
             if (NavMesh.SamplePosition(pos, out var hit, 2f, NavMesh.AllAreas)) pointOfInterest = hit.position;
