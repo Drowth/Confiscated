@@ -35,6 +35,7 @@ Material:
     m_Floats:
     - _EdgeRepeat: 0.45
     - _EdgeWidth: 0.01
+    - _Outdoor: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 0.98, b: 0.9, a: 1}
     - _EdgeColor: {r: 0.16, g: 0.21, b: 0.36, a: 1}
