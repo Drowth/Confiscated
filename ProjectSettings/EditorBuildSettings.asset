@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/StudioSplash.unity
+    guid: 32c4d5effe471344e8a382944c33c93c
+  - enabled: 1
     path: Assets/Scenes/SchoolLayout.unity
     guid: aef97eddbdd0be748bf5d96eb0c0f213
   - enabled: 1
