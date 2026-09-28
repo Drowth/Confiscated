@@ -46,7 +46,7 @@ namespace Confiscated.EditorTools
             glass=Glass();tag=Tint("M_Office_KeyTag",paper,new Color(1f,.95f,.8f));screen=Tint("M_Office_Screen",ink,new Color(.16f,.22f,.26f));
 
             OpenDoor(run);RetireEquipmentKey();
-            Waiting();Counter();BackOffice();Cabinet();CorridorHatch();
+            Waiting();Counter();BackOffice();Cabinet();CorridorHatch();Lighting();
             // Tripo models over the corridor hatch and photocopier; the furniture pass ran before this office was rebuilt.
             FurnitureModelSetup.ApplyToScene(FurnitureModelSetup.SchoolOfficeModels);
             foreach(var sign in Object.FindObjectsByType<TextMesh>(FindObjectsInactive.Include,FindObjectsSortMode.None).Where(t=>t.text=="CLASSROOM 4"))
@@ -81,9 +81,30 @@ namespace Confiscated.EditorTools
             Solid(g,"Low table",new Vector3(8.0f,.22f,15.2f),new Vector3(1.2f,.44f,.6f),wood);
             for(int i=0;i<3;i++){var mag=Box(g,"Magazine",new Vector3(7.7f+i*.28f,.452f,15.15f+(i%2)*.08f),new Vector3(.21f,.008f,.28f),i==1?teal:paper,false);mag.transform.rotation=Quaternion.Euler(0,-12+i*14,0);}
             Prefab("Assets/Prefabs/Props/P_Noticeboard.prefab",g,"Office noticeboard",new Vector3(8.5f,1.65f,North-.03f),180);
-            Prefab("Assets/Prefabs/Hallway/P_Hall_TrophyCabinet_Generated.prefab",g,"Office trophy cabinet",new Vector3(18.3f,0,North-.35f),180);
+            Prefab("Assets/Prefabs/Hallway/P_Hall_TrophyCabinet_Generated.prefab",g,"Office trophy cabinet",new Vector3(18.3f,0,North-.39f),90); // as in the north hall: yaw 90 puts its back (0.78 m deep) on a north wall
             Prefab("Assets/Prefabs/Hallway/P_Hall_LitterBin.prefab",g,"Waiting bin",new Vector3(11.8f,0,16.8f),0);
-            Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(.95f,.36f),180,.011f);
+            // "PLEASE WAIT TO BE SEEN" is painted on the reception counter model (FurnitureModelSetup).
+            if(!PickupModelSetup.Has("OfficeReceptionCounter",FurnitureModelSetup.Folder))Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(.95f,.36f),180,.011f);
+        }
+
+        /// <summary>
+        /// The layout's light grid gives the office four fittings with a 7.8 m dark strip between them; two more go down the
+        /// middle, set like the others. A small warm lamp lights the trophies. Dark Mode and blackouts gather every light.
+        /// </summary>
+        static void Lighting()
+        {
+            var g=Group("Office lighting");
+            var like=Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude,FindObjectsSortMode.None).Where(t=>t.name=="P_CeilingLight"&&!t.IsChildOf(root)&&Interior.Contains(t.position+Vector3.up))
+                .Select(t=>t.GetComponentInChildren<Light>()).FirstOrDefault(l=>l!=null);
+            foreach(float z in new[]{7.0f,13.9f})
+            {
+                var fitting=Prefab("Assets/Prefabs/Modular/P_CeilingLight.prefab",g,"P_CeilingLight",new Vector3((West+East)/2,0,z),0);
+                var l=fitting.GetComponentInChildren<Light>();
+                if(l!=null&&like!=null){l.intensity=like.intensity;l.range=like.range;l.color=like.color;l.shadows=like.shadows;l.transform.localPosition=like.transform.localPosition;EditorUtility.SetDirty(l);PrefabUtility.RecordPrefabInstancePropertyModifications(l);PrefabUtility.RecordPrefabInstancePropertyModifications(l.transform);}
+            }
+            var trophies=new GameObject("Trophy cabinet light").AddComponent<Light>();trophies.transform.SetParent(g,false);
+            trophies.transform.position=new Vector3(18.3f,1.45f,North-.35f);
+            trophies.type=LightType.Point;trophies.color=new Color(1f,.88f,.66f);trophies.intensity=.9f;trophies.range=1.1f;trophies.shadows=LightShadows.None;
         }
 
         // ---------- Reception counter with a glass screen and a serving hatch ----------
@@ -293,8 +314,8 @@ namespace Confiscated.EditorTools
 
         const string KeyFolder="Assets/Art/Models/SchoolProps/Keys/";
         const float KeyLength=.28f; // a little over life size, so the painted tags read from arm's length
-        /// <summary>Tripo key per label, its tag painted on. BOILER and STAFF have none yet and keep the drawn key.</summary>
-        static readonly (string label,string model)[] KeyArt={("STORE","KeyStore"),("PE SHED","KeyPEShed"),("KITCHEN","KeyKitchen"),("HALL","KeyHall"),("MINIBUS","KeyMinibus"),("LIBRARY","KeyLibrary"),("ROOF","KeyRoof"),("GATES","KeyGates")};
+        /// <summary>Tripo key per label, its tag painted on. A label without one keeps the drawn key and tag.</summary>
+        static readonly (string label,string model)[] KeyArt={("STORE","KeyStore"),("PE SHED","KeyPEShed"),("KITCHEN","KeyKitchen"),("HALL","KeyHall"),("MINIBUS","KeyMinibus"),("LIBRARY","KeyLibrary"),("ROOF","KeyRoof"),("GATES","KeyGates"),("BOILER","KeyBoiler"),("STAFF","KeyStaff")};
         /// <summary>Hook i starts with Labels[i]; KeyCabinet moves each model to wherever the shuffle puts its label.</summary>
         static void KeyModels(KeyCabinet cabinet)
         {

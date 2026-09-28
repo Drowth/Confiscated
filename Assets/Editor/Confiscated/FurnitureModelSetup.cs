@@ -23,8 +23,8 @@ namespace Confiscated.EditorTools
         enum Facing { AwayFromWall, TowardWall, AlongForward, AwayFromNearestWall }
         /// <summary>models (several = variants picked per piece), how to find each target, which child parts stay visible,
         /// loose parts beside it that belong to the piece, and whether to keep the model's proportions inside the space.</summary>
-        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform;}
-        public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner"};
+        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform,flush;public Vector3? front;}
+        public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter"};
         static readonly Job[] Jobs=
         {
             new Job{models=new[]{"FilingCabinet"},match=t=>t.name=="FilingCabinet"},
@@ -43,6 +43,13 @@ namespace Confiscated.EditorTools
             new Job{models=new[]{"OfficeServingHatch"},match=t=>t.name=="Corridor hatch",uniform=true},
             new Job{models=new[]{"OfficePrinterScanner"},match=t=>t.name=="Photocopier",facing=Facing.AwayFromNearestWall,uniform=true,
                 extras=t=>t.parent.Cast<Transform>().Where(s=>s.name=="Photocopier lid").Select(s=>s.GetComponent<Renderer>()).Where(r=>r!=null)},
+            // Reception counter over the long west run: the model's RECEPTION sign and open screen frame stand in for the box
+            // screen (its glass keeps colliding, unseen); the east run past the staff gap, the desk things and the jar stay.
+            new Job{models=new[]{"OfficeReceptionCounter"},match=t=>t.name=="Reception counter",front=Vector3.forward,
+                keep=p=>new[]{"East counter","East counter top","Bell base","Desk bell","Sign-in book","Counter monitor","STAFF plaque","STAFF"}.Contains(p.name)},
+            // Staff pigeonholes: the box and its loose slots and post; wide and tall as the old unit, deeper, back on the wall.
+            new Job{models=new[]{"OfficePigeonholes"},match=t=>t.name=="Pigeonholes",uniform=true,flush=true,
+                extras=t=>t.parent.Cast<Transform>().Where(s=>(s.name=="Pigeonhole"||s.name=="Post")&&Mathf.Abs(s.position.z-t.position.z)<1f).Select(s=>s.GetComponent<Renderer>()).Where(r=>r!=null)},
         };
 
         [MenuItem("Confiscated/School Run/Apply Furniture Models (Codex batch 4)")]
@@ -100,7 +107,9 @@ namespace Confiscated.EditorTools
             // holder's own axes lies along it, which also holds under a rotated or scaled target (a locker box).
             var have=Bounds(holder);var scale=holder.localScale;
             Vector3 fit=new(space.size.x/Mathf.Max(have.size.x,.001f),space.size.y/Mathf.Max(have.size.y,.001f),space.size.z/Mathf.Max(have.size.z,.001f));
-            if(job.uniform)fit=Vector3.one*Mathf.Min(fit.x,fit.y,fit.z); // largest that fits, standing on the footprint's middle
+            // Largest that fits, standing on the footprint's middle; `flush` leaves depth free (the back goes to the wall below).
+            Vector3 front=Quaternion.Euler(0,yaw,0)*Vector3.left;bool frontX=Mathf.Abs(front.x)>Mathf.Abs(front.z);
+            if(job.uniform)fit=Vector3.one*(job.flush?Mathf.Min(fit.y,frontX?fit.z:fit.x):Mathf.Min(fit.x,fit.y,fit.z));
             var axes=new[]{holder.right,holder.up,holder.forward};
             for(int w=0;w<3;w++)
             {
@@ -110,6 +119,7 @@ namespace Confiscated.EditorTools
             }
             holder.localScale=scale;
             var now=Bounds(holder);holder.position+=new Vector3(space.center.x-now.center.x,space.min.y-now.min.y,space.center.z-now.center.z);
+            if(job.flush){now=Bounds(holder);var f=frontX?Vector3.right*Mathf.Sign(front.x):Vector3.forward*Mathf.Sign(front.z);float back=Vector3.Dot(space.center,f)-Vector3.Dot(space.extents,Abs(f)),mine=Vector3.Dot(now.center,f)-Vector3.Dot(now.extents,Abs(f));holder.position+=f*(back-mine);}
             // Furniture follows the room's light, like the office props.
             foreach(var r in holder.GetComponentsInChildren<Renderer>())
             {r.shadowCastingMode=ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
@@ -126,7 +136,8 @@ namespace Confiscated.EditorTools
         {
             bool longX=space.size.x>=space.size.z;
             Vector3 across=longX?Vector3.forward:Vector3.right,front=across;
-            if(job.facing!=Facing.AlongForward)
+            if(job.front.HasValue)front=job.front.Value; // the public side, when no wall says which way it faces
+            else if(job.facing!=Facing.AlongForward)
             {
                 float Hit(Vector3 d)=>Physics.Raycast(new Vector3(space.center.x,space.min.y+.5f,space.center.z),d,out var h,4f,~0,QueryTriggerInteraction.Ignore)&&!h.transform.IsChildOf(target)?h.distance:99;
                 var wall=Hit(across)<Hit(-across)?across:-across;
@@ -145,6 +156,7 @@ namespace Confiscated.EditorTools
             return (Quaternion.LookRotation(front)*Quaternion.Euler(0,90,0)).eulerAngles.y;
         }
 
+        static Vector3 Abs(Vector3 v)=>new(Mathf.Abs(v.x),Mathf.Abs(v.y),Mathf.Abs(v.z));
         static Bounds Bounds(Transform root){var rs=root.GetComponentsInChildren<Renderer>();var b=rs[0].bounds;foreach(var r in rs)b.Encapsulate(r.bounds);return b;}
     }
 }
