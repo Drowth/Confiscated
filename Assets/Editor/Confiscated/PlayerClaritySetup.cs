@@ -37,11 +37,8 @@ namespace Confiscated.EditorTools
             Sign("Office corridor midway",new Vector3(-33.85f,2.25f,65),0,"OFFICE\nNEWSLETTER DELIVERY",new Vector2(1.9f,.63f),yellow);
             Sign("Office destination",new Vector3(-35.47f,1.9f,79.3f),270,"OFFICE\nNEWSLETTERS HERE",new Vector2(1.65f,.63f),yellow);
             Sign("Dining return direction",new Vector3(-32.3f,1.95f,77.5f),90,"DINING HALL  >\nOFFICE KEY ON TROLLEY",new Vector2(1.9f,.63f),paper);
-            foreach(var door in Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None))
-            {
-                string name=door.name=="North room B south"?"RESOURCES":door.name=="East room B west"?"EQUIPMENT":door.name=="Store cupboard"?"STORE":null;
-                if(name!=null)Sign(name+" property sign",door.transform.position-door.transform.forward*.12f+Vector3.up*2.12f,door.transform.eulerAngles.y,name+"\nCONFISCATED PROPERTY",new Vector2(1.7f,.55f),paper);
-            }
+            // A third sign repeating what SchoolRunSetup's own "<lock name> LOCKED STORAGE" door notice and
+            // ClassroomReadabilitySetup's small door caption already say; removed as redundant clutter on these doors.
             UpdateDescriptions();
             var surface=Object.FindFirstObjectByType<Unity.AI.Navigation.NavMeshSurface>();
             if(surface!=null&&surface.navMeshData!=null&&AssetDatabase.Contains(surface.navMeshData))DiningHallSetup.Rebake();
