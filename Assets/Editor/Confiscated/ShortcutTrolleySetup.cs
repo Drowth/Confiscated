@@ -14,27 +14,29 @@ namespace Confiscated.EditorTools
             foreach(var child in gate.transform.Cast<Transform>().ToArray())if(child.name=="Supply trolley"||child.name=="Sketched supply trolley")Object.DestroyImmediate(child.gameObject);
             var old=gate.GetComponent<NavMeshObstacle>();if(old!=null)Object.DestroyImmediate(old);
             var body=new GameObject("Sketched supply trolley").transform;body.SetParent(gate.transform,false);body.localRotation=Quaternion.Euler(0,90,0);
-            var boxSize=new Vector3(2.84f,1.12f,.73f);
-            // The user's own DinnerTrolley model, stretched to this shortcut's longer footprint, in place of the
-            // hand-drawn "supplies" dressing -- FurnitureModelSetup's generic swap never reaches this one (RunGate is
-            // an Interactable, and its swap filter skips every renderer under any Interactable), so fit it directly.
-            if(!ApplyStretchedTrolley(body,boxSize))TrolleyArtSetup.ApplyVisual(body,true);
-            var collider=body.gameObject.AddComponent<BoxCollider>();collider.center=new Vector3(0,.56f,0);collider.size=boxSize;
+            // The user's own DinnerTrolley model, same undistorted proportions as the dining one (uniform scale, no
+            // per-axis stretch -- that looked bad), in place of the hand-drawn "supplies" dressing. FurnitureModelSetup's
+            // generic swap never reaches this one (RunGate is an Interactable, and its swap filter skips every renderer
+            // under any Interactable), so it's placed directly; the collider/obstacle then match its real bounds.
+            var bounds=ApplyTrolleyModel(body);
+            if(bounds==null){TrolleyArtSetup.ApplyVisual(body,true);bounds=new Vector3(2.84f,1.12f,.73f);}
+            var size=bounds.Value;
+            var collider=body.gameObject.AddComponent<BoxCollider>();collider.center=new Vector3(0,size.y/2,0);collider.size=size;
             var nav=body.gameObject.AddComponent<NavMeshObstacle>();nav.center=collider.center;nav.size=collider.size;nav.carving=true;nav.carveOnlyStationary=false;
             gate.obstacle=body;gate.clearedLocalPosition=new Vector3(0,0,1.3f);gate.clearedLocalEuler=Vector3.zero;
             EditorUtility.SetDirty(gate);
         }
-        /// <summary>Places DinnerTrolley under body and non-uniformly stretches it to exactly fill boxSize (local
-        /// axes, body's own space). Returns false (caller falls back to the hand-drawn dressing) if the model
-        /// isn't present.</summary>
-        static bool ApplyStretchedTrolley(Transform body,Vector3 boxSize)
+        /// <summary>Places DinnerTrolley under body at the same scale as the real dining trolley (no stretch), resting
+        /// on the floor. Returns its local-space size (for the collider/obstacle), or null if the model isn't present
+        /// (caller falls back to the hand-drawn dressing).</summary>
+        static Vector3? ApplyTrolleyModel(Transform body)
         {
             var holderRoot=new GameObject(FurnitureModelSetup.RootName).transform;holderRoot.SetParent(body,false);
-            if(!PickupModelSetup.Place(holderRoot,"DinnerTrolley",Mathf.Max(boxSize.x,boxSize.y,boxSize.z),0,0,FurnitureModelSetup.Folder))
-            {Object.DestroyImmediate(holderRoot.gameObject);return false;}
+            if(!PickupModelSetup.Place(holderRoot,"DinnerTrolley",1.26f,0,0,FurnitureModelSetup.Folder))
+            {Object.DestroyImmediate(holderRoot.gameObject);return null;}
             var holder=holderRoot.GetChild(0);
-            // body is itself rotated (90 from its parent), so world-space renderer bounds don't line up with boxSize's
-            // axes (that's body-local, matching the BoxCollider below) -- measure and fit in body's local space instead.
+            // body is itself rotated (90 from its parent), so world-space renderer bounds don't line up with its own
+            // local axes (which the BoxCollider below is defined in) -- measure in body's local space instead.
             Bounds LocalBounds()
             {
                 var renderers=holder.GetComponentsInChildren<Renderer>();
@@ -44,12 +46,9 @@ namespace Confiscated.EditorTools
                 return b;
             }
             var have=LocalBounds();
-            Vector3 fit=new(boxSize.x/Mathf.Max(have.size.x,.001f),boxSize.y/Mathf.Max(have.size.y,.001f),boxSize.z/Mathf.Max(have.size.z,.001f));
-            holder.localScale=Vector3.Scale(holder.localScale,fit);
-            var now=LocalBounds();
-            holder.localPosition+=new Vector3(-now.center.x,-now.min.y,-now.center.z);
+            holder.localPosition+=new Vector3(-have.center.x,-have.min.y,-have.center.z);
             foreach(var r in holder.GetComponentsInChildren<Renderer>()){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
-            return true;
+            return have.size;
         }
         [MenuItem("Confiscated/Chase Feedback/Refresh Shortcut Trolley")]
         public static void Install()
