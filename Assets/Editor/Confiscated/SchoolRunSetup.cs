@@ -150,11 +150,16 @@ namespace Confiscated.EditorTools
             if(texture==null)throw new Exception("Generated art missing: "+name);
             mat.SetTexture("_BaseMap",texture);SchoolLightingSetup.ConfigureArtworkMaterial(mat,false);return mat;
         }
-        static void Display(Vector3 pos,float yaw,string art="PupilArt",string title=null)
+        static void Display(Vector3 pos,float yaw,string art="PupilArt",string title=null,bool noArt=false)
         {
             var board=Place("P_ArtDisplay",pos,yaw);
-            board.transform.Find("Generated pupil artwork").GetComponent<MeshRenderer>().sharedMaterial=ArtMaterial(art);
-            if(art=="Nature")board.transform.localScale=new Vector3(.55f,1.24f,1);
+            var artwork=board.transform.Find("Generated pupil artwork");
+            if(noArt)Object.DestroyImmediate(artwork.gameObject);
+            else
+            {
+                artwork.GetComponent<MeshRenderer>().sharedMaterial=ArtMaterial(art);
+                if(art=="Nature")board.transform.localScale=new Vector3(.55f,1.24f,1);
+            }
             if(title!=null)Text(board.transform,title,new Vector3(0,.96f,-.08f),0,.032f);
         }
         static void DressDining()
@@ -195,7 +200,7 @@ namespace Confiscated.EditorTools
                 for(int j=0;j<3;j++)Place("P_TallStorage",c+new Vector3(-2.4f,0,-3+j*3),90);
                 Place("P_TallStorage",c+new Vector3(2,0,1),-90);
                 if(zone==8)Place("P_TallStorage",c+new Vector3(2,0,-3),-90); // a 5th; ArrangeShelves spreads these across the room's real width
-                Display(P(r.center.x,r.yMin+.9f,1.75f),0,zone==4?"Nature":"Sports",zone==4?"RESOURCES":"EQUIPMENT");
+                Display(P(r.center.x,r.yMin+.9f,1.75f),0,zone==4?"Nature":"Sports",zone==4?"RESOURCES":"EQUIPMENT",noArt:zone==4);
                 AddPickup(zone==4?2:3,zone==4?"handheld game":"skateboard",c+new Vector3(2.5f,.85f,-2.5f));
             }
             AddPickup(4,"toy robot",P(824,1091,.85f));
