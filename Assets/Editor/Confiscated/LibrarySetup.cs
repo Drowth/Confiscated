@@ -295,11 +295,18 @@ namespace Confiscated.EditorTools
                     if(cuts.Length==0)continue;
                     wall.gameObject.SetActive(false);EditorUtility.SetDirty(wall.gameObject);
                     var mat=wall.sharedMaterial;float z=(min.z+max.z)/2,depth=max.z-min.z,h=max.y;float from=min.x;
+                    // The wall's own texture mapping (u runs with world x, v = height / 3 m), so the pieces round the windows
+                    // line up with the rest of it; a Cube primitive squashes the whole texture onto each face, upside down.
+                    var wv=mesh.vertices;var wuv=mesh.uv;var wn=mesh.normals;
+                    var faces=Enumerable.Range(0,wv.Length).Where(i=>Mathf.Abs(wn[i].z)>.9f).ToList();
+                    int ia=faces.First(),ib=faces.First(i=>Mathf.Abs(wall.transform.TransformPoint(wv[i]).x-wall.transform.TransformPoint(wv[ia]).x)>.5f);
+                    float xa=wall.transform.TransformPoint(wv[ia]).x,xb=wall.transform.TransformPoint(wv[ib]).x;
+                    float perMetre=(wuv[ib].x-wuv[ia].x)/(xb-xa),u0=wuv[ia].x-perMetre*xa;
                     void Piece(float x0,float x1,float y0,float y1)
                     {
-                        var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name="Library wall ("+wall.name+")";g.transform.SetParent(group,false);
-                        g.transform.position=new Vector3((x0+x1)/2,(y0+y1)/2,z);g.transform.localScale=new Vector3(x1-x0,y1-y0,depth);
-                        g.GetComponent<MeshRenderer>().sharedMaterial=mat;g.layer=wall.gameObject.layer;
+                        var g=new GameObject("Library wall ("+wall.name+")");g.transform.SetParent(group,false);g.transform.position=new Vector3(0,0,z);
+                        g.AddComponent<MeshFilter>().sharedMesh=WallPiece(x0,x1,y0,y1,depth,x=>u0+perMetre*x);
+                        g.AddComponent<MeshRenderer>().sharedMaterial=mat;g.AddComponent<BoxCollider>();g.layer=wall.gameObject.layer;
                         GameObjectUtility.SetStaticEditorFlags(g,GameObjectUtility.GetStaticEditorFlags(wall.gameObject));
                     }
                     foreach(float x in cuts)
@@ -324,12 +331,28 @@ namespace Confiscated.EditorTools
                         var pool=new Vector3(x,0,z)+inward*1.5f;
                         var lamp=new GameObject("Window light").AddComponent<Light>();lamp.transform.SetParent(w,false);
                         lamp.transform.position=new Vector3(x,2.0f,z)+inward*.3f;lamp.transform.LookAt(pool);
-                        lamp.type=LightType.Spot;lamp.spotAngle=62;lamp.innerSpotAngle=35;lamp.range=6;lamp.intensity=5.5f; // LibraryWindow lifts it against the darkness while you are insidelamp.color=new Color(.86f,.9f,1f);lamp.shadows=LightShadows.Soft;
+                        lamp.type=LightType.Spot;lamp.spotAngle=62;lamp.innerSpotAngle=35;lamp.range=6;lamp.intensity=5.5f; // LibraryWindow lifts it against the darkness while you are inside
+                        lamp.color=new Color(.86f,.9f,1f);lamp.shadows=LightShadows.Soft;
                         var marker=w.gameObject.AddComponent<LibraryWindow>();marker.room=Interior;marker.pool=pool;marker.radius=2.2f;marker.lamp=lamp;marker.plainIntensity=5.5f;EditorUtility.SetDirty(marker);
                     }
                     Piece(from,max.x,0,h);
                 }
             }
+        }
+        /// <summary>A box of wall (world x0..x1, y0..y1, `depth` thick about local z 0) with the corridor walls' mapping.</summary>
+        static Mesh WallPiece(float x0,float x1,float y0,float y1,float depth,Func<float,float> u)
+        {
+            var v=new List<Vector3>();var uv=new List<Vector2>();var n=new List<Vector3>();var t=new List<int>();float d=depth/2;
+            // Corners go round anticlockwise seen from outside the face (Unity's front faces are clockwise, so reversed below).
+            void Face(Vector3 normal,Vector3[] c,Vector2[] m){int b=v.Count;v.AddRange(c);uv.AddRange(m);for(int i=0;i<4;i++)n.Add(normal);t.AddRange(new[]{b,b+2,b+1,b,b+3,b+2});}
+            Vector2 W(float x,float y)=>new Vector2(u(x),y/3f);
+            Face(Vector3.forward,new[]{new Vector3(x1,y0,d),new Vector3(x0,y0,d),new Vector3(x0,y1,d),new Vector3(x1,y1,d)},new[]{W(x1,y0),W(x0,y0),W(x0,y1),W(x1,y1)});
+            Face(Vector3.back,new[]{new Vector3(x0,y0,-d),new Vector3(x1,y0,-d),new Vector3(x1,y1,-d),new Vector3(x0,y1,-d)},new[]{W(x0,y0),W(x1,y0),W(x1,y1),W(x0,y1)});
+            Face(Vector3.up,new[]{new Vector3(x0,y1,-d),new Vector3(x1,y1,-d),new Vector3(x1,y1,d),new Vector3(x0,y1,d)},new[]{W(x0,y1),W(x1,y1),W(x1,y1+depth),W(x0,y1+depth)});
+            Face(Vector3.down,new[]{new Vector3(x0,y0,d),new Vector3(x1,y0,d),new Vector3(x1,y0,-d),new Vector3(x0,y0,-d)},new[]{W(x0,y0),W(x1,y0),W(x1,y0+depth),W(x0,y0+depth)});
+            Face(Vector3.right,new[]{new Vector3(x1,y0,-d),new Vector3(x1,y0,d),new Vector3(x1,y1,d),new Vector3(x1,y1,-d)},new[]{W(x1,y0),W(x1+depth,y0),W(x1+depth,y1),W(x1,y1)});
+            Face(Vector3.left,new[]{new Vector3(x0,y0,d),new Vector3(x0,y0,-d),new Vector3(x0,y1,-d),new Vector3(x0,y1,d)},new[]{W(x0,y0),W(x0+depth,y0),W(x0+depth,y1),W(x0,y1)});
+            var mesh=new Mesh{name="Library wall piece"};mesh.SetVertices(v);mesh.SetUVs(0,uv);mesh.SetNormals(n);mesh.SetTriangles(t,0);mesh.RecalculateBounds();mesh.RecalculateTangents();return mesh;
         }
         static void Trim(Transform parent,Vector3 at,Vector3 size,Material m)
         {

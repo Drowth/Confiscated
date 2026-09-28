@@ -92,7 +92,7 @@ namespace Confiscated.EditorTools
             if(render==null){render=new Material(Shader.Find("Universal Render Pipeline/Unlit"));AssetDatabase.CreateAsset(render,RenderPath);}
             render.SetColor("_BaseColor",new Color(.93f,.89f,.78f));EditorUtility.SetDirty(render);
             foreach(var r in renderers.Where(r=>r.name=="Cream entrance facade"||r.name=="Facade pilaster")){Undo.RecordObject(r,"Exterior render");r.sharedMaterial=render;EditorUtility.SetDirty(r);}
-            int daylit=Daylight(renderers,Outdoors);
+            int daylit=Daylight(renderers,ceilings);
             AssetDatabase.SaveAssets();
             Debug.Log("Exterior brick: "+daylit+" outdoor props daylit, "+faces+" outdoor wall runs, "+caps+" garden wall caps, "+verts.Count+" verts");
         }
@@ -150,29 +150,42 @@ namespace Confiscated.EditorTools
         /// the dim indoor fill leaves near black outdoors. Give the ones standing outside an outdoor copy: Pencil Surface with its
         /// daylight switch on, or URP Lit glowing its own colour. Dark Mode and blackouts still darken both.
         /// </summary>
-        static int Daylight(MeshRenderer[] renderers,System.Func<Vector3,bool> outdoors)
+        static int Daylight(MeshRenderer[] renderers,Bounds[] ceilings)
         {
             if(!AssetDatabase.IsValidFolder(OutdoorDir))AssetDatabase.CreateFolder("Assets/Art/Materials","Outdoor");
-            var copies=new Dictionary<Material,Material>();int count=0;
+            // Every run starts from the originals, so a piece judged wrongly before (a door whose middle sits on the ceiling's
+            // edge) is put right. Copies are named "<original> (outdoor...)".
+            var originals=AssetDatabase.FindAssets("t:Material").Select(AssetDatabase.GUIDToAssetPath).Where(p=>!p.StartsWith(OutdoorDir+"/"))
+                .Select(AssetDatabase.LoadAssetAtPath<Material>).Where(m=>m!=null).GroupBy(m=>m.name).ToDictionary(g=>g.Key,g=>g.First());
+            var copies=new Dictionary<(Material,string),Material>();int count=0;
             foreach(var r in renderers)
             {
-                if(r.name.StartsWith("Wall_")||r.name=="Ceiling"||r.name==RootName||!outdoors(r.bounds.center))continue;
+                if(r.name.StartsWith("Wall_")||r.name=="Ceiling"||r.name==RootName)continue;
                 // Characters, pickups and anything that moves keep their own look.
                 if(r.GetComponentInParent<RunPickup>()!=null||r.GetComponentInParent<UnityEngine.AI.NavMeshAgent>()!=null||r.GetComponentInParent<Canvas>()!=null)continue;
                 var mats=r.sharedMaterials;bool changed=false;
                 for(int i=0;i<mats.Length;i++)
                 {
-                    var m=mats[i];if(m==null||m.name.EndsWith(" (outdoor)"))continue;
+                    if(mats[i]==null)continue;int cut=mats[i].name.IndexOf(" (outdoor");
+                    if(cut>0&&originals.TryGetValue(mats[i].name.Substring(0,cut),out var original)){mats[i]=original;changed=true;}
+                }
+                var where=Side(r.bounds,ceilings);
+                for(int i=0;i<mats.Length&&where.HasValue;i++)
+                {
+                    var side=where.Value;
+                    var m=mats[i];if(m==null)continue;
                     bool pencil=m.shader.name=="Confiscated/Pencil Surface",lit=m.shader.name=="Universal Render Pipeline/Lit";
-                    if(!pencil&&!lit)continue;
-                    if(!copies.TryGetValue(m,out var copy))
+                    // An unlit copy can't pick faces, so lit pieces set in an outside wall stay lit by the room.
+                    if(!pencil&&!(lit&&side==Vector3.zero))continue;
+                    string suffix=side==Vector3.zero?" (outdoor)":" (outdoor "+(side.x>0?"+X":side.x<0?"-X":side.z>0?"+Z":"-Z")+")";
+                    if(!copies.TryGetValue((m,suffix),out var copy))
                     {
-                        string path=OutdoorDir+"/"+m.name+" (outdoor).mat";
+                        string path=OutdoorDir+"/"+m.name+suffix+".mat";
                         copy=AssetDatabase.LoadAssetAtPath<Material>(path);
-                        if(copy==null){copy=new Material(m){name=m.name+" (outdoor)"};AssetDatabase.CreateAsset(copy,path);}
+                        if(copy==null){copy=new Material(m){name=m.name+suffix};AssetDatabase.CreateAsset(copy,path);}
                         else copy.CopyPropertiesFromMaterial(m);
-                        copy.name=m.name+" (outdoor)";
-                        if(pencil)copy.SetFloat("_Outdoor",1);
+                        copy.name=m.name+suffix;
+                        if(pencil){copy.SetFloat("_Outdoor",1);copy.SetVector("_OutdoorFacing",side==Vector3.zero?Vector4.zero:new Vector4(side.x,0,side.z,1));}
                         else
                         {
                             // Flat daylight: an unlit copy of its colour map (Dark Mode and blackouts turn unlit art lit again, so
@@ -180,13 +193,42 @@ namespace Confiscated.EditorTools
                             var map=m.GetTexture("_BaseMap");var tint=m.GetColor("_BaseColor");
                             copy.shader=Shader.Find("Universal Render Pipeline/Unlit");copy.SetTexture("_BaseMap",map);copy.SetColor("_BaseColor",tint*.92f);
                         }
-                        EditorUtility.SetDirty(copy);copies[m]=copy;
+                        EditorUtility.SetDirty(copy);copies[(m,suffix)]=copy;
                     }
                     mats[i]=copy;changed=true;
                 }
-                if(changed){Undo.RecordObject(r,"Outdoor daylight");r.sharedMaterials=mats;EditorUtility.SetDirty(r);count++;}
+                if(changed&&!mats.SequenceEqual(r.sharedMaterials)){Undo.RecordObject(r,"Outdoor daylight");r.sharedMaterials=mats;EditorUtility.SetDirty(r);}
+                if(mats.Any(m=>m!=null&&m.name.Contains(" (outdoor")))count++;
             }
             return count;
+        }
+
+        /// <summary>
+        /// Where a piece stands, from just past each of its four sides (its middle can sit exactly on a ceiling's edge when
+        /// it is set in a wall). null: indoors. zero: out in the open. Otherwise the way it faces out of the outside wall it
+        /// is set in (a door leaf, a window frame).
+        /// </summary>
+        static Vector3? Side(Bounds b,Bounds[] ceilings)
+        {
+            System.Func<Bounds,Vector3,bool> under=(c,p)=>p.x>c.min.x&&p.x<c.max.x&&p.z>c.min.z&&p.z<c.max.z;
+            bool Open(Vector3 p)=>!ceilings.Any(c=>under(c,p));
+            var dirs=new[]{Vector3.right,Vector3.left,Vector3.forward,Vector3.back};
+            var probes=dirs.Select(d=>b.center+d*(Mathf.Abs(Vector3.Dot(b.extents,d))+.3f)).ToArray();
+            var open=probes.Select(Open).ToArray();
+            if(open.All(o=>o))return Vector3.zero;
+            if(!open.Any(o=>o))return null;
+            // Open one way and roofed the other, with its middle on that roof's edge: set in the wall, facing out. Probes along
+            // a wall land on the edge line itself, so only a pair that disagrees counts, and the middle must sit on the edge.
+            for(int i=0;i<4;i++)
+            {
+                if(!open[i]||open[i^1])continue;
+                var roof=ceilings.First(c=>under(c,probes[i^1]));var d=dirs[i];
+                float edge=Vector3.Dot(Vector3.Dot(d,Vector3.one)>0?roof.max:roof.min,d); // the roof's edge on the open side
+                if(Mathf.Abs(Vector3.Dot(b.center,d)-edge)<.05f)return d;
+            }
+            // Otherwise its middle decides: a bench against the outside of a wall is out, a picture on the inside is in, and
+            // anything on the line between two rooms' ceilings (an inside door frame) is in.
+            var near=b.center;return ceilings.Any(c=>{var e=c;e.Expand(new Vector3(.2f,0,.2f));return under(e,near);})?null:Vector3.zero;
         }
 
         static Material Material()
