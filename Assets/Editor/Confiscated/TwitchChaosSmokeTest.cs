@@ -155,6 +155,8 @@ namespace Confiscated.EditorTools
                         Check(lit.Count>10,"found "+lit.Count+" ceiling fixtures for lights out");
                         ambientBefore=RenderSettings.ambientLight;
                         panels=Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r=>r.sharedMaterial!=null&&r.sharedMaterial.shader.name=="Universal Render Pipeline/Unlit"&&!r.transform.IsChildOf(Player)&&r.GetComponentInParent<Canvas>()==null&&r.GetComponentInParent<LibraryShadow>()==null).Take(20).Select(r=>(r,r.sharedMaterial)).ToList();
+                        var unlitAll=Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Count(r=>r.sharedMaterial!=null&&r.sharedMaterial.shader.name=="Universal Render Pipeline/Unlit");
+                        File.AppendAllText(Report,"      unlit surfaces in play: "+unlitAll+", sampled "+panels.Count+" ("+string.Join(", ",panels.Select(p=>p.r.name).Distinct().Take(6))+")\n");
                         // The outage is long; keep staff from catching the test player while it waits.
                         R.caretaker.Freeze();R.PauseStaff();
                         T.Apply(TwitchChaos.Effect.Flicker,"tester");Next(10);break;

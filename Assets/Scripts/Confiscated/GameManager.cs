@@ -73,9 +73,11 @@ namespace Confiscated
             if (!creditsShown && creditsAt >= 0 && Time.unscaledTime >= creditsAt)
             {
                 creditsShown = true;
-                HudController.Instance?.ShowOverlay("THANKS FOR PLAYING", "A game by Lee Grieve\nTesters: Jacob Grieve and Elliott King\n\nThanks for playing CONFISCATED!\n\nR: retry   M: title / game modes"+(SchoolGameMode.DarkUnlocked?"\nDARK MODE UNLOCKED":""));
+                HudController.Instance?.ShowOverlay("THANKS FOR PLAYING", "A game by "+SchoolCredits.Creator+"\nTesters: "+SchoolCredits.TesterList+"\n\nThanks for playing CONFISCATED!\n\nR: retry   M: title / game modes"+(SchoolGameMode.DarkUnlocked?"\nDARK MODE UNLOCKED":""));
             }
         }
+        /// <summary>Twitch chat's part in this run, credited by name, for the results screens (empty without chat).</summary>
+        static string ChatReport(){var r=TwitchChaos.Instance!=null?TwitchChaos.Instance.Report():"";return r.Length>0?"\n\n"+r:"";}
         void ScheduleCredits() { creditsAt = Time.unscaledTime + CreditsDelaySeconds; creditsShown = false; }
 
         public void OnPhoneCollected(PlayerInteractor who)
@@ -131,7 +133,7 @@ namespace Confiscated
                 HudController.Instance?.SetObjective("RUN ENDED");
                 int count = SchoolRunController.Instance != null ? SchoolRunController.Instance.Count : 0;
                 PrepareTimedResultsLayout();
-                HudController.Instance?.ShowOverlay("CAUGHT!", "The caretaker caught you.\nBelongings recovered: " + count + " / 5\n" + (SchoolRunController.Instance?.Timing.Result(false) ?? "") + "\n\nR / Enter: retry from the classroom   M: title / game modes");
+                HudController.Instance?.ShowOverlay("CAUGHT!", "The caretaker caught you.\nBelongings recovered: " + count + " / 5\n" + (SchoolRunController.Instance?.Timing.Result(false) ?? "") + ChatReport() + "\n\nR / Enter: retry from the classroom   M: title / game modes");
                 CaretakerCaughtResults.Show(HudController.Instance);
                 ScheduleCredits();
                 return;
@@ -238,7 +240,7 @@ namespace Confiscated
                 flavour = "You got your phone back and escaped.";
                 EndingUnlocks.Unlock(EndingUnlocks.Ending.Completed);
             }
-            HudController.Instance?.ShowOverlay(title, flavour + "\n" + report + "\n\nR: retry   M: title / game modes\n"+(SchoolGameMode.Dark?"DARK MODE COMPLETE":"DARK MODE UNLOCKED - select it on the title screen."));
+            HudController.Instance?.ShowOverlay(title, flavour + "\n" + report + ChatReport() + "\n\nR: retry   M: title / game modes\n"+(SchoolGameMode.Dark?"DARK MODE COMPLETE":"DARK MODE UNLOCKED - select it on the title screen."));
             // After the time is frozen and the escape validated: exactly one upload per win. Caught runs never reach here.
             var hud = HudController.Instance;
             if (hud != null && hud.overlay != null) SteamLeaderboardView.Show(hud.overlay.transform, hud.overlayBody);

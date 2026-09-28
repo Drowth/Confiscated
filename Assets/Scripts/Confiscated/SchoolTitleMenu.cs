@@ -10,7 +10,7 @@ namespace Confiscated
 {
     /// <summary>Live school establishing shots followed by a window-to-classroom camera entrance.</summary>
     [DisallowMultipleComponent]
-    public sealed class SchoolTitleMenu : MonoBehaviour
+    public sealed partial class SchoolTitleMenu : MonoBehaviour
     {
         public Sprite titleLogo;
         public AudioClip titleMusic;
@@ -38,7 +38,7 @@ namespace Confiscated
         Text caption,skip;
         Button startButton;
         GameObject twitchPanel;InputField twitchInput;Text twitchStatus,twitchConnect,twitchHelp,twitchNames;
-        Image twitchButton;Text twitchButtonLabel,twitchCaption;
+        Image twitchButton;Text twitchButtonLabel,twitchCaption,twitchNotes;
         static readonly Color TwitchLavender=new(.80f,.72f,1f);
         AudioSource musicSource;
         bool active,starting,oldMove,oldLook,oldInput,oldHold,oldDoorEnabled;
@@ -89,8 +89,10 @@ namespace Confiscated
             {
                 if((kb!=null&&kb.escapeKey.wasPressedThisFrame)||(pad!=null&&pad.buttonEast.wasPressedThisFrame))SkipIntro();
             }
+            else if(creditsOpen&&((kb!=null&&kb.escapeKey.wasPressedThisFrame)||(pad!=null&&pad.buttonEast.wasPressedThisFrame)))ShowCredits(false);
             else if(kb!=null&&kb.enterKey.wasPressedThisFrame)
             {
+                if(creditsOpen){ShowCredits(false);return;}
                 if(twitchPanel!=null&&twitchPanel.activeSelf)
                 {
                     // Enter in the channel box connects; it must never fall through to Start game.
@@ -112,6 +114,7 @@ namespace Confiscated
             if(twitchPanel!=null&&twitchPanel.activeSelf)RefreshTwitch();
             RefreshTwitchButton();
             if(starting){RenderEntrance(elapsed);return;}
+            if(creditsOpen){PoseCredits();return;}
             ShotIndex=Mathf.FloorToInt(elapsed/shotSeconds)%4;
             float t=elapsed%shotSeconds;
             RenderShot(ShotIndex,t/shotSeconds);
@@ -186,7 +189,7 @@ namespace Confiscated
             if(musicSource!=null)musicSource.Stop();
             game.BeginSchoolDay();
         }
-        void OnDisable(){if(active){active=false;Restore();if(canvas!=null)canvas.gameObject.SetActive(false);}if(musicSource!=null)musicSource.Stop();}
+        void OnDisable(){if(creditsOpen){creditsOpen=false;RestoreCreditsProps();}if(active){active=false;Restore();if(canvas!=null)canvas.gameObject.SetActive(false);}if(musicSource!=null)musicSource.Stop();}
         void OnDestroy(){if(Instance==this)Instance=null;}
         void Quit()
         {
@@ -221,6 +224,7 @@ namespace Confiscated
             dark.interactable=SchoolGameMode.DarkUnlocked;
             Label(SchoolGameMode.DarkUnlocked?(SchoolGameMode.DevUnlock?"DEV UNLOCK ON. LIGHTS OUT.":"LIGHTS OUT. FIND YOUR TORCH."):"ESCAPE ONCE TO UNLOCK DARK MODE",content,new Vector2(.30f,.27f),new Vector2(.52f,.315f),17,Cream);
             MakeButton("Quit",content,new Vector2(.07f,.225f),new Vector2(.20f,.292f),Quit);
+            var credits=MakeButton("Credits",content,new Vector2(.21f,.232f),new Vector2(.29f,.285f),()=>ShowCredits(true));credits.GetComponentInChildren<Text>().fontSize=24;
             // Top row, beside Dark Mode, with its own live caption underneath (what's connected, how many are chatting).
             var twitch=MakeButton("Twitch",content,new Vector2(.53f,.32f),new Vector2(.74f,.405f),()=>ShowTwitch(true));
             twitchButton=(Image)twitch.targetGraphic;twitchButtonLabel=twitch.GetComponentInChildren<Text>();twitchButtonLabel.resizeTextForBestFit=true;twitchButtonLabel.resizeTextMinSize=18;twitchButtonLabel.resizeTextMaxSize=32;
@@ -253,6 +257,7 @@ namespace Confiscated
             twitchHelp=MakeButton("Chat can help",p,new Vector2(.07f,.29f),new Vector2(.49f,.40f),()=>{TwitchChat.ChatCanHelp=!TwitchChat.ChatCanHelp;RefreshTwitch();}).GetComponentInChildren<Text>();twitchHelp.fontSize=22;
             twitchNames=MakeButton("Viewer names",p,new Vector2(.51f,.29f),new Vector2(.93f,.40f),()=>{TwitchChat.ShowNames=!TwitchChat.ShowNames;RefreshTwitch();}).GetComponentInChildren<Text>();twitchNames.fontSize=22;
             MakeButton("Back",p,new Vector2(.07f,.07f),new Vector2(.35f,.19f),()=>ShowTwitch(false));
+            twitchNotes=MakeButton("Chat notes",p,new Vector2(.51f,.07f),new Vector2(.93f,.19f),()=>{TwitchNoticeboard.NotesOn=!TwitchNoticeboard.NotesOn;RefreshTwitch();}).GetComponentInChildren<Text>();twitchNotes.fontSize=22;
             twitchPanel.SetActive(false);
         }
         public void ShowTwitch(bool show)
@@ -297,6 +302,7 @@ namespace Confiscated
             };
             twitchHelp.text="CHAT CAN HELP: "+(TwitchChat.ChatCanHelp?"ON":"OFF");
             twitchNames.text="VIEWER NAMES: "+(TwitchChat.ShowNames?"ON":"OFF");
+            twitchNotes.text="CHAT NOTES: "+(TwitchNoticeboard.NotesOn?"ON":"OFF");
         }
         static string EndingsText()
         {

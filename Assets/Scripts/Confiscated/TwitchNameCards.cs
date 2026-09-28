@@ -17,7 +17,11 @@ namespace Confiscated
         // user -> slot key. Static so a viewer keeps their locker through a retry (the scene reloads).
         static readonly Dictionary<string,string> claims=new();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics()=>claims.Clear();
+        static void ResetStatics(){claims.Clear();lastSpoke.Clear();}
+        // When every spot is taken (a big stream fills 83 in seconds), the viewer quiet for longest gives theirs up.
+        static readonly Dictionary<string,float> lastSpoke=new(System.StringComparer.OrdinalIgnoreCase);
+        public const float RecycleAfterSeconds=300;
+        public int Recycled {get;private set;}
         // Chat bots would otherwise take the first lockers of every stream.
         static readonly HashSet<string> Bots=new(System.StringComparer.OrdinalIgnoreCase)
         {"nightbot","streamelements","streamlabs","moobot","fossabot","sery_bot","wizebot","botrixoficial","kofistreambot","soundalerts","commanderroot","streamstickers"};
@@ -61,15 +65,38 @@ namespace Confiscated
             if(root.gameObject.activeSelf!=show)root.gameObject.SetActive(show);
         }
 
-        void OnChat(string user,string text)=>Claim(user);
+        void OnChat(string user,string text){lastSpoke[user]=Time.realtimeSinceStartup;Claim(user);}
         /// <summary>Gives a viewer a random free locker or desk. Returns false for bots, repeat viewers, or a full school.</summary>
         public bool Claim(string user)
         {
             if(string.IsNullOrEmpty(user)||Bots.Contains(user)||claims.ContainsKey(user))return false;
-            var free=slots.Values.Where(s=>s.card==null).ToList();if(free.Count==0)return false;
+            var free=slots.Values.Where(s=>s.card==null).ToList();
+            if(free.Count==0)
+            {
+                var spare=Quietest();if(spare==null)return false;
+                free.Add(spare);Recycled++;
+            }
             var slot=free[Random.Range(0,free.Count)];
-            claims[user]=slot.key;Build(slot,user);return true;
+            claims[user]=slot.key;if(!lastSpoke.ContainsKey(user))lastSpoke[user]=Time.realtimeSinceStartup;Build(slot,user);return true;
         }
+
+        /// <summary>Frees the spot of the longest-silent viewer (5+ minutes quiet, and not hiding in it right now).</summary>
+        Slot Quietest()
+        {
+            float now=Time.realtimeSinceStartup;string victim=null;float oldest=float.MaxValue;
+            foreach(var c in claims)
+            {
+                float spoke=lastSpoke.TryGetValue(c.Key,out var t)?t:0;
+                if(now-spoke<RecycleAfterSeconds||spoke>=oldest||!slots.TryGetValue(c.Value,out var s))continue;
+                if(ViewerLockerHide.Current!=null&&s.card!=null&&ViewerLockerHide.Current.transform.IsChildOf(s.card.transform))continue;
+                victim=c.Key;oldest=spoke;
+            }
+            if(victim==null)return null;
+            var slot=slots[claims[victim]];claims.Remove(victim);
+            if(slot.card!=null)Destroy(slot.card);slot.card=null;return slot;
+        }
+        /// <summary>Test hook: pretend a viewer last spoke this many seconds ago.</summary>
+        public static void AgeForTest(string user,float seconds)=>lastSpoke[user]=Time.realtimeSinceStartup-seconds;
 
         void Build(Slot slot,string user)
         {

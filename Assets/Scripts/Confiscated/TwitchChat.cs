@@ -92,9 +92,11 @@ namespace Confiscated
         public static void InjectForTest(string user,string text){var chat=Ensure();chat.testFeed=true;chat.inbox.Enqueue((user,text));}
         public static void EndTestFeed(){if(Instance!=null){Instance.testFeed=false;while(Instance.inbox.TryDequeue(out _)){}}}
 
+        const int MaxPerFrame=250;
         void Update()
         {
-            while(inbox.TryDequeue(out var m))
+            // A big chat can burst hundreds of lines at once; spread them over frames rather than hitching one.
+            for(int handled=0;handled<MaxPerFrame&&inbox.TryDequeue(out var m);handled++)
             {
                 MessagesReceived++;
                 everyone.Add(m.user);recent.Remove(m.user);recent.Add(m.user);if(recent.Count>50)recent.RemoveAt(0);

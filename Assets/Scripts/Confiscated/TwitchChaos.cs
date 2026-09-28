@@ -31,7 +31,8 @@ namespace Confiscated
 
         readonly Dictionary<string,int> ballots=new();
         float resultUntil;
-        GameObject panel;Text heading,body;
+        GameObject panel,canvasRoot;Text heading,body,counter;
+        public string CounterText=>counter!=null&&counter.gameObject.activeInHierarchy?counter.text:"";
         static readonly Color Cream=new(.97f,.94f,.83f),Ink=Color.black,Twitch=new(.57f,.27f,1f);
 
         static bool hooked;
@@ -48,6 +49,7 @@ namespace Confiscated
             var run=SchoolRunController.Instance!=null?SchoolRunController.Instance:Object.FindFirstObjectByType<SchoolRunController>();
             if(run!=null&&run.GetComponent<TwitchChaos>()==null)run.gameObject.AddComponent<TwitchChaos>();
             if(run!=null&&run.GetComponent<TwitchNameCards>()==null)run.gameObject.AddComponent<TwitchNameCards>();
+            if(run!=null&&run.GetComponent<TwitchNoticeboard>()==null)run.gameObject.AddComponent<TwitchNoticeboard>();
         }
 
         public static string Label(Effect e)=>e switch
@@ -69,7 +71,7 @@ namespace Confiscated
         void Awake(){Instance=this;NextVoteIn=firstVoteDelay;}
         void OnEnable()=>TwitchChat.Received+=OnChat;
         void OnDisable(){TwitchChat.Received-=OnChat;RestoreLights();}
-        void OnDestroy(){if(Instance==this)Instance=null;if(panel!=null)Destroy(panel.transform.root.gameObject);}
+        void OnDestroy(){if(Instance==this)Instance=null;if(canvasRoot!=null)Destroy(canvasRoot);}
 
         bool Running
         {
@@ -90,6 +92,7 @@ namespace Confiscated
                 else{NextVoteIn-=Time.deltaTime;if(NextVoteIn<=0)OpenVote();}
             }
             Draw(running);
+            DrawCounter();
         }
 
         void OnChat(string user,string text)
@@ -97,8 +100,11 @@ namespace Confiscated
             if(!Voting||!Running)return;
             string t=text.Trim().TrimStart('!','#');
             if(t.Length!=1||t[0]<'1'||t[0]>'0'+Options.Length)return;
-            ballots[user]=t[0]-'1';
-            Tallies=new int[Options.Length];foreach(var b in ballots.Values)Tallies[b]++;
+            if(ballots.Count==0)firstThisVote=user;
+            // Incremental, so a chat of hundreds voting at once costs one step per message, not a recount.
+            int choice=t[0]-'1';
+            if(ballots.TryGetValue(user,out var old)){if(old==choice)return;Tallies[old]--;}
+            ballots[user]=choice;Tallies[choice]++;
         }
 
         List<Effect> Pool(bool helpful)
@@ -136,13 +142,39 @@ namespace Confiscated
         public void CloseVote()
         {
             Voting=false;NextVoteIn=voteInterval;resultUntil=Time.time+resultSeconds;
+            foreach(var b in ballots.Keys)Bump(votesCast,b);
+            if(firstThisVote!=null){Bump(firsts,firstThisVote);firstThisVote=null;}
             int best=Tallies.Length>0?Tallies.Max():0;
             if(best==0){LastWinner=null;LastCredit=null;return;}
             var tied=Enumerable.Range(0,Tallies.Length).Where(i=>Tallies[i]==best).ToList();
             int winner=tied[Random.Range(0,tied.Count)];
             var voters=ballots.Where(b=>b.Value==winner).Select(b=>b.Key).ToList();
             LastWinner=Options[winner];LastCredit=voters[Random.Range(0,voters.Count)];
+            Bump(Helpful(Options[winner])?angels:trouble,LastCredit);chatDid.Add(Label(Options[winner]).ToLowerInvariant());
             Apply(Options[winner],TwitchChat.ShowNames?LastCredit:"Chat");
+        }
+
+        // ------------------------------------------------------------------ the run's report, for the results screens
+        string firstThisVote;
+        readonly Dictionary<string,int> votesCast=new(),firsts=new(),trouble=new(),angels=new();
+        readonly List<string> chatDid=new();
+        static void Bump(Dictionary<string,int> d,string who){if(who!=null)d[who]=d.TryGetValue(who,out var n)?n+1:1;}
+        static string Top(Dictionary<string,int> d)=>d.Count==0?null:d.OrderByDescending(p=>p.Value).First().Key;
+        /// <summary>A few lines crediting chat by name for this run, or empty if chat never took part.</summary>
+        public string Report()
+        {
+            if(VotesHeld==0&&votesCast.Count==0)return "";
+            string Name(string who)=>TwitchChat.ShowNames?who:"a viewer";
+            var lines=new List<string>{"CHAT'S REPORT  |  "+VotesHeld+(VotesHeld==1?" vote":" votes")+", "+votesCast.Count+(votesCast.Count==1?" voter":" voters")};
+            var parts=new List<string>();
+            if(Top(trouble) is string t)parts.Add("Troublemaker: "+Name(t)+" ("+trouble[t]+")");
+            if(Top(angels) is string a)parts.Add("Guardian angel: "+Name(a));
+            if(parts.Count>0)lines.Add(string.Join("   ",parts));parts.Clear();
+            if(Top(firsts) is string f)parts.Add("Quickest voter: "+Name(f));
+            if(Top(votesCast) is string v)parts.Add("Most votes: "+Name(v)+" ("+votesCast[v]+")");
+            if(parts.Count>0)lines.Add(string.Join("   ",parts));
+            if(chatDid.Count>0)lines.Add("Chat did: "+string.Join(", ",chatDid.Distinct().Take(6)));
+            return string.Join("\n",lines);
         }
 
         public void Apply(Effect effect,string who)
@@ -274,11 +306,42 @@ namespace Confiscated
             }
         }
 
+        GameObject HudCanvas()
+        {
+            if(canvasRoot!=null)return canvasRoot;
+            canvasRoot=new GameObject("Twitch chaos canvas",typeof(Canvas),typeof(CanvasScaler));
+            var canvas=canvasRoot.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=900;
+            var scaler=canvasRoot.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=.5f;
+            return canvasRoot;
+        }
+
+        // Always-on line under the HUD's top-right corner while chat is connected: which channel, how many are chatting.
+        void DrawCounter()
+        {
+            var game=GameManager.Instance;var chat=TwitchChat.Instance;
+            bool show=TwitchChat.Live&&game!=null&&game.Current!=GameManager.State.Menu&&!SchoolTitleMenu.IsActive;
+            if(counter==null){if(!show)return;BuildCounter();}
+            if(counter.gameObject.activeSelf!=show)counter.gameObject.SetActive(show);
+            if(!show)return;
+            ((RectTransform)counter.transform).anchoredPosition=new Vector2(-30,SchoolGameMode.Dark?-165:-130);
+            int n=chat.ChatterCount;
+            if(n==shownChatters&&counter.text.Length>0)return; // only rebuild the string when the number moves
+            shownChatters=n;
+            counter.text="<color=#CDB8FF>TWITCH</color>  #"+chat.Channel+"   "+n.ToString("N0")+(n==1?" chatter":" chatters");
+        }
+        int shownChatters=-1;
+        void BuildCounter()
+        {
+            var go=new GameObject("Twitch counter",typeof(RectTransform));go.transform.SetParent(HudCanvas().transform,false);
+            var r=(RectTransform)go.transform;r.anchorMin=r.anchorMax=r.pivot=new Vector2(1,1);r.sizeDelta=new Vector2(560,34);
+            counter=go.AddComponent<Text>();counter.font=SchoolTypography.Font;counter.fontSize=23;counter.alignment=TextAnchor.UpperRight;
+            counter.color=new Color(.95f,.91f,.75f);counter.supportRichText=true;counter.raycastTarget=false;counter.horizontalOverflow=HorizontalWrapMode.Overflow;
+            var outline=go.AddComponent<Outline>();outline.effectColor=Color.black;outline.effectDistance=new Vector2(2,-2);
+        }
+
         void Build()
         {
-            var root=new GameObject("Twitch chaos canvas",typeof(Canvas),typeof(CanvasScaler));
-            var canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=900;
-            var scaler=root.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=.5f;
+            var root=HudCanvas();
             panel=new GameObject("Chat vote",typeof(RectTransform));panel.transform.SetParent(root.transform,false);
             var rect=(RectTransform)panel.transform;rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(1,.62f);rect.anchoredPosition=new Vector2(-24,0);rect.sizeDelta=new Vector2(390,250);
             var paper=panel.AddComponent<Image>();paper.color=new Color(Cream.r,Cream.g,Cream.b,.93f);paper.raycastTarget=false;
