@@ -24,7 +24,7 @@ namespace Confiscated.EditorTools
         /// <summary>models (several = variants picked per piece), how to find each target, which child parts stay visible,
         /// loose parts beside it that belong to the piece, and whether to keep the model's proportions inside the space.</summary>
         sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform,flush,doubleSided;public Vector3? front;}
-        public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter","FilingCabinets"};
+        public static readonly string[] SchoolOfficeModels={"OfficeServingHatch2","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter","FilingCabinets"};
         static readonly Job[] Jobs=
         {
             new Job{models=new[]{"FilingCabinet","FilingCabinet2"},match=t=>t.name=="FilingCabinet"},
@@ -42,8 +42,9 @@ namespace Confiscated.EditorTools
             new Job{models=Enumerable.Range(1,7).Select(i=>"SchoolLocker"+i).ToArray(),match=t=>t.name=="Locker"&&t.GetComponent<Renderer>()!=null&&t.GetComponentInParent<PlayerLocker>()==null},
             // School office (SchoolOfficeSetup rebuilds it after this pass, then calls back for just these). The hatch model
             // has the SCHOOL OFFICE sign and the "Hatch closed" note painted on; the photocopier's box is deeper than wide.
-            // Stands between the corridor and the office: needs to read from both sides, not just its modelled front.
-            new Job{models=new[]{"OfficeServingHatch"},match=t=>t.name=="Corridor hatch",uniform=true,doubleSided=true},
+            // Stands between the corridor and the office: needs to read from both sides. OfficeServingHatch2 is modelled
+            // two-sided (unlike the first one, which needed the doubleSided hack to stop its back side being invisible).
+            new Job{models=new[]{"OfficeServingHatch2"},match=t=>t.name=="Corridor hatch",uniform=true,doubleSided=true},
             new Job{models=new[]{"OfficePrinterScanner"},match=t=>t.name=="Photocopier",facing=Facing.AwayFromNearestWall,uniform=true,
                 extras=t=>t.parent.Cast<Transform>().Where(s=>s.name=="Photocopier lid").Select(s=>s.GetComponent<Renderer>()).Where(r=>r!=null)},
             // Reception counter over the long west run: the model's RECEPTION sign and open screen frame stand in for the box
