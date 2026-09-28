@@ -361,12 +361,23 @@ namespace Confiscated.EditorTools
         static GameObject Box(Transform parent,string name,Vector3 at,Vector3 size,Material m,bool collide)
         {
             var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(parent,false);g.transform.position=at;g.transform.localScale=size;
-            if(!collide)Object.DestroyImmediate(g.GetComponent<Collider>());g.GetComponent<MeshRenderer>().sharedMaterial=m;return g;
+            if(!collide)Object.DestroyImmediate(g.GetComponent<Collider>());TilePencil(g,m);return g;
         }
         static GameObject Local(Transform parent,string name,Vector3 at,Vector3 size,Material m,bool collide)
         {
             var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(parent,false);g.transform.localPosition=at;g.transform.localScale=size;
-            if(!collide)Object.DestroyImmediate(g.GetComponent<Collider>());g.GetComponent<MeshRenderer>().sharedMaterial=m;return g;
+            if(!collide)Object.DestroyImmediate(g.GetComponent<Collider>());TilePencil(g,m);return g;
+        }
+        /// <summary>
+        /// A plain CreatePrimitive cube has no per-face world-metre UVs or side flag, which the pencil shaders read for
+        /// their edge strips and side crop; left unset (all zero) that reads the built-in cube's own lightmap UV2 as if it
+        /// were world metres, drawing a tartan of edge strips across every face. Non-pencil materials (glass, screens) are
+        /// untouched: they only ever use UV0, which a plain cube already has.
+        /// </summary>
+        static void TilePencil(GameObject g,Material m)
+        {
+            var r=g.GetComponent<MeshRenderer>();r.sharedMaterial=m;
+            if(m!=null&&m.shader.name=="Confiscated/Pencil Surface")IllustratedArtSetup.Tiled(r,m,"office",1f);
         }
         /// <summary>Floor furniture: solid, and carved out of the NavMesh so staff walk round it.</summary>
         static void Solid(Transform parent,string name,Vector3 at,Vector3 size,Material m)
