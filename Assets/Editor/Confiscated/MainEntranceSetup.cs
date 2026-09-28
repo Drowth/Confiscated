@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -88,6 +89,18 @@ namespace Confiscated.EditorTools
                 }
             }
             var sign=GameObject.Find("School/Details/South yard doors sign");if(sign!=null){sign.GetComponentInChildren<TextMesh>().text="MAIN ENTRANCE";sign.GetComponentInChildren<TextMesh>().color=Color.black;}
+            // The porch/vestibule (z -1.7 to -6.5) sits south of the nearest corridor fixture row (z 1.78) and out of its
+            // range: give it its own fixture rather than relying on spillover from the general grid.
+            var lightPrefab=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Modular/P_CeilingLight.prefab");
+            if(lightPrefab!=null)
+            {
+                var reference=Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude).FirstOrDefault(x=>x.gameObject.name=="PointLight");
+                var fitting=(GameObject)PrefabUtility.InstantiatePrefab(lightPrefab,root);
+                fitting.name="P_CeilingLight";fitting.transform.localPosition=new Vector3(0,0,-4f);
+                var l=fitting.GetComponentInChildren<Light>();
+                if(l!=null&&reference!=null){l.intensity=reference.intensity;l.range=reference.range;l.color=reference.color;l.shadows=reference.shadows;EditorUtility.SetDirty(l);}
+                PrefabUtility.RecordPrefabInstancePropertyModifications(fitting.transform);
+            }
             PrefabUtility.SaveAsPrefabAsset(root.gameObject,Prefabs+"P_MainEntranceFurnishings.prefab");
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());AssetDatabase.SaveAssets();
         }
