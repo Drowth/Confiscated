@@ -64,6 +64,9 @@ namespace Confiscated.EditorTools
             // swaps just the desktop+legs for the table model, leaves the chair and the exercise book/pencil dressing.
             new Job{models=new[]{"ArtRoomTable"},match=t=>t.name=="ART ROOM pupil station",uniform=true,facing=Facing.AlongForward,
                 keep=p=>new[]{"Chair seat","Chair back","Chair leg","Exercise book","Pencil"}.Contains(p.name)},
+            // The three dinner serving counters (DiningHallSetup); already correctly yawed (180, facing the queue), so
+            // just keep that authored facing rather than re-deriving it from a wall raycast.
+            new Job{models=new[]{"CafeteriaServingCounter"},match=t=>t.name=="P_Dining_ServingCounter",uniform=true,facing=Facing.AlongForward},
         };
 
         [MenuItem("Confiscated/School Run/Apply Furniture Models (Codex batch 4)")]

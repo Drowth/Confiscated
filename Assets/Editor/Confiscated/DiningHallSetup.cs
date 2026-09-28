@@ -130,6 +130,13 @@ namespace Confiscated.EditorTools
                 var fixture=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Modular/P_CeilingLight.prefab"),lighting);
                 fixture.transform.localPosition=new Vector3(x,0,z);PrefabUtility.RecordPrefabInstancePropertyModifications(fixture.transform);
             }
+            // The serving row sits south of the main grid (z 44.1 vs the nearest row at 50) and was left unlit: one
+            // fixture over each dispenser.
+            foreach(float x in new[]{-25.1f,-22.6f,-20.1f})
+            {
+                var fixture=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Modular/P_CeilingLight.prefab"),lighting);
+                fixture.transform.localPosition=new Vector3(x,0,44.1f);PrefabUtility.RecordPrefabInstancePropertyModifications(fixture.transform);
+            }
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         }
         public static void Rebake()

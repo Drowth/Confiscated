@@ -29,10 +29,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 7284358696349962699}
+  - {fileID: 807046869514488364}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &7231282833168456444
+--- !u!1 &4967587823888549500
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -40,7 +40,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 7284358696349962699}
+  - component: {fileID: 807046869514488364}
   m_Layer: 0
   m_Name: Pickup model
   m_TagString: Untagged
@@ -48,29 +48,29 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &7284358696349962699
+--- !u!4 &807046869514488364
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7231282833168456444}
+  m_GameObject: {fileID: 4967587823888549500}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: -0.7071068}
   m_LocalPosition: {x: 0, y: 0.18476501, z: 0}
   m_LocalScale: {x: 0.39999983, y: 0.39999983, z: 0.39999983}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 6653016098983614570}
+  - {fileID: 326548489554493804}
   m_Father: {fileID: 7453534343634269223}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &6620005140829241217
+--- !u!1001 &216906579414050439
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 7284358696349962699}
+    m_TransformParent: {fileID: 807046869514488364}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 99e93cd09977b2045884296d4b8f4730, type: 3}
       propertyPath: m_LocalPosition.x
@@ -133,8 +133,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 99e93cd09977b2045884296d4b8f4730, type: 3}
---- !u!4 &6653016098983614570 stripped
+--- !u!4 &326548489554493804 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 99e93cd09977b2045884296d4b8f4730, type: 3}
-  m_PrefabInstance: {fileID: 6620005140829241217}
+  m_PrefabInstance: {fileID: 216906579414050439}
   m_PrefabAsset: {fileID: 0}
