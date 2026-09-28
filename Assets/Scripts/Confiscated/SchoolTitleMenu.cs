@@ -38,6 +38,8 @@ namespace Confiscated
         Text caption,skip;
         Button startButton;
         GameObject twitchPanel;InputField twitchInput;Text twitchStatus,twitchConnect,twitchHelp,twitchNames;
+        Image twitchButton;Text twitchButtonLabel,twitchCaption;
+        static readonly Color TwitchLavender=new(.80f,.72f,1f);
         AudioSource musicSource;
         bool active,starting,oldMove,oldLook,oldInput,oldHold,oldDoorEnabled;
         float startTime,oldFov,oldTime;
@@ -108,6 +110,7 @@ namespace Confiscated
             Cursor.lockState=CursorLockMode.None;Cursor.visible=!starting;
             float elapsed=SequenceTime;
             if(twitchPanel!=null&&twitchPanel.activeSelf)RefreshTwitch();
+            RefreshTwitchButton();
             if(starting){RenderEntrance(elapsed);return;}
             ShotIndex=Mathf.FloorToInt(elapsed/shotSeconds)%4;
             float t=elapsed%shotSeconds;
@@ -216,9 +219,13 @@ namespace Confiscated
             startButton=MakeButton("Start game",content,new Vector2(.07f,.32f),new Vector2(.28f,.405f),StartGame);
             var dark=MakeButton("Dark mode",content,new Vector2(.30f,.32f),new Vector2(.51f,.405f),StartDarkGame);
             dark.interactable=SchoolGameMode.DarkUnlocked;
-            Label(SchoolGameMode.DarkUnlocked?(SchoolGameMode.DevUnlock?"DEV UNLOCK ON. LIGHTS OUT.":"LIGHTS OUT. FIND YOUR TORCH."):"ESCAPE ONCE TO UNLOCK DARK MODE",content,new Vector2(.30f,.27f),new Vector2(.66f,.315f),17,Cream);
+            Label(SchoolGameMode.DarkUnlocked?(SchoolGameMode.DevUnlock?"DEV UNLOCK ON. LIGHTS OUT.":"LIGHTS OUT. FIND YOUR TORCH."):"ESCAPE ONCE TO UNLOCK DARK MODE",content,new Vector2(.30f,.27f),new Vector2(.52f,.315f),17,Cream);
             MakeButton("Quit",content,new Vector2(.07f,.225f),new Vector2(.20f,.292f),Quit);
-            MakeButton("Twitch",content,new Vector2(.22f,.225f),new Vector2(.40f,.292f),()=>ShowTwitch(true));
+            // Top row, beside Dark Mode, with its own live caption underneath (what's connected, how many are chatting).
+            var twitch=MakeButton("Twitch",content,new Vector2(.53f,.32f),new Vector2(.74f,.405f),()=>ShowTwitch(true));
+            twitchButton=(Image)twitch.targetGraphic;twitchButtonLabel=twitch.GetComponentInChildren<Text>();twitchButtonLabel.resizeTextForBestFit=true;twitchButtonLabel.resizeTextMinSize=18;twitchButtonLabel.resizeTextMaxSize=32;
+            twitchCaption=Label("",content,new Vector2(.53f,.27f),new Vector2(.80f,.315f),17,Cream);
+            RefreshTwitchButton();
             caption=Label("",content,new Vector2(.07f,.09f),new Vector2(.78f,.15f),17,new Color(.87f,.84f,.73f));
             skip=Label("",root.transform,new Vector2(.7f,.005f),new Vector2(.95f,.065f),17,Cream);skip.alignment=TextAnchor.MiddleRight;
             var endingsBg=ImageRect("Endings backing",content,new Vector2(.67f,.64f),new Vector2(.98f,.91f),new Color(.055f,.075f,.105f,.72f));
@@ -260,6 +267,21 @@ namespace Confiscated
             if(chat!=null&&chat.State!=TwitchChat.Status.Off&&TwitchChat.Normalise(twitchInput.text)==chat.Channel)chat.Disconnect();
             else TwitchChat.Ensure().Connect(twitchInput.text);
             RefreshTwitch();
+        }
+        void RefreshTwitchButton()
+        {
+            if(twitchButton==null)return;
+            var chat=TwitchChat.Instance;var state=chat!=null?chat.State:TwitchChat.Status.Off;
+            bool live=state==TwitchChat.Status.Connected;
+            twitchButton.color=live?TwitchLavender:Cream;
+            twitchButtonLabel.text=live?"TWITCH  #"+chat.Channel.ToUpperInvariant():"TWITCH";
+            twitchCaption.text=state switch
+            {
+                TwitchChat.Status.Connected=>"LIVE CHAT  |  "+chat.ChatterCount+(chat.ChatterCount==1?" CHATTER":" CHATTERS")+"  |  "+chat.MessagesReceived+" MESSAGES",
+                TwitchChat.Status.Connecting=>"CONNECTING TO #"+chat.Channel.ToUpperInvariant()+"...",
+                TwitchChat.Status.Failed=>"CAN'T REACH TWITCH. RETRYING...",
+                _=>"LET YOUR CHAT VOTE",
+            };
         }
         void RefreshTwitch()
         {

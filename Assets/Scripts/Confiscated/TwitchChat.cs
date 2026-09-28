@@ -38,9 +38,12 @@ namespace Confiscated
         public int MessagesReceived {get;private set;}
         /// <summary>Most recent distinct chatters, newest last.</summary>
         public IReadOnlyList<string> RecentChatters=>recent;
+        /// <summary>Distinct people who've typed since the game started (the menu shows it).</summary>
+        public int ChatterCount=>everyone.Count;
 
         readonly ConcurrentQueue<(string user,string text)> inbox=new();
         readonly List<string> recent=new();
+        readonly HashSet<string> everyone=new(System.StringComparer.OrdinalIgnoreCase);
         volatile int status;volatile string lastError="";
         bool testFeed;Link link;
         // One per connection, so a worker left over from a quick disconnect/reconnect can only ever stop itself.
@@ -94,7 +97,7 @@ namespace Confiscated
             while(inbox.TryDequeue(out var m))
             {
                 MessagesReceived++;
-                recent.Remove(m.user);recent.Add(m.user);if(recent.Count>50)recent.RemoveAt(0);
+                everyone.Add(m.user);recent.Remove(m.user);recent.Add(m.user);if(recent.Count>50)recent.RemoveAt(0);
                 try{Received?.Invoke(m.user,m.text);}catch(Exception e){Debug.LogException(e);}
             }
         }
