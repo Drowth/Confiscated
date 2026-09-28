@@ -32,9 +32,7 @@ namespace Confiscated.EditorTools
             new Job{models=new[]{"CaretakerTrolley"},match=t=>t.name=="MaintenanceTrolley"},
             new Job{models=new[]{"DinnerTrolley"},match=t=>t.name=="Sketched trolley visual",facing=Facing.AlongForward},
             new Job{models=new[]{"VisitorSignInDesk"},match=t=>t.name=="Visitor sign-in desk",keep=p=>{var n=p.name.ToLowerInvariant();return n.Contains("book")||n.Contains("pencil")||n.Contains("ruled")||n.Contains("fold");}},
-            // Room-furnishing code already gives each one a deliberate yaw; auto-detecting the nearest wall instead can turn
-            // it round in a large or open room where no wall is within the raycast's reach.
-            new Job{models=new[]{"TallStorageCupboard"},match=t=>t.name.StartsWith("P_TallStorage"),facing=Facing.AlongForward},
+            new Job{models=new[]{"TallStorageCupboard"},match=t=>t.name.StartsWith("P_TallStorage")},
             new Job{models=new[]{"MaintenanceShelving"},match=t=>t.name=="MaintenanceShelving",keep=p=>!new[]{"SideL","SideR","Back","Shelf","Box","Paper","Lettering"}.Contains(p.name)},
             // The teacher sits at the kneehole and drawers (the model's front), backed onto the board wall; the class sees the panel.
             new Job{models=new[]{"TeacherDesk"},match=t=>t.name.StartsWith("P_Desk")||t.name=="Decoy teacher desk",keep=p=>p.name.ToLowerInvariant().Contains("book"),facing=Facing.TowardWall},
@@ -69,9 +67,11 @@ namespace Confiscated.EditorTools
         }
 
         /// <summary>Does not save. Returns how many pieces now use a model. `only` limits it to jobs using those models.</summary>
+        static MeshRenderer[] wallCache;
+        static MeshRenderer[] AllWalls()=>wallCache??=Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude).Where(r=>r.name.StartsWith("Wall_")).ToArray();
         public static int ApplyToScene(string[] only=null)
         {
-            AssetDatabase.Refresh();int count=0;
+            AssetDatabase.Refresh();int count=0;wallCache=null; // walls get destroyed/rebuilt by earlier passes; re-scan each run
             var all=Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,FindObjectsSortMode.None);
             foreach(var job in Jobs)
             {
@@ -144,26 +144,50 @@ namespace Confiscated.EditorTools
         /// (checked from four-side renders, Docs/Furniture_Views_*.png). The front faces away from the nearest wall, towards
         /// it (teacher desks), or along the piece's own forward (the moving dinner trolley).
         /// </summary>
+        const float NoWall=99;
         static float Yaw(Job job,Bounds space,Transform target)
         {
             bool longX=space.size.x>=space.size.z;
             Vector3 across=longX?Vector3.forward:Vector3.right,front=across;
-            if(job.front.HasValue)front=job.front.Value; // the public side, when no wall says which way it faces
-            else if(job.facing!=Facing.AlongForward)
-            {
-                float Hit(Vector3 d)=>Physics.Raycast(new Vector3(space.center.x,space.min.y+.5f,space.center.z),d,out var h,4f,~0,QueryTriggerInteraction.Ignore)&&!h.transform.IsChildOf(target)?h.distance:99;
-                var wall=Hit(across)<Hit(-across)?across:-across;
-                // Or whichever of the four sides is closest to a wall, whatever the footprint's long side.
-                if(job.facing==Facing.AwayFromNearestWall)wall=new[]{Vector3.right,Vector3.left,Vector3.forward,Vector3.back}.OrderBy(Hit).First();
-                front=job.facing==Facing.TowardWall?wall:-wall;
-            }
-            else
+            Vector3 Authored()
             {
                 var f=target.forward;f.y=0;
                 // A trolley's front is its long axis; everything else faces across it.
                 Vector3 axis=Mathf.Abs(Vector3.Dot(f.normalized,across))>.7f?across:(longX?Vector3.right:Vector3.forward);
-                front=Mathf.Sign(Vector3.Dot(f,axis))*axis;
+                return Mathf.Sign(Vector3.Dot(f,axis))*axis;
             }
+            if(job.front.HasValue)front=job.front.Value; // the public side, when no wall says which way it faces
+            else if(job.facing!=Facing.AlongForward)
+            {
+                var from=new Vector3(space.center.x,space.min.y+.5f,space.center.z);
+                float Hit(Vector3 d)
+                {
+                    if(Physics.Raycast(from,d,out var h,4f,~0,QueryTriggerInteraction.Ignore)&&!h.transform.IsChildOf(target))return h.distance;
+                    // Some room walls carry no collider; fall back to the wall renderers' own bounds along this ray.
+                    float best=NoWall;
+                    foreach(var wall in AllWalls())
+                    {
+                        if(!wall.bounds.IntersectRay(new Ray(from,d),out float dist)||dist>4f)continue;
+                        if(dist<best)best=dist;
+                    }
+                    return best;
+                }
+                float hitAcross=Hit(across),hitBack=Hit(-across);
+                if(hitAcross>=NoWall&&hitBack>=NoWall)
+                {
+                    // No wall in reach either way (a large or open room): keep whatever yaw the room-furnishing code
+                    // deliberately gave it, rather than picking an arbitrary side.
+                    front=Authored();
+                }
+                else
+                {
+                    var wall=hitAcross<hitBack?across:-across;
+                    // Or whichever of the four sides is closest to a wall, whatever the footprint's long side.
+                    if(job.facing==Facing.AwayFromNearestWall)wall=new[]{Vector3.right,Vector3.left,Vector3.forward,Vector3.back}.OrderBy(Hit).First();
+                    front=job.facing==Facing.TowardWall?wall:-wall;
+                }
+            }
+            else front=Authored();
             // Turn the model's -X onto `front`: +90 about Y takes -X to +Z, then LookRotation takes +Z to front.
             return (Quaternion.LookRotation(front)*Quaternion.Euler(0,90,0)).eulerAngles.y;
         }

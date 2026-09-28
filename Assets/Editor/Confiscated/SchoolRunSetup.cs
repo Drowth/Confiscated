@@ -361,13 +361,16 @@ namespace Confiscated.EditorTools
             Notice(P(264.9f,529,1.7f),-90,"CARETAKER'S ROUND\nOFFICE - DINING HALL\nOFFICE KEY ON TROLLEY");
             Notice(P(295.1f,627,1.8f),90,"DINING HALL\nCLOSED DURING LESSONS");
             Notice(P(718.9f,547,1.8f),-90,"DETENTION\nWALK. LISTEN. THINK.");
-            Notice(P(548,1182.1f,1.8f),180,"VISITORS\nPLEASE REPORT TO RECEPTION");
+            // The sign-in desk and the entrance facade already tell visitors to report to reception; this third
+            // notice repeated it and sat away from any wall.
             Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",P(278,802),-90);
             Place("Assets/Prefabs/Hallway/P_Hall_RecyclingBin.prefab",P(278,816),-90);
             Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",P(891,950),90);
             Place("Assets/Prefabs/Hallway/P_Hall_RecyclingBin.prefab",P(891,964),90);
             // Face the south-wall seat into the hall; keep its bin beside the seat and against the wall.
-            Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",P(563,1160),0);
+            // (Was yaw 0, facing the wall from 0.66 m out with its back to the open hall -- turned to face away
+            // from the wall instead, and moved in to sit flush against it.)
+            Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",P(563,1160)+new Vector3(0,0,.625f),180);
             Place("Assets/Prefabs/Hallway/P_Hall_RecyclingBin.prefab",P(548,1156),0);
             var block=Group("Movable maintenance shortcut",root,P(617,654));
             var gate=block.gameObject.AddComponent<RunGate>();gate.kind=RunGate.Kind.Shortcut;gate.holdSeconds=2.5f;
