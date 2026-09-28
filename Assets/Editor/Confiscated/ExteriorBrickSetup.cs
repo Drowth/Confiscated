@@ -41,7 +41,10 @@ namespace Confiscated.EditorTools
                 var parts=door.GetComponentsInChildren<Renderer>().Where(r=>r.name=="PostL"||r.name=="PostR"||r.name=="Lintel").Select(r=>r.bounds).ToList();
                 if(parts.Count==0)continue;var g=parts[0];foreach(var p in parts)g.Encapsulate(p);g.Expand(new Vector3(.02f,0,.02f));openings.Add(g);
             }
-            foreach(var wall in renderers.Where(r=>r.name.StartsWith("Wall_")&&r.GetComponentInParent<Canvas>()==null))
+            var walls=renderers.Where(r=>r.name.StartsWith("Wall_")&&r.GetComponentInParent<Canvas>()==null).ToList();
+            bool Butted(Vector3 plane,Vector3 along,float s,MeshRenderer self)
+            {var p=plane;p+=along*(s-Vector3.Dot(p,along));p.y=1;return walls.Any(w=>w!=self&&w.bounds.Contains(p));}
+            foreach(var wall in walls)
             {
                 var b=wall.bounds;
                 bool alongX=b.size.x>=b.size.z;
@@ -63,8 +66,10 @@ namespace Confiscated.EditorTools
                         if(!outside&&runFrom>=0)
                         {
                             float a=runFrom,z=i*length/steps;
-                            // Wrap the wall's own ends so outside corners close up.
-                            if(a<=0)a-=half+Offset;if(z>=length)z+=half+Offset;
+                            // Wrap the wall's own ends so outside corners close up, but not where another wall carries on past
+                            // the end (inside corner or T): there the wrap pokes out of that wall's far face into the room.
+                            if(a<=0&&!Butted(plane+n*.03f,along,start-.03f,wall))a-=half+Offset;
+                            if(z>=length&&!Butted(plane+n*.03f,along,start+length+.03f,wall))z+=half+Offset;
                             faces+=Skin(verts,uvs,norms,tris,plane+n*Offset,n,along,across,half,start+a,start+z,b.min.y,b.max.y,openings);runFrom=-1;
                         }
                     }
