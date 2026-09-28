@@ -33,9 +33,16 @@ Material:
     - _Cutoff: 0.5
     - _DirectionalViews: 0
     - _MagentaKey: 0
+    - _MouthOpen: 0
+    - _MouthStyle: 0
+    - _PoseWidth: 1
     m_Colors:
     - _BackRect: {r: 0, g: 0, b: 1, a: 1}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _EyeGlowLeft: {r: 0, g: 0, b: 0, a: 0}
+    - _EyeGlowRight: {r: 0, g: 0, b: 0, a: 0}
     - _FrontRect: {r: 0, g: 0, b: 1, a: 1}
+    - _MouthRect: {r: 0, g: 0, b: 0, a: 0}
+    - _MouthSkinUV: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

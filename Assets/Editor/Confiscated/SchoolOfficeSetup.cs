@@ -83,10 +83,16 @@ namespace Confiscated.EditorTools
             Prefab("Assets/Prefabs/Props/P_Noticeboard.prefab",g,"Office noticeboard",new Vector3(8.5f,1.65f,North-.03f),180);
             Prefab("Assets/Prefabs/Hallway/P_Hall_TrophyCabinet_Generated.prefab",g,"Office trophy cabinet",new Vector3(18.3f,0,North-.39f),90); // as in the north hall: yaw 90 puts its back (0.78 m deep) on a north wall
             Prefab("Assets/Prefabs/Hallway/P_Hall_LitterBin.prefab",g,"Waiting bin",new Vector3(11.8f,0,16.8f),0);
-            // The reception counter model paints its own wait sign, but the generated texture misspells it ("PLEISS WNT
-            // TO BE SEEN"); cover it with a correctly-spelled plaque in the same spot instead of the box counter's own.
+            // The reception counter model paints its own wait sign TWICE along its length, and the generated texture
+            // misspells it both times ("PLEISS WNT TO BE SEEN"); cover both with a correctly-spelled plaque in the same
+            // spot instead of the box counter's own.
             bool counterModel=PickupModelSetup.Has("OfficeReceptionCounter",FurnitureModelSetup.Folder);
-            Plaque(g,"PLEASE WAIT\nTO BE SEEN",counterModel?new Vector3(14.15f,.66f,CounterZ+.4f):new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(counterModel?1.3f:.95f,counterModel?.4f:.36f),180,.011f);
+            if(counterModel)
+            {
+                Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(14.15f,.66f,CounterZ+.4f),new Vector2(1.3f,.4f),180,.011f);
+                Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(5.36f,.66f,CounterZ+.4f),new Vector2(1.5f,.4f),180,.011f);
+            }
+            else Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(.95f,.36f),180,.011f);
         }
 
         /// <summary>
@@ -355,6 +361,10 @@ namespace Confiscated.EditorTools
             Box(g,"Hatch ledge",new Vector3(x,.9f,face-.13f),new Vector3(1.4f,.04f,.26f),wood,true);
             Plaque(g,"SCHOOL OFFICE",new Vector3(x,2.08f,face-.03f),new Vector2(1.5f,.3f),0,.019f);
             Plaque(g,"Hatch closed.\nDoor is round the back.",new Vector3(x,1.35f,face-.06f),new Vector2(.95f,.3f),0,.01f,true);
+            // Invisible: the hand-built frame/ledge above stand proud of the wall (face is well short of South), leaving
+            // the model's fitting box short of the real opening cut below -- reaches back to the wall plane so the
+            // swapped-in (flush) model's rear actually meets it instead of leaving an air gap you can see light through.
+            Box(g,"Hatch back reveal",new Vector3(x,1.35f,(face+South)/2f),new Vector3(1.3f,.9f,South-face),trim,false);
             CutHatchOpening(x,1.35f);
         }
 
@@ -368,7 +378,9 @@ namespace Confiscated.EditorTools
         {
             const float openW=1.14f,openH=.74f;
             float ox0=x-openW/2,ox1=x+openW/2,oy0=y-openH/2,oy1=y+openH/2;
-            var wall=Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude)
+            // Include inactive: a previous run already disabled the original wall, and a rebuild must still find it
+            // (its own group gets destroyed and rebuilt fresh with the rest of the office root each time).
+            var wall=Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Include)
                 .FirstOrDefault(r=>r.name.StartsWith("Wall_")&&r.bounds.Contains(new Vector3(x,y,South-.03f)));
             if(wall==null){Debug.LogWarning("[SchoolOffice] Corridor hatch: south wall not found under the frame; leaving it a blind panel.");return;}
             var b=wall.bounds;var mat=wall.sharedMaterial;float z=b.center.z,depth=b.size.z;
@@ -426,7 +438,7 @@ namespace Confiscated.EditorTools
         static TextMesh Text(Transform parent,string value,Vector3 local,float size)
         {
             var g=new GameObject("Tag lettering");g.transform.SetParent(parent,false);g.transform.localPosition=local;g.transform.localRotation=Quaternion.Euler(0,180,0);
-            var t=g.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.text=value;t.fontSize=80;t.characterSize=size;t.color=new Color(.12f,.12f,.16f);
+            var t=g.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.text=value;t.fontSize=80;t.characterSize=size;t.color=Color.black;
             t.anchor=TextAnchor.MiddleCenter;t.alignment=TextAlignment.Center;g.AddComponent<WorldLabel>();return t;
         }
         /// <summary>A plaque with lettering; yaw 180 reads from the north (+z) side, 0 from the south.</summary>

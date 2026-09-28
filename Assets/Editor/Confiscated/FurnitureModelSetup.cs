@@ -42,7 +42,12 @@ namespace Confiscated.EditorTools
             // has the SCHOOL OFFICE sign and the "Hatch closed" note painted on; the photocopier's box is deeper than wide.
             // Stands between the corridor and the office: needs to read from both sides. OfficeServingHatch2 is modelled
             // two-sided (unlike the first one, which needed the doubleSided hack to stop its back side being invisible).
-            new Job{models=new[]{"OfficeServingHatch2"},match=t=>t.name=="Corridor hatch",uniform=true,doubleSided=true},
+            // Explicit front: SchoolOfficeSetup now cuts a real opening in the wall right behind this hatch, so the
+            // AwayFromWall raycast no longer finds a wall here to orient off -- it would fall back to an arbitrary
+            // yaw and show the baked SCHOOL OFFICE / Hatch closed face into the office instead of the corridor.
+            // flush: pushes the model's back to the fitting box's rear (now extended to the real wall by the hidden
+            // "Hatch back reveal" spacer), so the Tripo mesh's own depth can't leave an air gap in front of the wall.
+            new Job{models=new[]{"OfficeServingHatch2"},match=t=>t.name=="Corridor hatch",uniform=true,doubleSided=true,front=Vector3.back,flush=true},
             new Job{models=new[]{"OfficePrinterScanner"},match=t=>t.name=="Photocopier",facing=Facing.AwayFromNearestWall,uniform=true,
                 extras=t=>t.parent.Cast<Transform>().Where(s=>s.name=="Photocopier lid").Select(s=>s.GetComponent<Renderer>()).Where(r=>r!=null)},
             // Reception counter over the long west run: the model's RECEPTION sign and open screen frame stand in for the box

@@ -414,7 +414,7 @@ namespace Confiscated.EditorTools
                 board.transform.rotation=Quaternion.LookRotation(inward);Object.DestroyImmediate(board.GetComponent<Collider>());
                 var g=new GameObject("Library notice lettering");g.transform.SetParent(places,false);
                 g.transform.SetPositionAndRotation(board.transform.position-inward*.014f,Quaternion.LookRotation(inward));
-                var t=g.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.text=NoticeText;t.fontSize=80;t.characterSize=.0095f;t.color=new Color(.12f,.12f,.16f);
+                var t=g.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.text=NoticeText;t.fontSize=80;t.characterSize=.0095f;t.color=Color.black;
                 t.anchor=TextAnchor.MiddleCenter;t.alignment=TextAlignment.Center;g.AddComponent<WorldLabel>();
             }
             // The figure (Blender: gaunt, long skull, arms past its knees, frayed into tendrils instead of legs), see-through

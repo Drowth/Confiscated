@@ -45,7 +45,7 @@ namespace Confiscated.EditorTools
                 Box("Nameplate",root.transform,new Vector3(0,1.45f,-.194f),new Vector3(.41f,.25f,.024f),Mat("M_Chapter_Paper"),false);
                 var textObject=new GameObject("Your locker lettering");textObject.transform.SetParent(root.transform,false);textObject.transform.localPosition=new Vector3(0,1.45f,-.21f);
                 var text=textObject.AddComponent<TextMesh>();text.font=SchoolTypography.Font;text.fontSize=64;text.characterSize=.007f;
-                text.text="YOUR\nLOCKER";text.anchor=TextAnchor.MiddleCenter;text.alignment=TextAlignment.Center;text.fontStyle=FontStyle.Bold;text.color=new Color(.1f,.16f,.23f);textObject.AddComponent<WorldLabel>();
+                text.text="YOUR\nLOCKER";text.anchor=TextAnchor.MiddleCenter;text.alignment=TextAlignment.Center;text.fontStyle=FontStyle.Bold;text.color=Color.black;textObject.AddComponent<WorldLabel>();
                 PrefabUtility.SaveAsPrefabAsset(root,PrefabPath);
             }
             finally{Object.DestroyImmediate(root);}

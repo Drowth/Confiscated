@@ -79,7 +79,7 @@ namespace Confiscated.EditorTools
             var go=new GameObject("Lettering - "+value);go.transform.SetParent(parent,false);go.transform.localPosition=position;
             var text=go.AddComponent<TextMesh>();text.font=SchoolTypography.Font;
             text.fontSize=64;text.characterSize=size*.28f;text.text=value;text.anchor=TextAnchor.MiddleCenter;
-            text.alignment=TextAlignment.Center;text.fontStyle=FontStyle.Bold;text.color=new Color(.13f,.19f,.28f);
+            text.alignment=TextAlignment.Center;text.fontStyle=FontStyle.Bold;text.color=Color.black;
             go.AddComponent<WorldLabel>(); return go.transform;
         }
         static GameObject Place(string name,Transform parent,Vector3 p,float yaw=0)

@@ -135,5 +135,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d6aa1c9aab3212a4384b61e622da3be3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Confiscated.GluePuddle
-  radius: 0.53
+  halfWidth: 0.53
+  halfDepth: 0.53
   stuckSound: {fileID: 8300000, guid: e56a5d98966494a4b831d833616fa1f7, type: 3}

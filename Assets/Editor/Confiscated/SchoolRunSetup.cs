@@ -96,7 +96,7 @@ namespace Confiscated.EditorTools
         static void Text(Transform parent,string value,Vector3 pos,float yaw,float size)
         {
             var g=Group(value.Replace('\n',' '),parent,pos);g.localRotation=Quaternion.Euler(0,yaw,0);
-            var t=g.gameObject.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.fontSize=72;t.characterSize=size;t.anchor=TextAnchor.MiddleCenter;t.alignment=TextAlignment.Center;t.text=value;t.color=new Color(.07f,.1f,.15f);
+            var t=g.gameObject.AddComponent<TextMesh>();t.font=SchoolTypography.Font;t.fontSize=72;t.characterSize=size;t.anchor=TextAnchor.MiddleCenter;t.alignment=TextAlignment.Center;t.text=value;t.color=Color.black;
             g.GetComponent<MeshRenderer>().sharedMaterial=t.font.material;g.gameObject.AddComponent<WorldLabel>();
         }
         static GameObject Place(string prefab,Vector3 p,float yaw=0,Transform parent=null)

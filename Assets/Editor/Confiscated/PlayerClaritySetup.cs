@@ -120,7 +120,7 @@ namespace Confiscated.EditorTools
             var sign=new GameObject(name).transform;sign.SetParent(root,false);sign.SetPositionAndRotation(position,Quaternion.Euler(0,yaw,0));
             Part(sign,"Pencil signboard",Vector3.zero,new Vector3(size.x,size.y,.035f),material);
             var go=new GameObject("Lettering");go.transform.SetParent(sign,false);go.transform.localPosition=new Vector3(0,0,-.022f);
-            var text=go.AddComponent<TextMesh>();text.font=SchoolTypography.Font;text.text=words;text.fontSize=64;text.characterSize=.055f;text.anchor=TextAnchor.MiddleCenter;text.alignment=TextAlignment.Center;text.color=new Color(.04f,.07f,.05f);
+            var text=go.AddComponent<TextMesh>();text.font=SchoolTypography.Font;text.text=words;text.fontSize=64;text.characterSize=.055f;text.anchor=TextAnchor.MiddleCenter;text.alignment=TextAlignment.Center;text.color=Color.black;
             text.font.RequestCharactersInTexture(words,64);go.AddComponent<WorldLabel>();
             // Shrinks oversized text to fit the board; never enlarges short text past its authored size (unclamped, a short
             // two-line message like "STORE / CONFISCATED PROPERTY" was scaled up past the board and its two lines overlapped).
