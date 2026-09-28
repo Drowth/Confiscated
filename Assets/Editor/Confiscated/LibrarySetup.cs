@@ -340,6 +340,10 @@ namespace Confiscated.EditorTools
             }
         }
         /// <summary>A box of wall (world x0..x1, y0..y1, `depth` thick about local z 0) with the corridor walls' mapping.</summary>
+        /// <summary>A box of wall (world x0..x1, y0..y1, `depth` thick about local z 0) with the corridor walls' own
+        /// world-space mapping (u = world x / 2, v = height / 3): reused by SchoolOfficeSetup to open the hatch through
+        /// its wall.</summary>
+        internal static Mesh WallPiece(float x0,float x1,float y0,float y1,float depth)=>WallPiece(x0,x1,y0,y1,depth,x=>x/2f);
         static Mesh WallPiece(float x0,float x1,float y0,float y1,float depth,Func<float,float> u)
         {
             var v=new List<Vector3>();var uv=new List<Vector2>();var n=new List<Vector3>();var t=new List<int>();float d=depth/2;

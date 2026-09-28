@@ -355,6 +355,37 @@ namespace Confiscated.EditorTools
             Box(g,"Hatch ledge",new Vector3(x,.9f,face-.13f),new Vector3(1.4f,.04f,.26f),wood,true);
             Plaque(g,"SCHOOL OFFICE",new Vector3(x,2.08f,face-.03f),new Vector2(1.5f,.3f),0,.019f);
             Plaque(g,"Hatch closed.\nDoor is round the back.",new Vector3(x,1.35f,face-.06f),new Vector2(.95f,.3f),0,.01f,true);
+            CutHatchOpening(x,1.35f);
+        }
+
+        /// <summary>
+        /// The hatch was always just a panel stood in front of the solid south wall (the "glass" was frosted, and the
+        /// Tripo model swap hides these box parts anyway) -- a two-sided model looking into a solid wall still shows a
+        /// solid wall from the office side. Cuts a real opening the same width and height as the frosted pane, using the
+        /// corridor wall's own world-space mapping (LibrarySetup.WallPiece) so the four remaining wall pieces match it.
+        /// </summary>
+        static void CutHatchOpening(float x,float y)
+        {
+            const float openW=1.14f,openH=.74f;
+            float ox0=x-openW/2,ox1=x+openW/2,oy0=y-openH/2,oy1=y+openH/2;
+            var wall=Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude)
+                .FirstOrDefault(r=>r.name.StartsWith("Wall_")&&r.bounds.Contains(new Vector3(x,y,South-.03f)));
+            if(wall==null){Debug.LogWarning("[SchoolOffice] Corridor hatch: south wall not found under the frame; leaving it a blind panel.");return;}
+            var b=wall.bounds;var mat=wall.sharedMaterial;float z=b.center.z,depth=b.size.z;
+            wall.gameObject.SetActive(false);EditorUtility.SetDirty(wall.gameObject);
+            var group=new GameObject("Corridor hatch wall").transform;group.SetParent(root,false);group.position=new Vector3(0,0,z);
+            void Piece(float x0,float x1,float y0,float y1)
+            {
+                var p=new GameObject("Wall piece").transform;p.SetParent(group,false);
+                p.gameObject.AddComponent<MeshFilter>().sharedMesh=LibrarySetup.WallPiece(x0,x1,y0,y1,depth);
+                var r=p.gameObject.AddComponent<MeshRenderer>();r.sharedMaterial=mat;r.shadowCastingMode=wall.shadowCastingMode;r.receiveShadows=wall.receiveShadows;
+                var box=p.gameObject.AddComponent<BoxCollider>();box.center=new Vector3((x0+x1)/2,(y0+y1)/2,0);box.size=new Vector3(x1-x0,y1-y0,depth);
+                GameObjectUtility.SetStaticEditorFlags(p.gameObject,GameObjectUtility.GetStaticEditorFlags(wall.gameObject));
+            }
+            Piece(b.min.x,ox0,b.min.y,b.max.y); // left of the opening
+            Piece(ox1,b.max.x,b.min.y,b.max.y); // right of the opening
+            Piece(ox0,ox1,b.min.y,oy0); // below
+            Piece(ox0,ox1,oy1,b.max.y); // above
         }
 
         // ---------- Helpers ----------
