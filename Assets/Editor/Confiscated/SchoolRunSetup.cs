@@ -333,11 +333,15 @@ namespace Confiscated.EditorTools
                             // of a fixed 2m-wide cluster near the centre (left most of the room bare); still leaves
                             // the long east-west floor between the two rows clear as a route.
                             {
+                                // The EQUIPMENT picture board sits on the front wall (z 63.61) at the room's centre
+                                // x -- give that row only the two outer slots (skips the centre) and put the fuller
+                                // row on the bare back wall instead.
                                 var r8=SchoolPlan.Room(8).rect;var c8=P(r8.center.x,r8.center.y);
-                                int perRow=(items.Length+1)/2;float span=(r8.xMax-r8.xMin)/9f-2.2f;
-                                int row=i<perRow?0:1,col=row==0?i:i-perRow;int rowCount=row==0?perRow:items.Length-perRow;
+                                int backCount=(items.Length+1)/2,frontCount=items.Length-backCount;
+                                float span=(r8.xMax-r8.xMin)/9f-2.2f;
+                                int row=i<backCount?0:1,col=row==0?i:i-backCount;int rowCount=row==0?backCount:frontCount;
                                 float x=rowCount>1?c8.x-span/2+col*(span/(rowCount-1)):c8.x;
-                                p=new Vector3(x,0,row==0?63.61f:50.83f);yaw=row==0?0:180;
+                                p=new Vector3(x,0,row==0?50.83f:63.61f);yaw=row==0?180:0;
                             }
                             break;
                         case 5: p=new Vector3(16.94f,0,84.5f+i*2);yaw=-90;break;
@@ -373,10 +377,13 @@ namespace Confiscated.EditorTools
             Notice(P(718.9f,547,1.8f),-90,"DETENTION\nWALK. LISTEN. THINK.");
             // The sign-in desk and the entrance facade already tell visitors to report to reception; this third
             // notice repeated it and sat away from any wall.
-            Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",P(278,802),-90);
-            Place("Assets/Prefabs/Hallway/P_Hall_RecyclingBin.prefab",P(278,816),-90);
-            Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",P(891,950),90);
-            Place("Assets/Prefabs/Hallway/P_Hall_RecyclingBin.prefab",P(891,964),90);
+            // Both benches sat mid-aisle facing into the wall with their backs to the open corridor (yaw off by 180,
+            // and too far out from the wall to actually reach it) -- turned to face out and pulled in flush, same as
+            // the south-wall seat below.
+            Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",new Vector3(-32.34f,0,42.33f),90);
+            Place("Assets/Prefabs/Hallway/P_Hall_RecyclingBin.prefab",new Vector3(-32.34f,0,40.78f),90);
+            Place("Assets/Prefabs/Hallway/P_Hall_Bench.prefab",new Vector3(32.56f,0,25.89f),270);
+            Place("Assets/Prefabs/Hallway/P_Hall_RecyclingBin.prefab",new Vector3(32.56f,0,24.33f),270);
             // Face the south-wall seat into the hall; keep its bin beside the seat and against the wall.
             // (Was yaw 0, facing the wall from 0.66 m out with its back to the open hall -- turned to face away
             // from the wall instead, and moved in to sit flush against it.)
