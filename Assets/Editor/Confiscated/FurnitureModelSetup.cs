@@ -23,7 +23,7 @@ namespace Confiscated.EditorTools
         enum Facing { AwayFromWall, TowardWall, AlongForward, AwayFromNearestWall }
         /// <summary>models (several = variants picked per piece), how to find each target, which child parts stay visible,
         /// loose parts beside it that belong to the piece, and whether to keep the model's proportions inside the space.</summary>
-        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform,flush;public Vector3? front;}
+        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform,flush,doubleSided;public Vector3? front;}
         public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter","FilingCabinets"};
         static readonly Job[] Jobs=
         {
@@ -42,7 +42,8 @@ namespace Confiscated.EditorTools
             new Job{models=Enumerable.Range(1,7).Select(i=>"SchoolLocker"+i).ToArray(),match=t=>t.name=="Locker"&&t.GetComponent<Renderer>()!=null&&t.GetComponentInParent<PlayerLocker>()==null},
             // School office (SchoolOfficeSetup rebuilds it after this pass, then calls back for just these). The hatch model
             // has the SCHOOL OFFICE sign and the "Hatch closed" note painted on; the photocopier's box is deeper than wide.
-            new Job{models=new[]{"OfficeServingHatch"},match=t=>t.name=="Corridor hatch",uniform=true},
+            // Stands between the corridor and the office: needs to read from both sides, not just its modelled front.
+            new Job{models=new[]{"OfficeServingHatch"},match=t=>t.name=="Corridor hatch",uniform=true,doubleSided=true},
             new Job{models=new[]{"OfficePrinterScanner"},match=t=>t.name=="Photocopier",facing=Facing.AwayFromNearestWall,uniform=true,
                 extras=t=>t.parent.Cast<Transform>().Where(s=>s.name=="Photocopier lid").Select(s=>s.GetComponent<Renderer>()).Where(r=>r!=null)},
             // Reception counter over the long west run: the model's RECEPTION sign and open screen frame stand in for the box
@@ -127,7 +128,12 @@ namespace Confiscated.EditorTools
             if(job.flush){now=Bounds(holder);var f=frontX?Vector3.right*Mathf.Sign(front.x):Vector3.forward*Mathf.Sign(front.z);float back=Vector3.Dot(space.center,f)-Vector3.Dot(space.extents,Abs(f)),mine=Vector3.Dot(now.center,f)-Vector3.Dot(now.extents,Abs(f));holder.position+=f*(back-mine);}
             // Furniture follows the room's light, like the office props.
             foreach(var r in holder.GetComponentsInChildren<Renderer>())
-            {r.shadowCastingMode=ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
+            {
+                r.shadowCastingMode=ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);
+                // A thin prop seen from both sides (a hatch, stood between two rooms): the Tripo mesh only has front-facing
+                // triangles, so the far side is invisible with back-face culling on.
+                if(job.doubleSided){r.sharedMaterial.SetFloat("_Cull",(float)UnityEngine.Rendering.CullMode.Off);EditorUtility.SetDirty(r.sharedMaterial);}
+            }
             foreach(var r in parts){r.enabled=false;EditorUtility.SetDirty(r);}
             return true;
         }

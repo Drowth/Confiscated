@@ -22,12 +22,24 @@ namespace Confiscated.EditorTools
         }
         static LineRenderer Stroke(Transform parent,string name,Vector3[] points,string material,float width=.013f)
         {var g=new GameObject(name);g.transform.SetParent(parent,false);var l=g.AddComponent<LineRenderer>();l.useWorldSpace=false;l.positionCount=points.Length;l.SetPositions(points);l.startWidth=l.endWidth=width;l.sharedMaterial=Mat(material);l.numCapVertices=2;return l;}
+        const string PadlockModel="ChasePadlock";
         internal static void Lock(ProgressPropFeedback feedback,Transform parent,Vector3 local)
         {
             var t=Group("Drawn padlock",parent,local);feedback.padlock=t;
-            Box("Lock body",t,Vector3.zero,new Vector3(.16f,.14f,.055f),"M_Chapter_Brass");
-            Stroke(t,"Shackle",new[]{new Vector3(-.05f,.07f,0),new Vector3(-.05f,.15f,0),new Vector3(0,.175f,0),new Vector3(.05f,.15f,0),new Vector3(.05f,.07f,0)},"M_Chapter_Grey");
-            Box("Keyhole",t,new Vector3(0,0,-.03f),new Vector3(.015f,.035f,.005f),"M_Chapter_Ink");
+            var body=Box("Lock body",t,Vector3.zero,new Vector3(.16f,.14f,.055f),"M_Chapter_Brass");
+            var shackle=Stroke(t,"Shackle",new[]{new Vector3(-.05f,.07f,0),new Vector3(-.05f,.15f,0),new Vector3(0,.175f,0),new Vector3(.05f,.15f,0),new Vector3(.05f,.07f,0)},"M_Chapter_Grey");
+            var keyhole=Box("Keyhole",t,new Vector3(0,0,-.03f),new Vector3(.015f,.035f,.005f),"M_Chapter_Ink");
+            // The user's own padlock model, drawn to the same 0.245 m height (body plus shackle) and facing -z like the
+            // drawing it replaces, so the flip PlaytestFixSetup applies to the whole "Drawn padlock" group still works.
+            if(PickupModelSetup.Has(PadlockModel,FurnitureModelSetup.Folder))
+            {
+                var visual=new GameObject("Padlock model").transform;visual.SetParent(t,false);
+                float yaw=(Quaternion.LookRotation(Vector3.back)*Quaternion.Euler(0,90,0)).eulerAngles.y;
+                PickupModelSetup.Place(visual,PadlockModel,.245f,-.07f,yaw,FurnitureModelSetup.Folder);
+                foreach(var r in visual.GetComponentsInChildren<Renderer>())
+                {r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
+                body.gameObject.SetActive(false);shackle.gameObject.SetActive(false);keyhole.gameObject.SetActive(false);
+            }
         }
         [MenuItem("Confiscated/Chase Feedback/Install")]
         public static void Install()
