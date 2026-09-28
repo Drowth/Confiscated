@@ -222,11 +222,77 @@ namespace Confiscated.EditorTools
                 var box=h.gameObject.AddComponent<BoxCollider>();box.center=new Vector3(0,-.11f,.02f);box.size=new Vector3(.21f,.26f,.06f);
                 hooks[i]=hook;EditorUtility.SetDirty(hook);
             }
-            cabinet.hooks=hooks;KeyModels(cabinet);EditorUtility.SetDirty(cabinet);
+            cabinet.hooks=hooks;CabinetModel(c,hooks);KeyModels(cabinet);EditorUtility.SetDirty(cabinet);
+        }
+
+        const string CabinetModelName="OfficeKeyCabinet";
+        const float CabinetHeight=.96f;
+        /// <summary>
+        /// The Tripo cabinet (doors open, ten pegs in two rows of five) over the box-built one, whose parts keep their
+        /// colliders but stop drawing. The hooks move onto the model's own pegs, found by ray-casting its front for bumps
+        /// standing proud of the back panel. If the pegs can't be read, the hooks stay where they were.
+        /// </summary>
+        static void CabinetModel(Transform c,KeyHook[] hooks)
+        {
+            if(!PickupModelSetup.Has(CabinetModelName,FurnitureModelSetup.Folder))return;
+            var visual=new GameObject("Cabinet model").transform;visual.SetParent(c,false);
+            // Front (open face) on the model's -X: +90 turns it to the room.
+            if(!PickupModelSetup.Place(visual,CabinetModelName,1,0,90,FurnitureModelSetup.Folder)){Object.DestroyImmediate(visual.gameObject);return;}
+            var holder=visual.GetChild(0);var rs=holder.GetComponentsInChildren<Renderer>();
+            Bounds B(){var b=rs[0].bounds;foreach(var r in rs)b.Encapsulate(r.bounds);return b;}
+            holder.localScale*=CabinetHeight/B().size.y;
+            // Back on the wall, centred on the cabinet's middle.
+            var b0=B();holder.position+=new Vector3(c.position.x-b0.center.x,c.position.y-b0.center.y,South-b0.min.z);
+            foreach(var r in rs){r.shadowCastingMode=ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
+            foreach(var r in c.GetComponentsInChildren<Renderer>(true).Where(r=>new[]{"Back board","Side","Rail","Open door","Door knob","Peg"}.Contains(r.name))){r.enabled=false;EditorUtility.SetDirty(r);}
+
+            // Depth map of the front, 5 mm grid, local to the cabinet (x across, y up, z out of the wall).
+            var colliders=holder.GetComponentsInChildren<MeshFilter>().Select(f=>{var m=f.gameObject.AddComponent<MeshCollider>();m.sharedMesh=f.sharedMesh;return m;}).ToList();
+            const float step=.005f;int nx=Mathf.CeilToInt(1.6f/step),ny=Mathf.CeilToInt(CabinetHeight/step);
+            var depth=new float[nx,ny];
+            for(int i=0;i<nx;i++)for(int j=0;j<ny;j++)
+            {
+                var from=c.TransformPoint(new Vector3(-.8f+i*step,-CabinetHeight/2+j*step,1));float best=float.NaN;
+                foreach(var col in colliders)if(col.Raycast(new Ray(from,-c.forward),out var hit,2)){float z=c.InverseTransformPoint(hit.point).z;if(float.IsNaN(best)||z>best)best=z;}
+                depth[i,j]=best;
+            }
+            foreach(var col in colliders)Object.DestroyImmediate(col);
+            // The back panel is the deepest surface the middle of the cabinet shows.
+            var middle=new System.Collections.Generic.List<float>();
+            for(int i=nx/3;i<2*nx/3;i++)for(int j=ny/3;j<2*ny/3;j++)if(!float.IsNaN(depth[i,j]))middle.Add(depth[i,j]);
+            if(middle.Count==0){Debug.LogWarning("[SchoolOffice] Key cabinet model: no back panel found; hooks left as built.");return;}
+            float back=middle.Min();
+            // Interior = the box around every back-panel cell (the frame and doors stand far proud of it); pegs are bumps
+            // inside it, 2 cm clear of its edges.
+            int x0=nx,x1=-1,y0=ny,y1=-1;
+            for(int i=0;i<nx;i++)for(int j=0;j<ny;j++)if(!float.IsNaN(depth[i,j])&&depth[i,j]<back+.004f){x0=Mathf.Min(x0,i);x1=Mathf.Max(x1,i);y0=Mathf.Min(y0,j);y1=Mathf.Max(y1,j);}
+            int inset=4;var seen=new bool[nx,ny];var pegs=new System.Collections.Generic.List<Vector3>();
+            for(int i=x0+inset;i<=x1-inset;i++)for(int j=y0+inset;j<=y1-inset;j++)
+            {
+                if(seen[i,j]||float.IsNaN(depth[i,j])||depth[i,j]<back+.01f)continue;
+                // Flood one bump; keep its middle across, its top, and its front.
+                var stack=new System.Collections.Generic.Stack<(int,int)>();stack.Push((i,j));seen[i,j]=true;float sx=0,top=float.MinValue,front=back;int n=0;
+                while(stack.Count>0)
+                {
+                    var (a,d)=stack.Pop();sx+=a;n++;top=Mathf.Max(top,d);front=Mathf.Max(front,depth[a,d]);
+                    foreach(var (da,dd) in new[]{(1,0),(-1,0),(0,1),(0,-1)})
+                    {int p=a+da,q=d+dd;if(p<x0+inset||p>x1-inset||q<y0+inset||q>y1-inset||seen[p,q]||float.IsNaN(depth[p,q])||depth[p,q]<back+.006f)continue;seen[p,q]=true;stack.Push((p,q));}
+                }
+                if(n>=3)pegs.Add(new Vector3(-.8f+sx/n*step,-CabinetHeight/2+top*step,front));
+            }
+            if(pegs.Count!=hooks.Length){Debug.LogWarning("[SchoolOffice] Key cabinet model: found "+pegs.Count+" pegs, not "+hooks.Length+"; hooks left as built.");return;}
+            // Two rows of five: hook i = row i/5 (top first), column i%5 from -x, as built.
+            var rows=pegs.OrderByDescending(p=>p.y).ToList();
+            for(int i=0;i<hooks.Length;i++)
+            {
+                int row=i/5,col=i%5;var peg=rows.Skip(row*5).Take(5).OrderBy(p=>p.x).ElementAt(col);
+                // The key's ring hangs on the peg's top; the key stands just proud of the back panel.
+                hooks[i].transform.localPosition=new Vector3(peg.x,peg.y-.012f,back+.012f);EditorUtility.SetDirty(hooks[i].transform);
+            }
         }
 
         const string KeyFolder="Assets/Art/Models/SchoolProps/Keys/";
-        const float KeyLength=.24f; // a little over life size, so the painted tags read from arm's length
+        const float KeyLength=.28f; // a little over life size, so the painted tags read from arm's length
         /// <summary>Tripo key per label, its tag painted on. BOILER and STAFF have none yet and keep the drawn key.</summary>
         static readonly (string label,string model)[] KeyArt={("STORE","KeyStore"),("PE SHED","KeyPEShed"),("KITCHEN","KeyKitchen"),("HALL","KeyHall"),("MINIBUS","KeyMinibus"),("LIBRARY","KeyLibrary"),("ROOF","KeyRoof"),("GATES","KeyGates")};
         /// <summary>Hook i starts with Labels[i]; KeyCabinet moves each model to wherever the shuffle puts its label.</summary>
