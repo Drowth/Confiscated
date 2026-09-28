@@ -324,8 +324,8 @@ namespace Confiscated.EditorTools
                         var pool=new Vector3(x,0,z)+inward*1.5f;
                         var lamp=new GameObject("Window light").AddComponent<Light>();lamp.transform.SetParent(w,false);
                         lamp.transform.position=new Vector3(x,2.0f,z)+inward*.3f;lamp.transform.LookAt(pool);
-                        lamp.type=LightType.Spot;lamp.spotAngle=62;lamp.innerSpotAngle=35;lamp.range=6;lamp.intensity=54f; // lifted against the -5 EV darknesslamp.color=new Color(.86f,.9f,1f);lamp.shadows=LightShadows.Soft;
-                        var marker=w.gameObject.AddComponent<LibraryWindow>();marker.room=Interior;marker.pool=pool;marker.radius=2.2f;EditorUtility.SetDirty(marker);
+                        lamp.type=LightType.Spot;lamp.spotAngle=62;lamp.innerSpotAngle=35;lamp.range=6;lamp.intensity=5.5f; // LibraryWindow lifts it against the darkness while you are insidelamp.color=new Color(.86f,.9f,1f);lamp.shadows=LightShadows.Soft;
+                        var marker=w.gameObject.AddComponent<LibraryWindow>();marker.room=Interior;marker.pool=pool;marker.radius=2.2f;marker.lamp=lamp;marker.plainIntensity=5.5f;EditorUtility.SetDirty(marker);
                     }
                     Piece(from,max.x,0,h);
                 }

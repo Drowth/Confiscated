@@ -43,6 +43,13 @@ namespace Confiscated
         public const float JumpscareSeconds=.9f,SpottedCooldown=20,SpottedRange=14;
         public int Spotted {get;private set;}
         public bool Catching=>catching;
+        [Tooltip("Chance each wander goes to a window's pool of light instead of an alcove, so it can be glimpsed from the corridor.")]
+        [Range(0,1)] public float windowChance=.35f;
+        public int WindowVisits {get;private set;}
+        public bool GoingToWindow {get;private set;}
+        Vector3 goal;
+        // Eyes are HDR to burn through the library darkness; from outside it they are toned down to match.
+        const float EyeLift=4.2f;MaterialPropertyBlock eyeBlock;Color[] eyeColours;
         /// <summary>The library shushes you the first time you walk in (once per session).</summary>
         public static bool Shushed {get;private set;}
         public static void ResetSession()=>Shushed=false;
@@ -84,7 +91,7 @@ namespace Confiscated
             {
                 case Phase.Wander:
                     if(inside&&Senses(player,at)){Notice(at);break;}
-                    if(Follow(alcoves[target].position,wanderSpeed)){Current=Phase.Linger;phaseEnds=Time.time+lingerSeconds;}
+                    if(Follow(goal,wanderSpeed)){Current=Phase.Linger;phaseEnds=Time.time+lingerSeconds*(GoingToWindow?1.5f:1);}
                     break;
                 case Phase.Linger:
                     if(inside&&Senses(player,at)){Notice(at);break;}
@@ -129,7 +136,12 @@ namespace Confiscated
         void Wander()
         {
             int next=target;for(int i=0;i<8&&(next==target||alcoves.Length<2);i++){next=Random.Range(0,alcoves.Length);if(alcoves.Length<2)break;}
-            target=next;Current=Phase.Wander;repath=0;path?.ClearCorners();
+            target=next;goal=alcoves[target].position;GoingToWindow=false;
+            // Now and then it drifts to a window's pool of light and lingers: seen from the corridor, a shape with eyes.
+            var windows=LibraryWindow.All;
+            if(windows.Count>0&&Random.value<windowChance&&NavMesh.SamplePosition(windows[Random.Range(0,windows.Count)].pool,out var hit,1.5f,areaMask))
+            {goal=hit.position;GoingToWindow=true;WindowVisits++;}
+            Current=Phase.Wander;repath=0;path?.ClearCorners();
         }
         void Notice(Vector3 at)
         {
@@ -217,6 +229,9 @@ namespace Confiscated
             // Eyes stay lit (so it can be spotted in the dark) and blink now and then.
             bool blink=Current!=Phase.Hunt&&Mathf.PerlinNoise(Time.time*1.3f,transform.position.x)>.8f;
             foreach(var e in eyes)if(e!=null)e.enabled=Current!=Phase.Gone&&!blink;
+            if(eyeColours==null){eyeColours=new Color[eyes.Length];for(int i=0;i<eyes.Length;i++)eyeColours[i]=eyes[i]!=null?eyes[i].sharedMaterial.GetColor("_BaseColor"):Color.white;eyeBlock=new MaterialPropertyBlock();}
+            float tone=Mathf.Pow(2f,(LibraryDarkness.Weight-1)*EyeLift);
+            for(int i=0;i<eyes.Length;i++)if(eyes[i]!=null){eyes[i].GetPropertyBlock(eyeBlock);var c=eyeColours[i]*tone;c.a=eyeColours[i].a;eyeBlock.SetColor("_BaseColor",c);eyes[i].SetPropertyBlock(eyeBlock);}
         }
         static float Flat(Vector3 v){v.y=0;return v.magnitude;}
     }

@@ -16,8 +16,6 @@ namespace Confiscated
         public const float LightSeconds=20,RechargeSeconds=30,WarnFraction=.2f,RestartFraction=.25f;
         public static bool Limited=>!SchoolGameMode.Dark;
         public float Battery {get;private set;}=1;
-        /// <summary>Stops of brightness the beam gains in the library (its darkness is -5 EV; the torch should look as it does at about -1.7).</summary>
-        public const float LibraryTorchLift=3.3f;
         public bool Flat=>flat;
         /// <summary>Tests: skip the wait for a drain or a recharge.</summary>
         public void SetBattery(float value){Battery=Mathf.Clamp01(value);if(Battery>=RestartFraction)flat=false;}
@@ -68,7 +66,7 @@ namespace Confiscated
                 float low=Limited&&Battery<WarnFraction?Battery/WarnFraction:1;
                 bool stutter=Limited&&Battery<WarnFraction&&Mathf.PerlinNoise(Time.time*9,0)>.72f;
                 // The library's darkness pulls exposure right down; the beam is lifted to match, so it still reads.
-                beam.intensity=baseIntensity*Mathf.Lerp(.45f,1,low)*(stutter?.15f:1)*Mathf.Pow(2f,LibraryDarkness.Weight*LibraryTorchLift);
+                beam.intensity=baseIntensity*Mathf.Lerp(.45f,1,low)*(stutter?.15f:1)*LibraryDarkness.LiftFactor;
             }
             if(model!=null)model.SetActive(playing&&carried&&!player.InputLocked);
         }

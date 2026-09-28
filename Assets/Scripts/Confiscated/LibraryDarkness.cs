@@ -14,6 +14,10 @@ namespace Confiscated
         [Range(0,1)] public float musicVolume=.35f;
         /// <summary>How far into the library the camera is, 0 outside to 1 inside; the school music ducks by it.</summary>
         public static float Weight {get;private set;}
+        /// <summary>Stops the torch and window lights gain while you are inside (the darkness is -5 EV; lifted things look
+        /// as they would at about -1.7). From outside the library they are at their plain brightness.</summary>
+        public const float Lift=3.3f;
+        public static float LiftFactor=>Mathf.Pow(2f,Weight*Lift);
         Volume volume;AudioSource music;
         void Awake()
         {

@@ -109,6 +109,7 @@ namespace Confiscated.EditorTools
                         // Still, torch off, in plain sight 3.5 m away.
                         if(elapsed<3)return;
                         Check(Object.FindFirstObjectByType<LibraryDarkness>().GetComponent<UnityEngine.Rendering.Volume>().weight>.5f,"inside the library it is dark");
+                        Check(LibraryWindow.All[0].lamp.intensity>20,"inside, the window light is lifted to cut through the darkness ("+LibraryWindow.All[0].lamp.intensity.ToString("F0")+")");
                         Check(Shade.Notices==0&&Shade.Catches==0&&Shade.Current!=LibraryShadow.Phase.Hunt,"standing still in the dark, it ignores you ("+Shade.Current+")");
                         Check(LibraryShadow.Shushed&&Resources.Load<AudioClip>("Audio/LibraryShush")!=null,"the library shushes you the first time you walk in");
                         Aisle(0);Warp(stand);PlaceShadow();Next();break;
@@ -127,6 +128,14 @@ namespace Confiscated.EditorTools
                     case 3:
                         if(elapsed<3)return; // it is gone for a moment after a catch
                         Check(Object.FindFirstObjectByType<LibraryDarkness>().GetComponent<UnityEngine.Rendering.Volume>().weight<.05f,"outside the library the darkness is gone");
+                        Check(LibraryWindow.All[0].lamp.intensity<8,"from the corridor the window light is at its plain brightness ("+LibraryWindow.All[0].lamp.intensity.ToString("F1")+")");
+                        {
+                            // Its wandering reaches the windows (forced here: every wander goes to a window).
+                            float chance=Shade.windowChance;Shade.windowChance=1;int before=Shade.WindowVisits;
+                            typeof(LibraryShadow).GetMethod("Wander",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(Shade,null);
+                            Check(Shade.GoingToWindow&&Shade.WindowVisits==before+1,"it sometimes wanders to a window's light, where it can be seen from the corridor");
+                            Shade.windowChance=0;typeof(LibraryShadow).GetMethod("Wander",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(Shade,null);Shade.windowChance=chance;
+                        }
                         Aisle(1);Warp(stand);PlaceShadow();Next();break;
                     case 4:
                         // Move until it shushes, then freeze: it passes by.

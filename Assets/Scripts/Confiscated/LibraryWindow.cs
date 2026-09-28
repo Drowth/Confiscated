@@ -13,6 +13,10 @@ namespace Confiscated
         [Tooltip("Centre of the light pool on the library floor.")]
         public Vector3 pool;
         public float radius=2.2f;
+        [Tooltip("The light the window throws in, and its brightness seen from the corridor; lifted to match the darkness when you are inside.")]
+        public Light lamp;
+        public float plainIntensity=5.5f;
+        void LateUpdate(){if(lamp!=null)lamp.intensity=plainIntensity*LibraryDarkness.LiftFactor;}
         static readonly List<LibraryWindow> all=new();
         public static IReadOnlyList<LibraryWindow> All=>all;
         void OnEnable()=>all.Add(this);
