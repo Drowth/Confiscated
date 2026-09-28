@@ -32,7 +32,9 @@ namespace Confiscated.EditorTools
         static Vector3? ApplyTrolleyModel(Transform body)
         {
             var holderRoot=new GameObject(FurnitureModelSetup.RootName).transform;holderRoot.SetParent(body,false);
-            if(!PickupModelSetup.Place(holderRoot,"DinnerTrolley",1.26f,0,0,FurnitureModelSetup.Folder))
+            // yaw 90: turns the trolley's long side across the corridor (blocking it) instead of along its length
+            // (where the route just skirts round it).
+            if(!PickupModelSetup.Place(holderRoot,"DinnerTrolley",1.26f,0,90,FurnitureModelSetup.Folder))
             {Object.DestroyImmediate(holderRoot.gameObject);return null;}
             var holder=holderRoot.GetChild(0);
             // body is itself rotated (90 from its parent), so world-space renderer bounds don't line up with its own
