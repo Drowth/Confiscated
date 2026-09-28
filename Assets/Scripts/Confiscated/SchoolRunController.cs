@@ -40,7 +40,7 @@ namespace Confiscated
         float pursuitPulse;
         void Awake()
         {
-            Instance = this; gameObject.AddComponent<EscapeRunFeedback>();gameObject.AddComponent<SchoolNoiseMarks>();gameObject.AddComponent<HuntVhsEffect>();gameObject.AddComponent<HuntFaces>();
+            Instance = this; gameObject.AddComponent<EscapeRunFeedback>();gameObject.AddComponent<SchoolNoiseMarks>();gameObject.AddComponent<HuntVhsEffect>();gameObject.AddComponent<HuntFaces>();gameObject.AddComponent<WindowWatchers>();
             if (secondStaff != null && secondStaff.GetComponent<ReedDirectionalArt>() == null)
                 secondStaff.gameObject.AddComponent<ReedDirectionalArt>();
             // Mr Reed (the lesson teacher and, from three items, the second hunter) is one object; give him footsteps.
