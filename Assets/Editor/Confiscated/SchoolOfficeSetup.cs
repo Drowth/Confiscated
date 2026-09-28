@@ -49,8 +49,29 @@ namespace Confiscated.EditorTools
             Waiting();Counter();BackOffice();Cabinet();CorridorHatch();Lighting();
             // Tripo models over the corridor hatch and photocopier; the furniture pass ran before this office was rebuilt.
             FurnitureModelSetup.ApplyToScene(FurnitureModelSetup.SchoolOfficeModels);
+            AddOfficeSideHatch();
             foreach(var sign in Object.FindObjectsByType<TextMesh>(FindObjectsInactive.Include,FindObjectsSortMode.None).Where(t=>t.text=="CLASSROOM 4"))
             {sign.text="OFFICE";EditorUtility.SetDirty(sign);}
+        }
+
+        /// <summary>
+        /// The hatch model's own baked SCHOOL OFFICE/Hatch closed artwork only reads correctly from the side it was
+        /// painted for; double-sided culling stops the far side being invisible, but from the office it still shows
+        /// that same artwork mirror-flipped. A second copy, spun 180 and flush to the wall from the office side, gives
+        /// each direction its own correctly-facing read instead of one hatch trying to serve both.
+        /// </summary>
+        static void AddOfficeSideHatch()
+        {
+            var hatch=root.Find("Corridor hatch");if(hatch==null)return;
+            var front=hatch.Find(FurnitureModelSetup.RootName);if(front==null)return;
+            var existing=hatch.Find(FurnitureModelSetup.RootName+" (office side)");if(existing!=null)Object.DestroyImmediate(existing.gameObject);
+            var back=(Transform)Object.Instantiate(front.gameObject,hatch).transform;
+            back.name=FurnitureModelSetup.RootName+" (office side)";
+            var holder=back.GetChild(0);
+            holder.rotation=Quaternion.Euler(0,180,0)*holder.rotation;
+            var renderers=holder.GetComponentsInChildren<Renderer>();
+            var b=renderers[0].bounds;foreach(var r in renderers)b.Encapsulate(r.bounds);
+            holder.position+=new Vector3(0,0,South-b.min.z);
         }
 
         static void OpenDoor(SchoolRunController run)
