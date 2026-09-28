@@ -125,8 +125,10 @@ namespace Confiscated.EditorTools
             var go=new GameObject("Lettering");go.transform.SetParent(sign,false);go.transform.localPosition=new Vector3(0,0,-.022f);
             var text=go.AddComponent<TextMesh>();text.font=SchoolTypography.Font;text.text=words;text.fontSize=64;text.characterSize=.055f;text.anchor=TextAnchor.MiddleCenter;text.alignment=TextAlignment.Center;text.color=new Color(.04f,.07f,.05f);
             text.font.RequestCharactersInTexture(words,64);go.AddComponent<WorldLabel>();
+            // Shrinks oversized text to fit the board; never enlarges short text past its authored size (unclamped, a short
+            // two-line message like "STORE / CONFISCATED PROPERTY" was scaled up past the board and its two lines overlapped).
             var bounds=go.GetComponent<Renderer>().bounds;float width=Mathf.Max(bounds.size.x,bounds.size.z);
-            if(width>.001f)text.characterSize*=Mathf.Min((size.x-.10f)/width,(size.y-.025f)/Mathf.Max(.001f,bounds.size.y));
+            if(width>.001f)text.characterSize*=Mathf.Min(1f,Mathf.Min((size.x-.10f)/width,(size.y-.025f)/Mathf.Max(.001f,bounds.size.y)));
         }
         static void UpdateDescriptions()
         {
