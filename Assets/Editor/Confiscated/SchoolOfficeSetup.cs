@@ -83,8 +83,10 @@ namespace Confiscated.EditorTools
             Prefab("Assets/Prefabs/Props/P_Noticeboard.prefab",g,"Office noticeboard",new Vector3(8.5f,1.65f,North-.03f),180);
             Prefab("Assets/Prefabs/Hallway/P_Hall_TrophyCabinet_Generated.prefab",g,"Office trophy cabinet",new Vector3(18.3f,0,North-.39f),90); // as in the north hall: yaw 90 puts its back (0.78 m deep) on a north wall
             Prefab("Assets/Prefabs/Hallway/P_Hall_LitterBin.prefab",g,"Waiting bin",new Vector3(11.8f,0,16.8f),0);
-            // "PLEASE WAIT TO BE SEEN" is painted on the reception counter model (FurnitureModelSetup).
-            if(!PickupModelSetup.Has("OfficeReceptionCounter",FurnitureModelSetup.Folder))Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(.95f,.36f),180,.011f);
+            // The reception counter model paints its own wait sign, but the generated texture misspells it ("PLEISS WNT
+            // TO BE SEEN"); cover it with a correctly-spelled plaque in the same spot instead of the box counter's own.
+            bool counterModel=PickupModelSetup.Has("OfficeReceptionCounter",FurnitureModelSetup.Folder);
+            Plaque(g,"PLEASE WAIT\nTO BE SEEN",counterModel?new Vector3(14.15f,.66f,CounterZ+.4f):new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(counterModel?1.3f:.95f,counterModel?.4f:.36f),180,.011f);
         }
 
         /// <summary>
