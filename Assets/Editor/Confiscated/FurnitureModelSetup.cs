@@ -69,6 +69,9 @@ namespace Confiscated.EditorTools
             // The three dinner serving counters (DiningHallSetup); already correctly yawed (180, facing the queue), so
             // just keep that authored facing rather than re-deriving it from a wall raycast.
             new Job{models=new[]{"CafeteriaServingCounter"},match=t=>t.name=="P_Dining_ServingCounter",uniform=true,facing=Facing.AlongForward},
+            // Loose meal trays dropped on dining tables (DiningHallSetup); small and flat, tabletop props rather than
+            // wall furniture, so keep the authored yaw instead of a wall raycast.
+            new Job{models=new[]{"DinnerTray"},match=t=>t.name=="P_Dining_MealTray",uniform=true,facing=Facing.AlongForward},
         };
 
         [MenuItem("Confiscated/School Run/Apply Furniture Models (Codex batch 4)")]
