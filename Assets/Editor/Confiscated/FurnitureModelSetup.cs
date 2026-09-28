@@ -24,7 +24,7 @@ namespace Confiscated.EditorTools
         /// <summary>models (several = variants picked per piece), how to find each target, which child parts stay visible,
         /// loose parts beside it that belong to the piece, and whether to keep the model's proportions inside the space.</summary>
         sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform,flush;public Vector3? front;}
-        public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter"};
+        public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter","FilingCabinets"};
         static readonly Job[] Jobs=
         {
             new Job{models=new[]{"FilingCabinet","FilingCabinet2"},match=t=>t.name=="FilingCabinet"},
@@ -32,7 +32,9 @@ namespace Confiscated.EditorTools
             new Job{models=new[]{"CaretakerTrolley"},match=t=>t.name=="MaintenanceTrolley"},
             new Job{models=new[]{"DinnerTrolley"},match=t=>t.name=="Sketched trolley visual",facing=Facing.AlongForward},
             new Job{models=new[]{"VisitorSignInDesk"},match=t=>t.name=="Visitor sign-in desk",keep=p=>{var n=p.name.ToLowerInvariant();return n.Contains("book")||n.Contains("pencil")||n.Contains("ruled")||n.Contains("fold");}},
-            new Job{models=new[]{"TallStorageCupboard"},match=t=>t.name.StartsWith("P_TallStorage")},
+            // Room-furnishing code already gives each one a deliberate yaw; auto-detecting the nearest wall instead can turn
+            // it round in a large or open room where no wall is within the raycast's reach.
+            new Job{models=new[]{"TallStorageCupboard"},match=t=>t.name.StartsWith("P_TallStorage"),facing=Facing.AlongForward},
             new Job{models=new[]{"MaintenanceShelving"},match=t=>t.name=="MaintenanceShelving",keep=p=>!new[]{"SideL","SideR","Back","Shelf","Box","Paper","Lettering"}.Contains(p.name)},
             // The teacher sits at the kneehole and drawers (the model's front), backed onto the board wall; the class sees the panel.
             new Job{models=new[]{"TeacherDesk"},match=t=>t.name.StartsWith("P_Desk")||t.name=="Decoy teacher desk",keep=p=>p.name.ToLowerInvariant().Contains("book"),facing=Facing.TowardWall},
@@ -50,6 +52,9 @@ namespace Confiscated.EditorTools
             // Staff pigeonholes: the box and its loose slots and post; wide and tall as the old unit, deeper, back on the wall.
             new Job{models=new[]{"OfficePigeonholes"},match=t=>t.name=="Pigeonholes",uniform=true,flush=true,
                 extras=t=>t.parent.Cast<Transform>().Where(s=>(s.name=="Pigeonhole"||s.name=="Post")&&Mathf.Abs(s.position.z-t.position.z)<1f).Select(s=>s.GetComponent<Renderer>()).Where(r=>r!=null)},
+            // Four box-built "Filing cabinet" units in a row (their own drawer lines/handles are nested inside this group
+            // already, no extras needed) for the user's own bank-of-4 model, in place of four separate single-cabinet swaps.
+            new Job{models=new[]{"FilingCabinets"},match=t=>t.name=="Filing cabinet bank",uniform=true},
         };
 
         [MenuItem("Confiscated/School Run/Apply Furniture Models (Codex batch 4)")]

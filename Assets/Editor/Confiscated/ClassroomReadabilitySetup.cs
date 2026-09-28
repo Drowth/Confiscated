@@ -15,6 +15,8 @@ namespace Confiscated.EditorTools
             if(door.name.Contains("Dining"))return "DINING HALL";
             if(door.name=="Store cupboard")return "STORE";
             if(door.name=="East room A west")return "DETENTION";
+            if(door.name=="East room B west")return "EQUIPMENT";
+            if(door.name=="North room B south")return "RESOURCES";
             int a=door.vertical?SchoolPlan.ZoneAt(door.line-.1f,door.centre):SchoolPlan.ZoneAt(door.centre,door.line-.1f);
             int b=door.vertical?SchoolPlan.ZoneAt(door.line+.1f,door.centre):SchoolPlan.ZoneAt(door.centre,door.line+.1f);
             int number=Mathf.Max(a,b) switch {10=>1,11=>2,12=>3,13=>4,9=>5,8=>6,5=>7,4=>8,3=>9,2=>10,7=>11,_=>0};

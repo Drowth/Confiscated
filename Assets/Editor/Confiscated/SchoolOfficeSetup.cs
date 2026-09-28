@@ -181,11 +181,12 @@ namespace Confiscated.EditorTools
                 Box(g,"Keyboard",new Vector3(x,.77f,9.25f),new Vector3(.36f,.015f,.12f),ink,false);
                 Box(g,"Paper tray",new Vector3(x+.34f,.78f,9.35f),new Vector3(.24f,.04f,.3f),paper,false);
             }
-            // Filing cabinets down the west wall.
+            // Filing cabinets down the west wall, grouped so FurnitureModelSetup can swap the whole run for one bank-of-4 model.
+            var bank=new GameObject("Filing cabinet bank").transform;bank.SetParent(g,false);
             for(int i=0;i<4;i++)
             {
-                var at=new Vector3(West+.3f,.66f,4.6f+i*.62f);Solid(g,"Filing cabinet",at,new Vector3(.58f,1.32f,.58f),grey);
-                for(int d=0;d<4;d++){Box(g,"Drawer line",new Vector3(at.x+.292f,.33f+d*.32f,at.z),new Vector3(.005f,.008f,.52f),ink,false);Box(g,"Drawer handle",new Vector3(at.x+.3f,.2f+d*.32f,at.z),new Vector3(.02f,.025f,.14f),brass,false);}
+                var at=new Vector3(West+.3f,.66f,4.6f+i*.62f);Solid(bank,"Filing cabinet",at,new Vector3(.58f,1.32f,.58f),grey);
+                for(int d=0;d<4;d++){Box(bank,"Drawer line",new Vector3(at.x+.292f,.33f+d*.32f,at.z),new Vector3(.005f,.008f,.52f),ink,false);Box(bank,"Drawer handle",new Vector3(at.x+.3f,.2f+d*.32f,at.z),new Vector3(.02f,.025f,.14f),brass,false);}
             }
             // Photocopier and a stack of newsletters against the east wall.
             Solid(g,"Photocopier",new Vector3(East-.42f,.5f,7.2f),new Vector3(.8f,1.0f,.7f),grey);
