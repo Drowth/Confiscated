@@ -26,20 +26,16 @@ namespace Confiscated.EditorTools
             gate.obstacle=body;gate.clearedLocalPosition=new Vector3(0,0,1.3f);gate.clearedLocalEuler=Vector3.zero;
             EditorUtility.SetDirty(gate);
         }
-        /// <summary>Places DinnerTrolley under body at the same scale as the real dining trolley (no stretch), resting
-        /// on the floor. Returns its local-space size (for the collider/obstacle), or null if the model isn't present
+        /// <summary>Places two DinnerTrolley instances side by side under body, each at the same undistorted scale as
+        /// the real dining trolley (stretching one to span the corridor squashed its boxes into diagonal planks; two
+        /// natural-proportioned ones parked side by side reads as a wider maintenance barrier with no distortion).
+        /// Returns the combined local-space size (for the collider/obstacle), or null if the model isn't present
         /// (caller falls back to the hand-drawn dressing).</summary>
         static Vector3? ApplyTrolleyModel(Transform body)
         {
-            var holderRoot=new GameObject(FurnitureModelSetup.RootName).transform;holderRoot.SetParent(body,false);
-            // yaw 90: turns the trolley's long side across the corridor (blocking it) instead of along its length
-            // (where the route just skirts round it).
-            if(!PickupModelSetup.Place(holderRoot,"DinnerTrolley",1.26f,0,90,FurnitureModelSetup.Folder))
-            {Object.DestroyImmediate(holderRoot.gameObject);return null;}
-            var holder=holderRoot.GetChild(0);
             // body is itself rotated (90 from its parent), so world-space renderer bounds don't line up with its own
-            // local axes (which the BoxCollider below is defined in) -- measure in body's local space instead.
-            Bounds LocalBounds()
+            // local axes (which the BoxCollider below is defined in) -- measure and place in body's local space.
+            Bounds LocalBounds(Transform holder)
             {
                 var renderers=holder.GetComponentsInChildren<Renderer>();
                 var b=new Bounds(body.InverseTransformPoint(renderers[0].bounds.center),Vector3.zero);
@@ -47,10 +43,24 @@ namespace Confiscated.EditorTools
                     b.Encapsulate(body.InverseTransformPoint(r.bounds.center+Vector3.Scale(r.bounds.extents,new Vector3(sx,sy,sz))));
                 return b;
             }
-            var have=LocalBounds();
-            holder.localPosition+=new Vector3(-have.center.x,-have.min.y,-have.center.z);
-            foreach(var r in holder.GetComponentsInChildren<Renderer>()){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
-            return have.size;
+            var holders=new System.Collections.Generic.List<Transform>();
+            for(int i=0;i<2;i++)
+            {
+                var holderRoot=new GameObject(FurnitureModelSetup.RootName+(i==0?"":" "+i)).transform;holderRoot.SetParent(body,false);
+                // yaw 90: turns each trolley's long side across the corridor (blocking it) instead of along its length
+                // (where the route just skirts round it).
+                if(!PickupModelSetup.Place(holderRoot,"DinnerTrolley",1.26f,0,90,FurnitureModelSetup.Folder))
+                {Object.DestroyImmediate(holderRoot.gameObject);foreach(var h in holders)Object.DestroyImmediate(h.parent.gameObject);return null;}
+                holders.Add(holderRoot.GetChild(0));
+            }
+            // Centre each on body's local origin first (matches LocalBounds' frame), then slide the pair apart along
+            // the corridor width (local X) so they sit edge to edge without overlapping.
+            foreach(var holder in holders){var b=LocalBounds(holder);holder.localPosition+=new Vector3(-b.center.x,-b.min.y,-b.center.z);}
+            float width=LocalBounds(holders[0]).size.x;
+            for(int i=0;i<holders.Count;i++)holders[i].localPosition+=new Vector3((i-.5f)*width,0,0);
+            foreach(var holder in holders)foreach(var r in holder.GetComponentsInChildren<Renderer>()){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;r.receiveShadows=true;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
+            var combined=LocalBounds(holders[0]);foreach(var holder in holders)combined.Encapsulate(LocalBounds(holder));
+            return combined.size;
         }
         [MenuItem("Confiscated/Chase Feedback/Refresh Shortcut Trolley")]
         public static void Install()
