@@ -7,10 +7,17 @@ namespace Confiscated
         public KeyCabinet cabinet;
         public Transform key;
         public TextMesh tagText;
+        /// <summary>The drawn key and tag, hidden while a key model hangs here.</summary>
+        public Renderer[] placeholder;
         public string Label {get;private set;}
         float swingUntil;Quaternion rest;
         void Awake(){if(key!=null)rest=key.localRotation;}
         public void SetLabel(string label){Label=label;if(tagText!=null)tagText.text=label;}
+        public void ShowModel(Transform model)
+        {
+            if(model!=null)model.SetParent(key,false); // built at the same local pose on every hook
+            if(placeholder!=null)foreach(var r in placeholder)if(r!=null)r.enabled=model==null;
+        }
         public bool IsStore=>Label==KeyCabinet.StoreLabel;
         bool Taken=>IsStore&&SchoolRunController.Instance!=null&&SchoolRunController.Instance.HasStoreKey;
         public override string GetPrompt(PlayerInteractor p)=>CanInteract(p)?"Hold F: take this key (check its tag)":null;

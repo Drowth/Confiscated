@@ -20,9 +20,11 @@ namespace Confiscated.EditorTools
     {
         public const string Folder="Assets/Art/Models/SchoolProps/Furniture/",RootName="Furniture model";
 
-        enum Facing { AwayFromWall, TowardWall, AlongForward }
-        /// <summary>models (several = variants picked per piece), how to find each target, which child parts stay visible.</summary>
-        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;}
+        enum Facing { AwayFromWall, TowardWall, AlongForward, AwayFromNearestWall }
+        /// <summary>models (several = variants picked per piece), how to find each target, which child parts stay visible,
+        /// loose parts beside it that belong to the piece, and whether to keep the model's proportions inside the space.</summary>
+        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform;}
+        public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner"};
         static readonly Job[] Jobs=
         {
             new Job{models=new[]{"FilingCabinet"},match=t=>t.name=="FilingCabinet"},
@@ -36,6 +38,11 @@ namespace Confiscated.EditorTools
             new Job{models=new[]{"TeacherDesk"},match=t=>t.name.StartsWith("P_Desk")||t.name=="Decoy teacher desk",keep=p=>p.name.ToLowerInvariant().Contains("book"),facing=Facing.TowardWall},
             // Corridor lockers (not the player's own): six worn variants, the same one every build for a given locker.
             new Job{models=Enumerable.Range(1,7).Select(i=>"SchoolLocker"+i).ToArray(),match=t=>t.name=="Locker"&&t.GetComponent<Renderer>()!=null&&t.GetComponentInParent<PlayerLocker>()==null},
+            // School office (SchoolOfficeSetup rebuilds it after this pass, then calls back for just these). The hatch model
+            // has the SCHOOL OFFICE sign and the "Hatch closed" note painted on; the photocopier's box is deeper than wide.
+            new Job{models=new[]{"OfficeServingHatch"},match=t=>t.name=="Corridor hatch",uniform=true},
+            new Job{models=new[]{"OfficePrinterScanner"},match=t=>t.name=="Photocopier",facing=Facing.AwayFromNearestWall,uniform=true,
+                extras=t=>t.parent.Cast<Transform>().Where(s=>s.name=="Photocopier lid").Select(s=>s.GetComponent<Renderer>()).Where(r=>r!=null)},
         };
 
         [MenuItem("Confiscated/School Run/Apply Furniture Models (Codex batch 4)")]
@@ -47,13 +54,14 @@ namespace Confiscated.EditorTools
             Debug.Log("[Furniture] "+n+" pieces now use a model.");
         }
 
-        /// <summary>Does not save. Returns how many pieces now use a model.</summary>
-        public static int ApplyToScene()
+        /// <summary>Does not save. Returns how many pieces now use a model. `only` limits it to jobs using those models.</summary>
+        public static int ApplyToScene(string[] only=null)
         {
             AssetDatabase.Refresh();int count=0;
             var all=Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,FindObjectsSortMode.None);
             foreach(var job in Jobs)
             {
+                if(only!=null&&!job.models.Any(only.Contains))continue;
                 var available=job.models.Where(m=>PickupModelSetup.Has(m,Folder)).ToArray();
                 if(available.Length==0)continue;
                 // Earlier jobs replace old model roots, so skip anything destroyed since `all` was gathered, and never
@@ -78,6 +86,7 @@ namespace Confiscated.EditorTools
             // bring back any an earlier pass hid, and leave them out of the measuring.
             foreach(var r in target.GetComponentsInChildren<Renderer>(true).Where(Character))r.enabled=true;
             var parts=target.GetComponentsInChildren<Renderer>(true).Where(r=>!job.keep(r.transform)&&!Character(r)&&r.GetComponentInParent<Interactable>()==null&&!(r is ParticleSystemRenderer)).ToList();
+            if(job.extras!=null)parts.AddRange(job.extras(target));
             if(parts.Count==0)return false;
             foreach(var r in parts)r.enabled=true; // measure the original, even on a re-run
             var space=parts[0].bounds;foreach(var r in parts)space.Encapsulate(r.bounds);
@@ -91,6 +100,7 @@ namespace Confiscated.EditorTools
             // holder's own axes lies along it, which also holds under a rotated or scaled target (a locker box).
             var have=Bounds(holder);var scale=holder.localScale;
             Vector3 fit=new(space.size.x/Mathf.Max(have.size.x,.001f),space.size.y/Mathf.Max(have.size.y,.001f),space.size.z/Mathf.Max(have.size.z,.001f));
+            if(job.uniform)fit=Vector3.one*Mathf.Min(fit.x,fit.y,fit.z); // largest that fits, standing on the footprint's middle
             var axes=new[]{holder.right,holder.up,holder.forward};
             for(int w=0;w<3;w++)
             {
@@ -120,6 +130,8 @@ namespace Confiscated.EditorTools
             {
                 float Hit(Vector3 d)=>Physics.Raycast(new Vector3(space.center.x,space.min.y+.5f,space.center.z),d,out var h,4f,~0,QueryTriggerInteraction.Ignore)&&!h.transform.IsChildOf(target)?h.distance:99;
                 var wall=Hit(across)<Hit(-across)?across:-across;
+                // Or whichever of the four sides is closest to a wall, whatever the footprint's long side.
+                if(job.facing==Facing.AwayFromNearestWall)wall=new[]{Vector3.right,Vector3.left,Vector3.forward,Vector3.back}.OrderBy(Hit).First();
                 front=job.facing==Facing.TowardWall?wall:-wall;
             }
             else

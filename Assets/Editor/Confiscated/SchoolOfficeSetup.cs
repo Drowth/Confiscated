@@ -47,6 +47,8 @@ namespace Confiscated.EditorTools
 
             OpenDoor(run);RetireEquipmentKey();
             Waiting();Counter();BackOffice();Cabinet();CorridorHatch();
+            // Tripo models over the corridor hatch and photocopier; the furniture pass ran before this office was rebuilt.
+            FurnitureModelSetup.ApplyToScene(FurnitureModelSetup.SchoolOfficeModels);
             foreach(var sign in Object.FindObjectsByType<TextMesh>(FindObjectsInactive.Include,FindObjectsSortMode.None).Where(t=>t.text=="CLASSROOM 4"))
             {sign.text="OFFICE";EditorUtility.SetDirty(sign);}
         }
@@ -220,7 +222,38 @@ namespace Confiscated.EditorTools
                 var box=h.gameObject.AddComponent<BoxCollider>();box.center=new Vector3(0,-.11f,.02f);box.size=new Vector3(.21f,.26f,.06f);
                 hooks[i]=hook;EditorUtility.SetDirty(hook);
             }
-            cabinet.hooks=hooks;EditorUtility.SetDirty(cabinet);
+            cabinet.hooks=hooks;KeyModels(cabinet);EditorUtility.SetDirty(cabinet);
+        }
+
+        const string KeyFolder="Assets/Art/Models/SchoolProps/Keys/";
+        const float KeyLength=.24f; // a little over life size, so the painted tags read from arm's length
+        /// <summary>Tripo key per label, its tag painted on. BOILER and STAFF have none yet and keep the drawn key.</summary>
+        static readonly (string label,string model)[] KeyArt={("STORE","KeyStore"),("PE SHED","KeyPEShed"),("KITCHEN","KeyKitchen"),("HALL","KeyHall"),("MINIBUS","KeyMinibus"),("LIBRARY","KeyLibrary"),("ROOF","KeyRoof"),("GATES","KeyGates")};
+        /// <summary>Hook i starts with Labels[i]; KeyCabinet moves each model to wherever the shuffle puts its label.</summary>
+        static void KeyModels(KeyCabinet cabinet)
+        {
+            var models=new Transform[KeyCabinet.Labels.Length];
+            for(int i=0;i<cabinet.hooks.Length;i++)
+            {
+                var hook=cabinet.hooks[i];string label=KeyCabinet.Labels[i];
+                hook.placeholder=hook.key.GetComponentsInChildren<Renderer>(true);EditorUtility.SetDirty(hook);
+                string model=KeyArt.FirstOrDefault(k=>k.label==label).model;
+                if(model==null||!PickupModelSetup.Has(model,KeyFolder))continue;
+                var visual=new GameObject("Key model "+label).transform;visual.SetParent(hook.key,false);
+                // The models stand upright with the tag's writing on their -X: +90 turns that to face the room.
+                if(!PickupModelSetup.Place(visual,model,KeyLength,0,90,KeyFolder)){Object.DestroyImmediate(visual.gameObject);continue;}
+                // Hang it by its ring: the middle of the top sliver of the mesh goes just under the peg.
+                var holder=visual.GetChild(0);
+                var points=holder.GetComponentsInChildren<MeshFilter>().SelectMany(f=>f.sharedMesh.vertices.Select(f.transform.TransformPoint)).ToList();
+                float top=points.Max(p=>p.y),height=top-points.Min(p=>p.y);
+                var sliver=points.Where(p=>p.y>top-height*.06f).ToList();var ring=sliver.Aggregate(Vector3.zero,(a,p)=>a+p)/sliver.Count;
+                var peg=hook.transform.position;var across=cabinet.transform.right;
+                holder.position+=across*Vector3.Dot(peg-ring,across)+Vector3.up*(peg.y+.012f-top);
+                foreach(var r in holder.GetComponentsInChildren<Renderer>()){r.shadowCastingMode=ShadowCastingMode.Off;SchoolLightingSetup.ConfigureArtworkMaterial(r.sharedMaterial,false);}
+                foreach(var r in hook.placeholder)r.enabled=false;
+                models[i]=visual;
+            }
+            cabinet.labelModels=models;
         }
 
         /// <summary>From the corridor by the main entrance: a shut serving hatch in the office's south wall and a sign.</summary>
