@@ -23,7 +23,7 @@ namespace Confiscated.EditorTools
         enum Facing { AwayFromWall, TowardWall, AlongForward, AwayFromNearestWall }
         /// <summary>models (several = variants picked per piece), how to find each target, which child parts stay visible,
         /// loose parts beside it that belong to the piece, and whether to keep the model's proportions inside the space.</summary>
-        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform,flush,doubleSided;public Vector3? front;}
+        sealed class Job{public string[] models;public Func<Transform,bool> match;public Func<Transform,bool> keep=_=>false;public Facing facing=Facing.AwayFromWall;public Func<Transform,IEnumerable<Renderer>> extras;public bool uniform,flush,doubleSided;public Vector3? front;public float extraScale=1f;}
         public static readonly string[] SchoolOfficeModels={"OfficeServingHatch2","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter","FilingCabinets"};
         static readonly Job[] Jobs=
         {
@@ -62,7 +62,9 @@ namespace Confiscated.EditorTools
             new Job{models=new[]{"FilingCabinets"},match=t=>t.name=="Filing cabinet bank",uniform=true},
             // Only the Art Room's own pupil stations (FurnishClass names each room's group "<TITLE> pupil station"):
             // swaps just the desktop+legs for the table model, leaves the chair and the exercise book/pencil dressing.
-            new Job{models=new[]{"ArtRoomTable"},match=t=>t.name=="ART ROOM pupil station",uniform=true,facing=Facing.AlongForward,
+            // extraScale: uniform-fit to the old cramped desktop box alone left it toy-sized; bigger reads better as its
+            // own shared art table (columns/rows are 3.2/3m apart, plenty of room).
+            new Job{models=new[]{"ArtRoomTable"},match=t=>t.name=="ART ROOM pupil station",uniform=true,facing=Facing.AlongForward,extraScale=1.8f,
                 keep=p=>new[]{"Chair seat","Chair back","Chair leg","Exercise book","Pencil"}.Contains(p.name)},
             // The three dinner serving counters (DiningHallSetup); already correctly yawed (180, facing the queue), so
             // just keep that authored facing rather than re-deriving it from a wall raycast.
@@ -100,7 +102,23 @@ namespace Confiscated.EditorTools
                     if(Swap(t,job,available[pick]))count++;
                 }
             }
+            FixArtRoomDressing();
             return count;
+        }
+        /// <summary>
+        /// The exercise book/pencil kept by the ArtRoomTable job were positioned for the old, smaller box-built desktop;
+        /// once the (bigger) table model stands in, rest them on its actual top instead of floating over a now-wrong height.
+        /// </summary>
+        static void FixArtRoomDressing()
+        {
+            foreach(var desk in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,FindObjectsSortMode.None).Where(t=>t.name=="ART ROOM pupil station"))
+            {
+                var fm=desk.Find(RootName);if(fm==null||fm.childCount==0)continue;
+                var top=Bounds(fm.GetChild(0)).max.y;
+                var book=desk.Find("Exercise book");var pencil=desk.Find("Pencil");
+                if(book!=null){book.localPosition=new Vector3(book.localPosition.x*1.4f,top+.005f,book.localPosition.z*1.4f);book.localScale*=1.6f;EditorUtility.SetDirty(book);}
+                if(pencil!=null){pencil.localPosition=new Vector3(pencil.localPosition.x*1.4f,top+.007f,pencil.localPosition.z*1.4f);pencil.localScale*=1.6f;EditorUtility.SetDirty(pencil);}
+            }
         }
         static bool Character(Renderer r){var n=r.name.ToLowerInvariant();return n.Contains("cutout")||n.Contains("shadow")||r.GetComponentInParent<CaretakerAI>()!=null;}
         static IEnumerable<Transform> Ancestors(Transform t){for(var p=t.parent;p!=null;p=p.parent)yield return p;}
@@ -129,6 +147,7 @@ namespace Confiscated.EditorTools
             // Largest that fits, standing on the footprint's middle; `flush` leaves depth free (the back goes to the wall below).
             Vector3 front=Quaternion.Euler(0,yaw,0)*Vector3.left;bool frontX=Mathf.Abs(front.x)>Mathf.Abs(front.z);
             if(job.uniform)fit=Vector3.one*(job.flush?Mathf.Min(fit.y,frontX?fit.z:fit.x):Mathf.Min(fit.x,fit.y,fit.z));
+            fit*=job.extraScale;
             var axes=new[]{holder.right,holder.up,holder.forward};
             for(int w=0;w<3;w++)
             {
