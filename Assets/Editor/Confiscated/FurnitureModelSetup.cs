@@ -60,6 +60,10 @@ namespace Confiscated.EditorTools
             // Four box-built "Filing cabinet" units in a row (their own drawer lines/handles are nested inside this group
             // already, no extras needed) for the user's own bank-of-4 model, in place of four separate single-cabinet swaps.
             new Job{models=new[]{"FilingCabinets"},match=t=>t.name=="Filing cabinet bank",uniform=true},
+            // Only the Art Room's own pupil stations (FurnishClass names each room's group "<TITLE> pupil station"):
+            // swaps just the desktop+legs for the table model, leaves the chair and the exercise book/pencil dressing.
+            new Job{models=new[]{"ArtRoomTable"},match=t=>t.name=="ART ROOM pupil station",uniform=true,facing=Facing.AlongForward,
+                keep=p=>new[]{"Chair seat","Chair back","Chair leg","Exercise book","Pencil"}.Contains(p.name)},
         };
 
         [MenuItem("Confiscated/School Run/Apply Furniture Models (Codex batch 4)")]
