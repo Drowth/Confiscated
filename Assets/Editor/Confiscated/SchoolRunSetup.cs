@@ -194,6 +194,7 @@ namespace Confiscated.EditorTools
                 var r=SchoolPlan.Room(zone).rect;var c=P(r.center.x,r.center.y);
                 for(int j=0;j<3;j++)Place("P_TallStorage",c+new Vector3(-2.4f,0,-3+j*3),90);
                 Place("P_TallStorage",c+new Vector3(2,0,1),-90);
+                if(zone==8)Place("P_TallStorage",c+new Vector3(2,0,-3),-90); // a 5th; ArrangeShelves spreads these across the room's real width
                 Display(P(r.center.x,r.yMin+.9f,1.75f),0,zone==4?"Nature":"Sports",zone==4?"RESOURCES":"EQUIPMENT");
                 AddPickup(zone==4?2:3,zone==4?"handheld game":"skateboard",c+new Vector3(2.5f,.85f,-2.5f));
             }
@@ -328,8 +329,17 @@ namespace Confiscated.EditorTools
                     {
                         case 4: // Resources: paired wall cabinets, broad central sorting aisle.
                             p=new Vector3(i<2?2.83f:13.39f,0,88+(i%2)*2);yaw=i<2?-90:90;break;
-                        case 8: // Equipment: north/south storage banks leave the east-west route open.
-                            p=new Vector3(21.5f+(i%2)*2,0,i<2?63.61f:50.83f);yaw=i<2?0:180;break;
+                        case 8: // Equipment: front/back wall banks, spread across the room's real 17.5m width instead
+                            // of a fixed 2m-wide cluster near the centre (left most of the room bare); still leaves
+                            // the long east-west floor between the two rows clear as a route.
+                            {
+                                var r8=SchoolPlan.Room(8).rect;var c8=P(r8.center.x,r8.center.y);
+                                int perRow=(items.Length+1)/2;float span=(r8.xMax-r8.xMin)/9f-2.2f;
+                                int row=i<perRow?0:1,col=row==0?i:i-perRow;int rowCount=row==0?perRow:items.Length-perRow;
+                                float x=rowCount>1?c8.x-span/2+col*(span/(rowCount-1)):c8.x;
+                                p=new Vector3(x,0,row==0?63.61f:50.83f);yaw=row==0?0:180;
+                            }
+                            break;
                         case 5: p=new Vector3(16.94f,0,84.5f+i*2);yaw=-90;break;
                         case 9: p=new Vector3(15.28f,0,38.5f+i*2);yaw=-90;break;
                         case 12: p=new Vector3(i==0?-11.28f:.94f,0,14);yaw=i==0?-90:90;break;

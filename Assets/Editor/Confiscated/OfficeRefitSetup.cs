@@ -108,11 +108,15 @@ namespace Confiscated.EditorTools
             Move(Find("FilingCabinet"),new Vector3(-36.25f,0,75.95f));
             Move(Find("OfficeClock"),new Vector3(-37.8f,2.32f,75.66f));
             var shelving=Find("MaintenanceShelving");Move(shelving,new Vector3(-38.9f,0,83.93f));shelving.rotation=Quaternion.Euler(0,0,0);
-            Move(Find("Noticeboard_Office"),new Vector3(-36.7f,1.72f,North-.1f));
+            // Gone from the scene (its old "Props" root no longer exists) rather than merely misplaced -- skip it
+            // instead of throwing, so one missing decoration doesn't abort the rest of Build() (which previously left
+            // everything after this step, including the school office and library, silently un-rebuilt).
+            var noticeboard=TryFind("Noticeboard_Office");if(noticeboard!=null)Move(noticeboard,new Vector3(-36.7f,1.72f,North-.1f));
             Move(Find("ConfiscationPolicy"),new Vector3(-36.7f,1.72f,North-.13f));
         }
         static float Flat(Vector3 v){v.y=0;return v.magnitude;}
         static Transform Find(string name){var g=GameObject.Find(name);if(g==null)throw new InvalidOperationException(name+" is missing from the office.");return g.transform;}
+        static Transform TryFind(string name){var g=GameObject.Find(name);if(g==null){Debug.LogWarning("[OfficeRefit] "+name+" is missing from the office; skipping it.");return null;}return g.transform;}
         static void Move(Transform t,Vector3 to){t.position=to;EditorUtility.SetDirty(t);PrefabUtility.RecordPrefabInstancePropertyModifications(t);}
 
         static void Props(Transform root)
