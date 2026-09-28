@@ -51,7 +51,15 @@ namespace Confiscated.EditorTools
                 // (where the route just skirts round it).
                 if(!PickupModelSetup.Place(holderRoot,"DinnerTrolley",1.26f,0,90,FurnitureModelSetup.Folder))
                 {Object.DestroyImmediate(holderRoot.gameObject);foreach(var h in holders)Object.DestroyImmediate(h.parent.gameObject);return null;}
-                holders.Add(holderRoot.GetChild(0));
+                var holder=holderRoot.GetChild(0);
+                // Place()'s uniform longestSide scale doesn't reproduce the real dining trolley's proportions (it's
+                // fit non-uniformly per axis there, via FurnitureModelSetup) -- came out short and shallow (0.56 tall,
+                // 0.46 deep) next to the real one's 1.05/0.67. Re-fit to those same real-world dimensions (blocking
+                // width stays as placed; the swap to a 90-off yaw here means depth and height are the ones to correct).
+                var renderers=holder.GetComponentsInChildren<Renderer>();
+                var wb=renderers[0].bounds;foreach(var r in renderers)wb.Encapsulate(r.bounds);
+                holder.localScale=Vector3.Scale(holder.localScale,new Vector3(.67f/Mathf.Max(wb.size.x,.001f),1.05f/Mathf.Max(wb.size.y,.001f),1));
+                holders.Add(holder);
             }
             // Centre each on body's local origin first (matches LocalBounds' frame), then slide the pair apart along
             // the corridor width (local X) so they sit edge to edge without overlapping.
