@@ -10,6 +10,7 @@ Shader "Confiscated/Pencil Surface"
         _EdgeRepeat("Metres per edge strip", Float) = .45
         _SideRect("Plain surface crop for narrow sides (UV)", Vector) = (.1,.1,.2,.2)
         _SideWorldSize("Crop coverage in metres", Vector) = (.2,.2,0,0)
+        [Toggle] _Outdoor("Outdoor daylight (at least fully lit, except in Dark Mode / blackouts)", Float) = 0
     }
     SubShader
     {
@@ -22,7 +23,7 @@ Shader "Confiscated/Pencil Surface"
         TEXTURE2D(_EdgeMap); SAMPLER(sampler_EdgeMap);
         CBUFFER_START(UnityPerMaterial)
         float4 _BaseMap_ST, _BaseColor, _EdgeColor, _SideRect, _SideWorldSize;
-        float _EdgeWidth, _EdgeRepeat;
+        float _EdgeWidth, _EdgeRepeat, _Outdoor;
         CBUFFER_END
         struct Attributes
         {
@@ -92,6 +93,8 @@ Shader "Confiscated/Pencil Surface"
             LIGHT_LOOP_END
             }
             #endif
+            // Outdoors is daylight, whatever the dim indoor fill is doing; a power cut or Dark Mode still takes it away.
+            diffuse = lerp(diffuse, max(diffuse, half3(1,.98,.94)), _Outdoor * (1 - _SchoolDarkness));
             return half4(MixFog(albedo * diffuse,i.fog),1);
         }
         half4 DepthFrag(Varyings i) : SV_Target { return 0; }

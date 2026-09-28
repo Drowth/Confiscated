@@ -34,6 +34,13 @@ namespace Confiscated.EditorTools
             bool Outdoors(Vector3 p)=>!ceilings.Any(c=>p.x>c.min.x&&p.x<c.max.x&&p.z>c.min.z&&p.z<c.max.z);
             var verts=new List<Vector3>();var uvs=new List<Vector2>();var norms=new List<Vector3>();var tris=new List<int>();
             int faces=0,caps=0;
+            // Openings the skin must leave clear: every window (by its glass, plus frame) and every door (posts to lintel).
+            var openings=renderers.Where(r=>r.sharedMaterial!=null&&r.sharedMaterial.shader.name=="Confiscated/Pencil Glass").Select(r=>{var g=r.bounds;g.Expand(new Vector3(.14f,.14f,.14f));return g;}).ToList();
+            foreach(var door in Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None))
+            {
+                var parts=door.GetComponentsInChildren<Renderer>().Where(r=>r.name=="PostL"||r.name=="PostR"||r.name=="Lintel").Select(r=>r.bounds).ToList();
+                if(parts.Count==0)continue;var g=parts[0];foreach(var p in parts)g.Encapsulate(p);g.Expand(new Vector3(.02f,0,.02f));openings.Add(g);
+            }
             foreach(var wall in renderers.Where(r=>r.name.StartsWith("Wall_")&&r.GetComponentInParent<Canvas>()==null))
             {
                 var b=wall.bounds;
@@ -58,7 +65,7 @@ namespace Confiscated.EditorTools
                             float a=runFrom,z=i*length/steps;
                             // Wrap the wall's own ends so outside corners close up.
                             if(a<=0)a-=half+Offset;if(z>=length)z+=half+Offset;
-                            Quad(verts,uvs,norms,tris,plane+n*Offset,n,along,start+a,start+z,b.min.y,b.max.y);faces++;runFrom=-1;
+                            faces+=Skin(verts,uvs,norms,tris,plane+n*Offset,n,along,across,half,start+a,start+z,b.min.y,b.max.y,openings);runFrom=-1;
                         }
                     }
                     bothOut&=!anyIn;
@@ -80,9 +87,31 @@ namespace Confiscated.EditorTools
             if(render==null){render=new Material(Shader.Find("Universal Render Pipeline/Unlit"));AssetDatabase.CreateAsset(render,RenderPath);}
             render.SetColor("_BaseColor",new Color(.93f,.89f,.78f));EditorUtility.SetDirty(render);
             foreach(var r in renderers.Where(r=>r.name=="Cream entrance facade"||r.name=="Facade pilaster")){Undo.RecordObject(r,"Exterior render");r.sharedMaterial=render;EditorUtility.SetDirty(r);}
+            int daylit=Daylight(renderers,Outdoors);
             AssetDatabase.SaveAssets();
-            Debug.Log("Exterior brick: "+faces+" outdoor wall runs, "+caps+" garden wall caps, "+verts.Count+" verts");
+            Debug.Log("Exterior brick: "+daylit+" outdoor props daylit, "+faces+" outdoor wall runs, "+caps+" garden wall caps, "+verts.Count+" verts");
         }
+
+        /// <summary>One outdoor run of wall face, cut into cells around any window or door opening in it.</summary>
+        static int Skin(List<Vector3> v,List<Vector2> uv,List<Vector3> nl,List<int> tr,Vector3 plane,Vector3 n,Vector3 along,Vector3 across,float half,float from,float to,float bottom,float top,List<Bounds> openings)
+        {
+            float planeAcross=Vector3.Dot(plane,across);
+            var holes=openings.Where(o=>Mathf.Abs(Vector3.Dot(o.center,across)-planeAcross)<half+Vector3.Dot(o.extents,Abs(across))+.05f)
+                .Select(o=>(s0:Vector3.Dot(o.min,along),s1:Vector3.Dot(o.max,along),y0:o.min.y,y1:o.max.y))
+                .Where(h=>h.s1>from&&h.s0<to&&h.y1>bottom&&h.y0<top).ToList();
+            if(holes.Count==0){Quad(v,uv,nl,tr,plane,n,along,from,to,bottom,top);return 1;}
+            var xs=new SortedSet<float>{from,to};var ys=new SortedSet<float>{bottom,top};
+            foreach(var h in holes){xs.Add(Mathf.Clamp(h.s0,from,to));xs.Add(Mathf.Clamp(h.s1,from,to));ys.Add(Mathf.Clamp(h.y0,bottom,top));ys.Add(Mathf.Clamp(h.y1,bottom,top));}
+            var xa=xs.ToArray();var ya=ys.ToArray();int cells=0;
+            for(int i=0;i+1<xa.Length;i++)for(int j=0;j+1<ya.Length;j++)
+            {
+                float cs=(xa[i]+xa[i+1])*.5f,cy=(ya[j]+ya[j+1])*.5f;
+                if(xa[i+1]-xa[i]<.001f||ya[j+1]-ya[j]<.001f||holes.Any(h=>cs>h.s0&&cs<h.s1&&cy>h.y0&&cy<h.y1))continue;
+                Quad(v,uv,nl,tr,plane,n,along,xa[i],xa[i+1],ya[j],ya[j+1]);cells++;
+            }
+            return cells;
+        }
+        static Vector3 Abs(Vector3 v)=>new(Mathf.Abs(v.x),Mathf.Abs(v.y),Mathf.Abs(v.z));
 
         static Vector3 Sample(Vector3 plane,Vector3 n,Vector3 along,float start,float length,float t)
         {var p=plane+n*.3f;p+=along*(start+t*length-Vector3.Dot(p,along));p.y=1;return p;}
@@ -108,6 +137,49 @@ namespace Confiscated.EditorTools
             int i=v.Count;
             foreach(var p in new[]{c-ea-ec,c-ea+ec,c+ea+ec,c+ea-ec}){v.Add(p);nl.Add(Vector3.up);uv.Add(new Vector2(Vector3.Dot(p,along)/Tile.x,Vector3.Dot(p,across)/Tile.y));}
             tr.AddRange(new[]{i,i+1,i+2,i,i+2,i+3});
+        }
+
+        const string OutdoorDir="Assets/Art/Materials/Outdoor";
+        /// <summary>
+        /// Outdoor props (bench, planters, canopy posts, doors, signs, notice boards) share lit materials with the inside, which
+        /// the dim indoor fill leaves near black outdoors. Give the ones standing outside an outdoor copy: Pencil Surface with its
+        /// daylight switch on, or URP Lit glowing its own colour. Dark Mode and blackouts still darken both.
+        /// </summary>
+        static int Daylight(MeshRenderer[] renderers,System.Func<Vector3,bool> outdoors)
+        {
+            if(!AssetDatabase.IsValidFolder(OutdoorDir))AssetDatabase.CreateFolder("Assets/Art/Materials","Outdoor");
+            var copies=new Dictionary<Material,Material>();int count=0;
+            foreach(var r in renderers)
+            {
+                if(r.name.StartsWith("Wall_")||r.name=="Ceiling"||r.name==RootName||!outdoors(r.bounds.center))continue;
+                // Characters, pickups and anything that moves keep their own look.
+                if(r.GetComponentInParent<RunPickup>()!=null||r.GetComponentInParent<UnityEngine.AI.NavMeshAgent>()!=null||r.GetComponentInParent<Canvas>()!=null)continue;
+                var mats=r.sharedMaterials;bool changed=false;
+                for(int i=0;i<mats.Length;i++)
+                {
+                    var m=mats[i];if(m==null||m.name.EndsWith(" (outdoor)"))continue;
+                    bool pencil=m.shader.name=="Confiscated/Pencil Surface",lit=m.shader.name=="Universal Render Pipeline/Lit";
+                    if(!pencil&&!lit)continue;
+                    if(!copies.TryGetValue(m,out var copy))
+                    {
+                        string path=OutdoorDir+"/"+m.name+" (outdoor).mat";
+                        copy=AssetDatabase.LoadAssetAtPath<Material>(path);
+                        if(copy==null){copy=new Material(m){name=m.name+" (outdoor)"};AssetDatabase.CreateAsset(copy,path);}
+                        else copy.CopyPropertiesFromMaterial(m);
+                        copy.name=m.name+" (outdoor)";
+                        if(pencil)copy.SetFloat("_Outdoor",1);
+                        else
+                        {
+                            copy.EnableKeyword("_EMISSION");copy.globalIlluminationFlags=MaterialGlobalIlluminationFlags.None;
+                            copy.SetColor("_EmissionColor",copy.GetColor("_BaseColor")*.8f);copy.SetTexture("_EmissionMap",copy.GetTexture("_BaseMap"));
+                        }
+                        EditorUtility.SetDirty(copy);copies[m]=copy;
+                    }
+                    mats[i]=copy;changed=true;
+                }
+                if(changed){Undo.RecordObject(r,"Outdoor daylight");r.sharedMaterials=mats;EditorUtility.SetDirty(r);count++;}
+            }
+            return count;
         }
 
         static Material Material()
