@@ -30,6 +30,7 @@ namespace Confiscated
         public bool Visible=>root!=null&&root.gameObject.activeSelf;
         public GameObject CardFor(string user)=>claims.TryGetValue(user,out var key)&&slots.TryGetValue(key,out var s)?s.card:null;
         public Kind? KindFor(string user)=>claims.TryGetValue(user,out var key)&&slots.TryGetValue(key,out var s)?s.kind:null;
+        public ViewerLockerHide HideFor(string user)=>CardFor(user)?.GetComponentInChildren<ViewerLockerHide>(true);
         public Transform TargetFor(string user)=>claims.TryGetValue(user,out var key)&&slots.TryGetValue(key,out var s)?s.target:null;
 
         void Awake()
@@ -86,6 +87,12 @@ namespace Confiscated
             var card=Group("Locker name - "+user,at,Quaternion.LookRotation(-front));
             Paper(card,new Vector3(.34f,.1f,.006f),Vector3.zero);
             Letters(card,user,new Vector3(0,0,-.005f),Quaternion.identity,.3f);
+            // A viewer's locker is a hiding place. The trigger sits on Ignore Raycast, so only the interact ray sees it.
+            var door=new GameObject("Hide in "+user+"'s locker");door.layer=2;door.transform.SetParent(card,false);
+            door.transform.position=new Vector3(body.center.x,body.center.y,body.center.z)+front*(depth+.02f);
+            var trigger=door.AddComponent<BoxCollider>();trigger.isTrigger=true;
+            trigger.size=new Vector3(Vector3.Scale(body.size,Abs(Vector3.Cross(Vector3.up,front))).magnitude,body.size.y,.06f);
+            var hide=door.AddComponent<ViewerLockerHide>();hide.viewer=user;hide.locker=slot.target;
             slot.card=card.gameObject;
         }
 

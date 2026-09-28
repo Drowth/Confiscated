@@ -431,8 +431,13 @@ namespace Confiscated
 
         // ------------------------------------------------------------------ helpers
 
+        /// <summary>True while the player hides in a locker (ViewerLockerHide): he can neither see nor catch them.</summary>
+        public static bool PlayerHidden;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetHidden()=>PlayerHidden=false;
         bool CanSeePlayer()
         {
+            if (PlayerHidden) return false;
             Vector3 eye = transform.position + Vector3.up * eyeHeight;
             Vector3 target = player.position + Vector3.up * 1.2f;
             Vector3 to = target - eye;
@@ -456,7 +461,7 @@ namespace Confiscated
         /// </summary>
         public bool CanPhysicallyCatchPlayer(float maxDistance)
         {
-            if(IsGlued)return false;
+            if(IsGlued||PlayerHidden)return false;
             if(player==null)
             {
                 var found=GameObject.FindGameObjectWithTag("Player");

@@ -189,6 +189,7 @@ namespace Confiscated
         /// <summary>A random spot the player could walk to, well away from the caretaker, the exit and staff-only rooms.</summary>
         bool Teleport(Transform player)
         {
+            if(ViewerLockerHide.Current!=null)return false; // not while they're shut in a locker
             var run=SchoolRunController.Instance;var mesh=NavMesh.CalculateTriangulation();if(mesh.vertices.Length==0)return false;
             var exit=Object.FindObjectsByType<RunGate>(FindObjectsSortMode.None).FirstOrDefault(g=>g.kind==RunGate.Kind.Exit);
             var path=new NavMeshPath();
