@@ -11,7 +11,15 @@ namespace Confiscated.EditorTools
         static Material Mat(string name)=>AssetDatabase.LoadAssetAtPath<Material>("Assets/Art/Materials/"+(name=="M_Chapter_Grey"?"M_Chase_Steel":name)+".mat");
         static Transform Group(string name,Transform parent,Vector3 pos){var t=new GameObject(name).transform;t.SetParent(parent,false);t.localPosition=pos;return t;}
         static Transform Box(string name,Transform parent,Vector3 pos,Vector3 scale,string material,bool solid=false)
-        {var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(parent,false);g.transform.localPosition=pos;g.transform.localScale=scale;g.GetComponent<Renderer>().sharedMaterial=Mat(material);if(!solid)Object.DestroyImmediate(g.GetComponent<Collider>());return g.transform;}
+        {
+            var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(parent,false);g.transform.localPosition=pos;g.transform.localScale=scale;
+            var mat=Mat(material);var r=g.GetComponent<MeshRenderer>();r.sharedMaterial=mat;
+            // A plain cube has no per-face world-metre UVs for the pencil shader's edge strips; unset, it reads the cube's
+            // own lightmap UV2 as if it were metres, drawing a tartan of edge lines across every face. Boxes built by a
+            // caller other than Install() (a padlock added after Install()'s own sweep already ran) need this directly.
+            if(mat.shader.name=="Confiscated/Pencil Surface")IllustratedArtSetup.Tiled(r,mat,"chase",1);
+            if(!solid)Object.DestroyImmediate(g.GetComponent<Collider>());return g.transform;
+        }
         static LineRenderer Stroke(Transform parent,string name,Vector3[] points,string material,float width=.013f)
         {var g=new GameObject(name);g.transform.SetParent(parent,false);var l=g.AddComponent<LineRenderer>();l.useWorldSpace=false;l.positionCount=points.Length;l.SetPositions(points);l.startWidth=l.endWidth=width;l.sharedMaterial=Mat(material);l.numCapVertices=2;return l;}
         internal static void Lock(ProgressPropFeedback feedback,Transform parent,Vector3 local)

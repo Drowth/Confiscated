@@ -357,7 +357,10 @@ namespace Confiscated.EditorTools
         static void Trim(Transform parent,Vector3 at,Vector3 size,Material m)
         {
             var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name="Window frame";g.transform.SetParent(parent,false);g.transform.position=at;g.transform.localScale=size;
-            Object.DestroyImmediate(g.GetComponent<Collider>());g.GetComponent<MeshRenderer>().sharedMaterial=m;
+            Object.DestroyImmediate(g.GetComponent<Collider>());var r=g.GetComponent<MeshRenderer>();r.sharedMaterial=m;
+            // A plain cube has no per-face world-metre UVs for the pencil shader's edge strips; unset, it reads the cube's
+            // own lightmap UV2 as if it were metres, drawing a tartan of edge lines across every face.
+            if(m.shader.name=="Confiscated/Pencil Surface")IllustratedArtSetup.Tiled(r,m,"library",1);
         }
 
         // ---------- The shadow (LibraryShadow) ----------
