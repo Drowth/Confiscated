@@ -27,7 +27,7 @@ namespace Confiscated.EditorTools
         public static readonly string[] SchoolOfficeModels={"OfficeServingHatch","OfficePrinterScanner","OfficePigeonholes","OfficeReceptionCounter"};
         static readonly Job[] Jobs=
         {
-            new Job{models=new[]{"FilingCabinet"},match=t=>t.name=="FilingCabinet"},
+            new Job{models=new[]{"FilingCabinet","FilingCabinet2"},match=t=>t.name=="FilingCabinet"},
             new Job{models=new[]{"EntrancePlanter"},match=t=>t.name=="Entrance planter"},
             new Job{models=new[]{"CaretakerTrolley"},match=t=>t.name=="MaintenanceTrolley"},
             new Job{models=new[]{"DinnerTrolley"},match=t=>t.name=="Sketched trolley visual",facing=Facing.AlongForward},
