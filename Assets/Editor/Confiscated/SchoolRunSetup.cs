@@ -72,6 +72,7 @@ namespace Confiscated.EditorTools
             SchoolMapPosterSetup.ApplyToScene();
             DarkModeSetup.ApplyToScene();
             SchoolLightingSetup.ApplyToScene();
+            FurnitureModelSetup.ApplyToScene(); // Tripo furniture over the box-built pieces (before outdoor daylight picks its materials)
             ExteriorBrickSetup.Apply(); // cosmetic brick on outward-facing walls (needs the final walls and ceilings)
             PeCoachSetup.ApplyToScene();
             CharacterShadowSetup.ApplyToScene();

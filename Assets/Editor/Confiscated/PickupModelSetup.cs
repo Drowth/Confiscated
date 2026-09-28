@@ -61,7 +61,7 @@ namespace Confiscated.EditorTools
         }
 
         /// <summary>Everything under <paramref name="visual"/> becomes one centred model standing on <paramref name="baseY"/>.</summary>
-        internal static bool Place(Transform visual, string model, float longestSide, float baseY, float yaw, string folder = Models)
+        public static bool Place(Transform visual, string model, float longestSide, float baseY, float yaw, string folder = Models)
         {
             if (model == null || !Has(model, folder)) return false;
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(folder + model + ".fbx"); if (asset == null) return false;

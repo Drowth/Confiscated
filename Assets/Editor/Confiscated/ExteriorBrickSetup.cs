@@ -170,8 +170,10 @@ namespace Confiscated.EditorTools
                         if(pencil)copy.SetFloat("_Outdoor",1);
                         else
                         {
-                            copy.EnableKeyword("_EMISSION");copy.globalIlluminationFlags=MaterialGlobalIlluminationFlags.None;
-                            copy.SetColor("_EmissionColor",copy.GetColor("_BaseColor")*.8f);copy.SetTexture("_EmissionMap",copy.GetTexture("_BaseMap"));
+                            // Flat daylight: an unlit copy of its colour map (Dark Mode and blackouts turn unlit art lit again, so
+                            // it still goes dark with them). Emission was tried first but URP drops the keyword on reimport.
+                            var map=m.GetTexture("_BaseMap");var tint=m.GetColor("_BaseColor");
+                            copy.shader=Shader.Find("Universal Render Pipeline/Unlit");copy.SetTexture("_BaseMap",map);copy.SetColor("_BaseColor",tint*.92f);
                         }
                         EditorUtility.SetDirty(copy);copies[m]=copy;
                     }
