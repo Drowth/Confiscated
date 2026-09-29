@@ -52,9 +52,20 @@ namespace Confiscated
             else BeginSchoolDay();
         }
 
-        public void BeginSchoolDay()
+        public void BeginSchoolDay(bool skipDiary = false)
         {
-            if(dayStarted)return;dayStarted=true;Current=State.Playing;
+            if(dayStarted)return;dayStarted=true;
+            if(!skipDiary&&schoolPeriod!=null&&SchoolRunController.Instance!=null)
+            {
+                Current=State.Menu;
+                if(OpeningDiaryComic.Show(player,interactor,BeginSchoolDayAfterDiary))return;
+            }
+            BeginSchoolDayAfterDiary();
+        }
+
+        void BeginSchoolDayAfterDiary()
+        {
+            Current=State.Playing;
             GetComponent<DarkModeController>()?.Begin();
             HudController.Instance?.SetObjective("CONFISCATED!\nGet your phone back from the caretaker's office,\nthen escape through the window you came in.");
             HudController.Instance?.SetPhoneState(HudController.PhoneState.Hidden, 0f);
@@ -287,7 +298,7 @@ namespace Confiscated
         {
             // Let scene components initialize before replacing the classroom introduction.
             yield return null;
-            BeginSchoolDay();
+            BeginSchoolDay(true);
             schoolPeriod.PrepareChaseRetry();
             SchoolRunController.Instance.PrepareChaseRetry();
             GetComponent<DarkModeController>()?.PrepareRetry();
