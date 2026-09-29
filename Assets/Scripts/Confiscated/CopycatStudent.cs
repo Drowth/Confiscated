@@ -9,7 +9,7 @@ namespace Confiscated
     [DisallowMultipleComponent]
     public sealed class CopycatStudent : MonoBehaviour
     {
-        const string RevealLine="Smith... I copied every step. Now the caretaker knows exactly where you are.";
+        const string RevealLine="Now the caretaker knows exactly where you are.";
         const float TriggerDistance=17f,SpotDistance=12f,SpeakDistance=1.75f;
         NavMeshAgent agent;
         SchoolRunController run;
