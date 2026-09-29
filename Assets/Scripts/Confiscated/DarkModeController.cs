@@ -88,12 +88,13 @@ namespace Confiscated
             clearFlags=player.ViewCamera.clearFlags;background=player.ViewCamera.backgroundColor;
             player.ViewCamera.clearFlags=CameraClearFlags.SolidColor;player.ViewCamera.backgroundColor=new Color(.015f,.024f,.045f);
             foreach(var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
-                if(!l.transform.IsChildOf(player.transform))lights.Add((l,l.intensity,l.enabled));
+                // The secret isolation room's bulb is the one light the outage leaves burning.
+                if(!l.transform.IsChildOf(player.transform)&&l.GetComponentInParent<IsolationRoom>()==null)lights.Add((l,l.intensity,l.enabled));
             // The original illustrated props stay identical in normal mode. Runtime copies make formerly
             // unlit props and emissive fittings obey the outage without modifying any shared art assets.
             foreach(var r in FindObjectsByType<Renderer>(FindObjectsInactive.Include,FindObjectsSortMode.None))
             {
-                if(r is not MeshRenderer||r.GetComponentInParent<Canvas>()!=null||r.transform.IsChildOf(player.transform)||r.GetComponentInParent<LibraryShadow>()!=null)continue; // the shadow's eyes glow in the dark
+                if(r is not MeshRenderer||r.GetComponentInParent<Canvas>()!=null||r.transform.IsChildOf(player.transform)||r.GetComponentInParent<LibraryShadow>()!=null||r.GetComponentInParent<IsolationRoom>()!=null)continue; // the shadow's eyes glow in the dark
                 var originals=r.sharedMaterials;var changed=(Material[])originals.Clone();bool replace=false;
                 for(int i=0;i<changed.Length;i++)
                 {
