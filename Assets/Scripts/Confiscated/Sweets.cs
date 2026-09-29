@@ -7,7 +7,7 @@ namespace Confiscated
         public const int BagSize=3;
         public int Count {get;private set;}
         public static Sweets On(Component player){var s=player.GetComponent<Sweets>();return s!=null?s:player.gameObject.AddComponent<Sweets>();}
-        public void Collect(int amount){Count+=amount;HudController.Instance?.SetStatus("A bag of "+amount+" sweets. The chatterbox can't talk with his mouth full...",5);}
+        public void Collect(int amount){Count+=amount;ItemCodex.PickUp(Items.Sweets);}
         public bool Spend(){if(Count<=0)return false;Count--;return true;}
         public void ResetRun()=>Count=0;
     }

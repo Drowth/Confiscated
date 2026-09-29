@@ -22,8 +22,12 @@ namespace Confiscated
         Image ghost;
         Text satchelCount,lockerCount,message;
         Text title,safeTitle,useTitle;
-        Text itemDetails;
-        Image inspectedIcon;
+        // Satchel mode's right-hand page: belongings and pockets, or the codex. Every square has a hover tooltip.
+        ItemTooltip tooltip;
+        RectTransform pocketsPage,codexPage;
+        readonly List<(ItemCell cell,string id)> belongingCells=new(),pocketCells=new(),codexCells=new();
+        Text pocketsEmpty,codexButton,codexCount;
+        static readonly string[] PocketItems={Items.Duck,Items.Glue,Items.Sweets,Items.BoltCutters,Items.StoreKey};
         RectTransform remoteCover,usePanel;
         Canvas hudCanvas;
         bool hudWasEnabled;
@@ -67,7 +71,7 @@ namespace Confiscated
         {
             if(!IsOpen)return;
             if(locker!=null)DoorSounds.For(locker.gameObject,DoorSounds.Kind.Locker).Play(false);
-            IsOpen=false;CancelSource();
+            IsOpen=false;CancelSource();if(tooltip!=null)tooltip.Hide();
             if(Inventory!=null)Inventory.Changed-=Refresh;
             if(canvas!=null)canvas.gameObject.SetActive(false);
             if(hudCanvas!=null)hudCanvas.enabled=hudWasEnabled;
@@ -100,7 +104,7 @@ namespace Confiscated
             useTitle.color=local?new Color(.97f,.91f,.74f):Ink;
             lockerCount.gameObject.SetActive(local);
             usePanel.gameObject.SetActive(local);useTitle.gameObject.SetActive(local);
-            itemDetails.gameObject.SetActive(!local);inspectedIcon.transform.parent.gameObject.SetActive(!local);
+            ShowCodex(false);pocketsPage.gameObject.SetActive(!local);
         }
         void Refresh()
         {
@@ -109,6 +113,7 @@ namespace Confiscated
             for(int i=0;i<6;i++)if(Inventory.Get(InventoryContainer.Satchel,i)!=null)a++;
             for(int i=0;i<9;i++)if(Inventory.Get(InventoryContainer.Locker,i)!=null)b++;
             satchelCount.text="CARRIED  "+a+" / 6";lockerCount.text="STORED  "+b+" / 9";
+            RefreshPockets();
         }
         public void BeginDrag(InventorySlotView view,Vector2 screenPosition)
         {
@@ -148,10 +153,116 @@ namespace Confiscated
         }
         void CancelSource(){Source=null;sourceEntry=null;IsDragging=false;if(ghost!=null)ghost.gameObject.SetActive(false);}
         void Feedback(string text){if(message!=null)message.text=text;}
-        void Inspect(InventoryEntry entry)
+        void Inspect(InventoryEntry entry){}
+        /// <summary>Satchel, locker and hand squares: hover shows what the item is.</summary>
+        public void Hover(InventorySlotView view,bool on)
         {
-            inspectedIcon.sprite=entry?.definition.icon;inspectedIcon.enabled=inspectedIcon.sprite!=null;
-            itemDetails.text=entry==null?"YOUR BELONGINGS\n\nClick an item to inspect it.\n\nKeys, your hall pass and newsletters work with F at their destination.\n\n1 / right click: wind-up toy\n2 / G: drop glue (D-pad down)":entry.definition.displayName.ToUpperInvariant()+"\n\n"+entry.definition.description;
+            if(tooltip==null)return;
+            var entry=on?view.Entry:null;
+            if(entry==null){tooltip.Hide();return;}
+            var item=ItemCatalogue.Get(Items.For(entry.definition.kind));
+            if(item!=null)tooltip.Show(item);else tooltip.Show(entry.definition.displayName,entry.definition.description,null);
+        }
+        void ShowCodex(bool on)
+        {
+            if(codexPage==null)return;
+            codexPage.gameObject.SetActive(on);pocketsPage.gameObject.SetActive(!on&&!HasLockerAccess);
+            if(tooltip!=null)tooltip.Hide();RefreshPockets();
+        }
+        void RefreshPockets()
+        {
+            if(pocketsPage==null||player==null)return;
+            var run=SchoolRunController.Instance;
+            for(int i=0;i<belongingCells.Count;i++)
+            {
+                var (cell,id)=belongingCells[i];
+                cell.Set(ItemCatalogue.Get(id),run!=null&&run.Has(i),1);
+            }
+            // Pockets: only what you're carrying, packed from the left.
+            int shown=0;
+            foreach(var (cell,id) in pocketCells)
+            {
+                int amount=Amount(id);bool have=amount>0;cell.gameObject.SetActive(have);
+                if(!have)continue;
+                cell.Set(ItemCatalogue.Get(id),true,amount);
+                ((RectTransform)cell.transform).anchoredPosition=new Vector2(-280+shown*140,-10);shown++;
+            }
+            pocketsEmpty.gameObject.SetActive(shown==0);
+            int known=ItemCodex.KnownCount,total=ItemCatalogue.All.Count;
+            codexButton.text="CODEX   "+known+" / "+total;codexCount.text="Found "+known+" of "+total;
+            foreach(var (cell,id) in codexCells){bool k=ItemCodex.Known(id);cell.Set(ItemCatalogue.Get(id),k,1,k);}
+        }
+        int Amount(string id)
+        {
+            var run=SchoolRunController.Instance;
+            return id switch
+            {
+                Items.Duck=>player.GetComponent<ClockworkDecoy>()?.Charges??0,
+                Items.Glue=>player.GetComponent<GlueDeployer>()?.Charges??0,
+                Items.Sweets=>player.GetComponent<Sweets>()?.Count??0,
+                Items.BoltCutters=>run!=null&&run.HasBoltCutters?1:0,
+                Items.StoreKey=>run!=null&&run.HasStoreKey?1:0,
+                _=>0
+            };
+        }
+        void BuildPages(RectTransform page)
+        {
+            pocketsPage=Rect("Belongings and pockets",page,Vector2.zero,page.sizeDelta);
+            AddText(Rect("Belongings title",pocketsPage,new Vector2(0,320),new Vector2(700,44)),"BELONGINGS",30,Ink);
+            for(int i=0;i<Items.Belongings.Length;i++)
+            {
+                string id=Items.Belongings[i];int index=i;
+                var cell=Cell(pocketsPage,new Vector2(-280+i*140,215),118,false);
+                cell.tip=()=>{var item=ItemCatalogue.Get(id);bool have=SchoolRunController.Instance!=null&&SchoolRunController.Instance.Has(index);
+                    if(item==null)return null;
+                    return have?(item.name,item.blurb,item.use):(item.name,"Still confiscated. It's in a box somewhere in school.",null);};
+                belongingCells.Add((cell,id));
+            }
+            AddText(Rect("Pockets title",pocketsPage,new Vector2(0,95),new Vector2(700,44)),"POCKETS",30,Ink);
+            foreach(string id in PocketItems)
+            {
+                var cell=Cell(pocketsPage,Vector2.zero,118,false);string key=id;
+                cell.tip=()=>{var i=ItemCatalogue.Get(key);if(i==null)return null;return (i.name,i.blurb,i.use);};
+                pocketCells.Add((cell,id));
+            }
+            pocketsEmpty=AddText(Rect("Pockets empty",pocketsPage,new Vector2(0,-10),new Vector2(600,60)),"Nothing yet.",24,new Color(.12f,.17f,.26f,.55f));
+            pocketsEmpty.fontStyle=FontStyle.Italic;
+            codexButton=Button(pocketsPage,new Vector2(0,-300),new Vector2(320,62),()=>ShowCodex(true));
+
+            codexPage=Rect("Codex",page,Vector2.zero,page.sizeDelta);
+            AddText(Rect("Codex title",codexPage,new Vector2(0,330),new Vector2(700,44)),"CODEX",32,Ink);
+            codexCount=AddText(Rect("Codex count",codexPage,new Vector2(0,290),new Vector2(700,32)),"",21,Ink);codexCount.fontStyle=FontStyle.Normal;
+            var all=ItemCatalogue.All;
+            for(int i=0;i<all.Count;i++)
+            {
+                string id=all[i].id;
+                var cell=Cell(codexPage,new Vector2(-280+(i%5)*140,195-(i/5)*155),104,true);
+                cell.tip=()=>{var item=ItemCatalogue.Get(id);if(item==null)return null;
+                    return ItemCodex.Known(id)?(item.name,item.blurb,item.use):("???","Not found yet.",null);};
+                codexCells.Add((cell,id));
+            }
+            var back=Button(codexPage,new Vector2(0,-300),new Vector2(220,62),()=>ShowCodex(false));back.text="BACK";
+            codexPage.gameObject.SetActive(false);
+        }
+        ItemCell Cell(RectTransform parent,Vector2 position,float size,bool named)
+        {
+            var rect=Rect("Item square",parent,position,Vector2.one*size);
+            var background=rect.gameObject.AddComponent<Image>();background.sprite=slotPaper;background.color=new Color(1,1,1,.96f);
+            var cell=rect.gameObject.AddComponent<ItemCell>();cell.tooltip=tooltip;
+            cell.border=Rect("Drawn edges",rect,Vector2.zero,Vector2.one*size).gameObject.AddComponent<SketchBorder>();cell.border.raycastTarget=false;cell.border.color=new Color(.13f,.18f,.29f,.86f);
+            var art=Rect("Picture",rect,Vector2.zero,Vector2.one*(size-22));cell.picture=art.gameObject.AddComponent<Image>();cell.picture.preserveAspect=true;cell.picture.raycastTarget=false;
+            cell.count=AddText(Rect("Count",rect,new Vector2(size*.5f-24,-size*.5f+16),new Vector2(48,28)),"",20,Ink);cell.count.alignment=TextAnchor.MiddleRight;
+            if(named){cell.caption=AddText(Rect("Name",rect,new Vector2(0,-size*.5f-16),new Vector2(size+30,26)),"",15,Ink);cell.caption.fontStyle=FontStyle.Normal;}
+            cell.unknown=AddText(Rect("Unknown",rect,Vector2.zero,Vector2.one*size),"?",54,new Color(.12f,.17f,.26f,.35f));cell.unknown.gameObject.SetActive(false);
+            return cell;
+        }
+        Text Button(RectTransform parent,Vector2 position,Vector2 size,UnityEngine.Events.UnityAction onClick)
+        {
+            var rect=Rect("Button",parent,position,size);
+            var image=rect.gameObject.AddComponent<Image>();image.sprite=slotPaper;
+            var edge=Rect("Drawn button edge",rect,Vector2.zero,size).gameObject.AddComponent<SketchBorder>();edge.color=Ink;edge.raycastTarget=false;
+            var button=rect.gameObject.AddComponent<UnityEngine.UI.Button>();button.targetGraphic=image;button.onClick.AddListener(onClick);
+            return AddText(Rect("Caption",rect,Vector2.zero,size-new Vector2(8,6)),"",24,Ink);
         }
 
         void Build()
@@ -175,9 +286,8 @@ namespace Confiscated
             var coverEdge=Rect("Drawn paper edges",remoteCover,Vector2.zero,remoteCover.sizeDelta);var ce=coverEdge.gameObject.AddComponent<SketchBorder>();ce.color=Ink;ce.raycastTarget=false;
             Slot(InventoryContainer.Use,0,new Vector2(392,790),142);usePanel=(RectTransform)slots[slots.Count-1].transform;
             useTitle=Label("IN HAND",new Vector2(213,790),new Vector2(160,50),30,Ink);
-            var inspectRect=Rect("Inspected item",remoteCover,new Vector2(0,215),new Vector2(155,155));
-            var iconRect=Rect("Item illustration",inspectRect,Vector2.zero,new Vector2(155,155));inspectedIcon=iconRect.gameObject.AddComponent<Image>();inspectedIcon.preserveAspect=true;inspectedIcon.raycastTarget=false;
-            itemDetails=AddText(Rect("Item details",remoteCover,new Vector2(0,-55),new Vector2(560,350)),"",27,Ink);
+            tooltip=ItemTooltip.Create((RectTransform)go.transform);
+            BuildPages(remoteCover);
             satchelCount=Label("CARRIED  0 / 6",new Vector2(392,910),new Vector2(550,35),24,Ink);
             lockerCount=Label("STORED  0 / 9",new Vector2(1074,910),new Vector2(550,35),24,Ink);
             message=Label("",new Vector2(768,964),new Vector2(1400,54),21,Ink);message.fontStyle=FontStyle.Normal;
@@ -188,7 +298,7 @@ namespace Confiscated
             var button=close.gameObject.AddComponent<Button>();button.targetGraphic=closeImage;button.onClick.AddListener(Close);
             var caption=Rect("Close caption",close,Vector2.zero,new Vector2(202,50));AddText(caption,"Close  [Tab]",22,Ink);
             ghostRect=Rect("Dragged item",sheet,Vector2.zero,new Vector2(118,118));ghost=ghostRect.gameObject.AddComponent<Image>();ghost.preserveAspect=true;ghost.raycastTarget=false;
-            ghost.gameObject.SetActive(false);canvas.gameObject.SetActive(false);
+            ghost.gameObject.SetActive(false);tooltip.transform.SetAsLastSibling();canvas.gameObject.SetActive(false);
         }
         void Slot(InventoryContainer container,int index,Vector2 pixel,float size)
         {

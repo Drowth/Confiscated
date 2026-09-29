@@ -25,7 +25,7 @@ namespace Confiscated
         public bool CanOpenStorage(int level)=>RoundStarted&&(level<4||HasStoreKey);
         /// <summary>True during the classroom errand. Only the west wing is open until the run begins.</summary>
         public static bool LessonsInProgress => Instance != null && !Instance.RoundStarted;
-        public void TakeTool(AccessToolPickup.Tool tool){if(tool==AccessToolPickup.Tool.BoltCutters)HasBoltCutters=true;else HasStoreKey=true;HudController.Instance?.SetStatus(tool==AccessToolPickup.Tool.BoltCutters?"Bolt cutters. Use them on the dining cage chain.":"Store key. Opens the southeast store.",4);}
+        public void TakeTool(AccessToolPickup.Tool tool){if(tool==AccessToolPickup.Tool.BoltCutters)HasBoltCutters=true;else HasStoreKey=true;ItemCodex.PickUp(tool==AccessToolPickup.Tool.BoltCutters?Items.BoltCutters:Items.StoreKey);}
         public readonly List<int> RecoveryOrder = new List<int>();
         public int Count => RecoveryOrder.Count;
         public bool Has(int id) => RecoveryOrder.Contains(id);
@@ -108,8 +108,9 @@ namespace Confiscated
             RecoveryOrder.Add(id); UnlockLevel = Mathf.Max(UnlockLevel, id + 1); if(id==0&&!RoundStarted){period.StartEscapeRun();BeginRound();}
             ApplyPressure();
             if (RoundStarted) {NoiseEvents.Emit(period.Player.transform.position, 45, "property box latch");GetComponent<EscapeRunFeedback>()?.PickupCue();}
-            string[] rewards = { "Phone recovered! Four more belongings are in CONFISCATED boxes.", "Yo-yo recovered.", "Handheld game recovered.", "Skateboard recovered.", "Toy robot recovered." };
-            HudController.Instance?.SetStatus(rewards[id], 6);
+            // The item pop-up says what it is; only the phone needs the what-next line.
+            ItemCodex.PickUp(Items.Belongings[id]);
+            if (id == 0) HudController.Instance?.SetStatus("Four more belongings are in CONFISCATED boxes.", 6);
             // The phone lights up with a friend's text: what the run is about.
             if (id == 0) PhoneMessage.Show();
             if (Count == 5) Object.FindFirstObjectByType<SchoolBellSystem>()?.Ring();

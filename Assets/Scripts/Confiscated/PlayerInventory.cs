@@ -59,7 +59,10 @@ namespace Confiscated
             if(satchel.Concat(locker).Concat(use).Any(e=>e!=null&&e.definition==definition&&(ball==null||e.ball==ball)))return true;
             int index=Array.FindIndex(satchel,e=>e==null);
             if(index<0){HudController.Instance?.SetStatus("Your satchel is full.",3f);return false;}
-            satchel[index]=new InventoryEntry{definition=definition,ball=ball};Changed?.Invoke();return true;
+            satchel[index]=new InventoryEntry{definition=definition,ball=ball};Changed?.Invoke();
+            // The phone's pop-up comes from its recovery (SchoolRunController.Recover), not from landing in the satchel.
+            if(definition.kind!=InventoryItemKind.Phone)ItemCodex.PickUp(Items.For(definition.kind));
+            return true;
         }
         public bool Move(InventoryContainer from,int source,InventoryContainer to,int target,out string message)
         {
@@ -78,6 +81,8 @@ namespace Confiscated
                 GameManager.Instance?.officeMission?.SetKeyLocation(HasCarried(InventoryItemKind.OfficeKey),Contains(InventoryContainer.Locker,InventoryItemKind.OfficeKey));
             message=to==InventoryContainer.Use?"Holding "+item.definition.displayName+".":from==to?"Moved "+item.definition.displayName+".":to==InventoryContainer.Locker?
                 item.definition.displayName+" stored.":item.definition.displayName+" moved to your satchel.";
+            // Something first met in the locker (the Dark Mode torch) goes in the codex when you take it out.
+            if(to!=InventoryContainer.Locker)ItemCodex.Notice(Items.For(item.definition.kind));
             Changed?.Invoke();return true;
         }
         public void RemoveCarriedPhone()

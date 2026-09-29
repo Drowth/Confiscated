@@ -1,0 +1,90 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53f3a0c2fc80e4b45b3b28635416730f, type: 3}
+  m_Name: ItemCatalogue
+  m_EditorClassIdentifier: Assembly-CSharp::Confiscated.ItemCatalogue
+  items:
+  - id: phone
+    name: Your phone
+    picture: {fileID: 21300000, guid: 9d5f3ae0e7898bd48accb839621bcbb6, type: 2}
+    blurb: Mr Reed took it. You're not leaving school without it.
+    use: 
+  - id: yoyo
+    name: Your yo-yo
+    picture: {fileID: 21300000, guid: ff2431b10457f154aa25e179bd8ec81d, type: 2}
+    blurb: It glows in the dark. Taken at lunch.
+    use: 
+  - id: handheld
+    name: Your handheld game
+    picture: {fileID: 21300000, guid: 3f466204080b6284c8b93b8be9e4641e, type: 2}
+    blurb: Half a battery left and a high score to beat.
+    use: 
+  - id: skateboard
+    name: Your skateboard
+    picture: {fileID: 21300000, guid: aab8573e2b818ed41acdf3d06958e508, type: 2}
+    blurb: Confiscated for riding it down the ramp. Worth it.
+    use: 
+  - id: robot
+    name: Your toy robot
+    picture: {fileID: 21300000, guid: 045fd46cbfed8b44ea16751d8a7c875e, type: 2}
+    blurb: Taken for being "a distraction". It was.
+    use: 
+  - id: duck
+    name: Wind-up duck
+    picture: {fileID: 21300000, guid: c40f59d7a3897f84a891188f1602c7ce, type: 2}
+    blurb: Drop it and it quacks. The caretaker can't help stamping on it.
+    use: 1 or right click to drop
+  - id: glue
+    name: PVA glue
+    picture: {fileID: 21300000, guid: 94638865f2ea89442a81f2c763939992, type: 2}
+    blurb: Pour it behind you. Whoever steps in it gets stuck for a few seconds.
+    use: 2 or G to pour
+  - id: sweets
+    name: Sweets
+    picture: {fileID: 21300000, guid: 480d0cf66d9d09d42976eeb5bfad9fc9, type: 2}
+    blurb: The chatterbox can't talk with his mouth full.
+    use: F on the chatterbox to give him one
+  - id: football
+    name: Football
+    picture: {fileID: 21300000, guid: 1a21db3c5ac04fb448b993c18e239370, type: 2}
+    blurb: Throw it and he'll go where it lands.
+    use: 1 to hold, click to throw
+  - id: boltcutters
+    name: Bolt cutters
+    picture: {fileID: 21300000, guid: 72921538cde360242a6f5973a7f1eb17, type: 2}
+    blurb: From the caretaker's bench. They'll cut a chain.
+    use: 
+  - id: storekey
+    name: Store key
+    picture: {fileID: 21300000, guid: 6fb945902e1ec89449cbbd703e791a41, type: 2}
+    blurb: Opens the store cupboard.
+    use: 
+  - id: officekey
+    name: Caretaker's office key
+    picture: {fileID: 21300000, guid: a596b38645712734181d8254a8cf07df, type: 2}
+    blurb: Don't let him see you with it.
+    use: 
+  - id: hallpass
+    name: Hall pass
+    picture: {fileID: 21300000, guid: feb0b8e805bcd9144a1bbd092510b8e3, type: 2}
+    blurb: Lets you be out of class. Only while you're on the errand.
+    use: 
+  - id: newsletters
+    name: Newsletters
+    picture: {fileID: 21300000, guid: f3d7ee197d628e84991f9183f19ca8c1, type: 2}
+    blurb: For the tray outside the caretaker's office.
+    use: 
+  - id: torch
+    name: Your torch
+    picture: {fileID: 21300000, guid: e366a25fb3b1b7149bcf8d071725a04c, type: 3}
+    blurb: For when the lights go out. Keep it off near the library shadow.
+    use: T to switch on

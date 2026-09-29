@@ -26,7 +26,7 @@ namespace Confiscated
         {
             if(Charges>=Capacity)return false;
             Charges++;
-            HudController.Instance?.SetStatus("2 / G: spread glue across the corridor behind you. Whoever follows sticks for 4 seconds.",7);
+            ItemCodex.PickUp(Items.Glue);
             return true;
         }
         void Update()

@@ -25,7 +25,7 @@ namespace Confiscated
         public void OnEndDrag(PointerEventData e)=>owner.EndDrag();
         public void OnDrop(PointerEventData e)=>owner.DropOn(this);
         public void OnPointerClick(PointerEventData e){if(e.button==PointerEventData.InputButton.Left)owner.Click(this);}
-        public void OnPointerEnter(PointerEventData e){hovered=true;Refresh();}
-        public void OnPointerExit(PointerEventData e){hovered=false;Refresh();}
+        public void OnPointerEnter(PointerEventData e){hovered=true;Refresh();owner.Hover(this,true);}
+        public void OnPointerExit(PointerEventData e){hovered=false;Refresh();owner.Hover(this,false);}
     }
 }

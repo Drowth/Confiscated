@@ -16,7 +16,7 @@ namespace Confiscated
         public static event System.Action<GameObject, Vector3> Rattling;
         public static void ResetRunTally() => TotalDeployedThisRun = 0;
         void Awake() { player = GetComponent<PlayerInteractor>(); if (quackClip == null) quackClip = Resources.Load<AudioClip>("Audio/ToyDuck"); }
-        public void Collect() { Charges = Mathf.Min(3, Charges + 1); HudController.Instance?.SetStatus("1 / right click: drop a wind-up toy. It quacks in 2 seconds, and the caretaker drops everything to stamp on it.", 8); }
+        public void Collect() { Charges = Mathf.Min(3, Charges + 1); ItemCodex.PickUp(Items.Duck); }
         void Update() { if ((Keyboard.current != null && Keyboard.current.digit1Key.wasPressedThisFrame)||(Mouse.current!=null&&Mouse.current.rightButton.wasPressedThisFrame)) Deploy(); }
         public bool Deploy()
         {

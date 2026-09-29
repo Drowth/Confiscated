@@ -44,7 +44,7 @@ namespace Confiscated
             if (inventory != null)
             {
                 if(!inventory.Collect(inventory.footballItem,this))return;
-                StoreInLocker();HudController.Instance?.SetStatus("Football collected. Press 1 to hold it; left click to throw.",4f);return;
+                StoreInLocker();return;
             }
             Equip(player);
         }
