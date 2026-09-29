@@ -151,7 +151,12 @@ namespace Confiscated
             Current=Phase.Volunteer;
             if(QuickOpening)
             {
-                // The handoff is the end of the introduction: release the player while Reed returns.
+                HudController.Instance?.SetStatus("Smith: This is the last straw.",5);
+                yield return new WaitUntil(() => !ComicDialogue.IsActive);
+                bool memoryFinished=false;
+                if(OpeningDiaryComic.Show(movement,Player,()=>memoryFinished=true))
+                    yield return new WaitUntil(() => memoryFinished);
+                // The memory ends at the classroom handoff; release Smith for the errand.
                 Volunteer();
                 StartCoroutine(Travel(teacher,teacherHome.position));
             }

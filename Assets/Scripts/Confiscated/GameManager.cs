@@ -52,18 +52,13 @@ namespace Confiscated
             else BeginSchoolDay();
         }
 
-        public void BeginSchoolDay(bool skipDiary = false)
+        public void BeginSchoolDay()
         {
             if(dayStarted)return;dayStarted=true;
-            if(!skipDiary&&schoolPeriod!=null&&SchoolRunController.Instance!=null)
-            {
-                Current=State.Menu;
-                if(OpeningDiaryComic.Show(player,interactor,BeginSchoolDayAfterDiary))return;
-            }
-            BeginSchoolDayAfterDiary();
+            StartSchoolPeriod();
         }
 
-        void BeginSchoolDayAfterDiary()
+        void StartSchoolPeriod()
         {
             Current=State.Playing;
             GetComponent<DarkModeController>()?.Begin();
@@ -298,7 +293,7 @@ namespace Confiscated
         {
             // Let scene components initialize before replacing the classroom introduction.
             yield return null;
-            BeginSchoolDay(true);
+            BeginSchoolDay();
             schoolPeriod.PrepareChaseRetry();
             SchoolRunController.Instance.PrepareChaseRetry();
             GetComponent<DarkModeController>()?.PrepareRetry();

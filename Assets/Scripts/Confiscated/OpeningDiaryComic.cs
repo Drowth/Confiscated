@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Confiscated
 {
-    /// <summary>A short illustrated diary entry before the live classroom phone incident.</summary>
+    /// <summary>Smith's moving diary recollection after the classroom phone confiscation.</summary>
     public sealed class OpeningDiaryComic : MonoBehaviour
     {
         static readonly string[] Lines =
@@ -14,9 +15,9 @@ namespace Confiscated
             "Then my game. I wasn't even playing it.",
             "The skateboard went next. The wheels hadn't touched the floor.",
             "Even my robot. The caretaker says I can have them back at the end of term.",
-            "That's four things. I'm getting them back before I go home."
+            "Now my phone makes five. I'm getting them all back today."
         };
-        static readonly float[] Seconds = { 4.8f, 4.8f, 4.8f, 6f, 5f };
+        static readonly float[] Seconds = { 3.6f, 3.6f, 3.6f, 4.2f, 4.5f };
         static readonly Color Paper = new Color(.95f,.91f,.77f), Ink = new Color(.07f,.09f,.13f);
 
         public static bool Show(FirstPersonController movement, PlayerInteractor interactor, Action finished)
@@ -32,9 +33,13 @@ namespace Confiscated
         PlayerInteractor interactor;
         Action finished;
         CanvasGroup group;
+        Canvas canvas;
+        readonly List<Canvas> hiddenCanvases=new();
         RectTransform page, frame;
+        Image background, headerBackdrop, footerBackdrop, transition;
         Image[] covers;
         Text caption, progress;
+        OpeningMemoryStage stage;
         float oldTime, startedAt, beatAt, skipHeld;
         bool oldMove, oldLook, oldInput, oldCursorVisible, ending;
         CursorLockMode oldCursorLock;
@@ -48,21 +53,25 @@ namespace Confiscated
             if(interactor!=null){oldInput=interactor.InputLocked;interactor.InputLocked=true;interactor.SuppressActionsThisFrame();}
             oldCursorLock=Cursor.lockState;oldCursorVisible=Cursor.visible;
             Cursor.lockState=CursorLockMode.None;Cursor.visible=false;
-            Build(art);beat=0;startedAt=beatAt=Time.unscaledTime;SetBeat();
+            Build(art);stage=OpeningMemoryStage.Create(art);
+            HideOtherCanvases();
+            beat=0;startedAt=beatAt=Time.unscaledTime;SetBeat();
         }
 
         void Build(Texture2D art)
         {
             var root=new GameObject("Diary canvas",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster),typeof(CanvasGroup));
             root.transform.SetParent(transform,false);
-            var canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=30001;
+            canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=30001;
             var scaler=root.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=1f;
             group=root.GetComponent<CanvasGroup>();group.blocksRaycasts=true;group.alpha=0;
-            var background=ImageRect("Ink surround",root.transform,Vector2.zero,new Vector2(1920,1080),new Color(.025f,.035f,.045f,1));
+            background=ImageRect("Ink surround",root.transform,Vector2.zero,new Vector2(1920,1080),new Color(.025f,.035f,.045f,1));
             background.rectTransform.anchorMin=Vector2.zero;background.rectTransform.anchorMax=Vector2.one;
             background.rectTransform.offsetMin=background.rectTransform.offsetMax=Vector2.zero;
             background.raycastTarget=true;
+            headerBackdrop=ImageRect("Memory heading backing",root.transform,new Vector2(0,478),new Vector2(1390,102),new Color(.025f,.035f,.045f,.88f));
+            headerBackdrop.raycastTarget=false;
             Label("DEAR DIARY...",root.transform,new Vector2(0,497),new Vector2(1300,65),50,Paper,TextAnchor.MiddleLeft);
             Label("MASTER SMITH  /  YEAR 6",root.transform,new Vector2(0,458),new Vector2(1300,35),23,new Color(.74f,.7f,.59f),TextAnchor.MiddleRight);
             page=Rect("Four confiscations",root.transform,new Vector2(0,22),new Vector2(1320,812));
@@ -81,8 +90,14 @@ namespace Confiscated
             var noteBorder=Rect("Pencil edge",note.transform,Vector2.zero,new Vector2(1370,122)).gameObject.AddComponent<SketchBorder>();
             noteBorder.color=Ink;noteBorder.raycastTarget=false;
             caption=Label("",note.transform,Vector2.zero,new Vector2(1260,90),34,Ink,TextAnchor.MiddleLeft);
+            footerBackdrop=ImageRect("Memory controls backing",root.transform,new Vector2(0,-516),new Vector2(1390,54),new Color(.025f,.035f,.045f,.9f));
+            footerBackdrop.raycastTarget=false;
             progress=Label("",root.transform,new Vector2(-545,-518),new Vector2(300,28),20,Paper,TextAnchor.MiddleLeft);
             Label("SPACE / CLICK: NEXT     HOLD ESC: SKIP",root.transform,new Vector2(355,-518),new Vector2(670,28),20,Paper,TextAnchor.MiddleRight);
+            transition=ImageRect("Ink cut",root.transform,Vector2.zero,new Vector2(1920,1080),new Color(.025f,.035f,.045f,0));
+            transition.rectTransform.anchorMin=Vector2.zero;transition.rectTransform.anchorMax=Vector2.one;
+            transition.rectTransform.offsetMin=transition.rectTransform.offsetMax=Vector2.zero;
+            transition.raycastTarget=false;
         }
 
         void Update()
@@ -102,6 +117,14 @@ namespace Confiscated
                 beatAt=now;SetBeat();
             }
             group.alpha=Mathf.Clamp01((now-startedAt)/.35f);
+            if(stage!=null)
+            {
+                float elapsed=now-beatAt,duration=Seconds[beat];
+                stage.Animate(beat,elapsed/duration);
+                float ink=elapsed<.22f?1-elapsed/.22f:beat<4&&duration-elapsed<.22f?1-(duration-elapsed)/.22f:0;
+                var shade=transition.color;shade.a=Mathf.Clamp01(ink);transition.color=shade;
+                return;
+            }
             for(int i=0;i<4;i++)
             {
                 var color=covers[i].color;
@@ -117,9 +140,28 @@ namespace Confiscated
             }
         }
 
+        void LateUpdate(){HideOtherCanvases();}
+
+        void HideOtherCanvases()
+        {
+            foreach(var other in FindObjectsByType<Canvas>(FindObjectsInactive.Include))
+                if(other!=canvas&&other.enabled&&other.gameObject.activeInHierarchy&&other.renderMode!=RenderMode.WorldSpace)
+                {hiddenCanvases.Add(other);other.enabled=false;}
+        }
+
         void SetBeat()
         {
-            caption.text=Lines[beat];progress.text=beat<4?"PAGE 1  /  "+(beat+1)+" OF 4":"PAGE 1  /  THE PLAN";
+            caption.text=Lines[beat];progress.text=beat<4?(stage!=null?"MEMORY  ":"PAGE 1  /  ")+(beat+1)+" OF 4":"PAGE 1  /  THE PLAN";
+            if(stage!=null)
+            {
+                stage.ShowBeat(beat);
+                page.gameObject.SetActive(beat==4);
+                headerBackdrop.gameObject.SetActive(beat<4);
+                footerBackdrop.gameObject.SetActive(beat<4);
+                var colour=background.color;colour.a=beat==4?1:0;background.color=colour;
+                foreach(var cover in covers){colour=cover.color;colour.a=0;cover.color=colour;}
+            }
+            else {headerBackdrop.gameObject.SetActive(false);footerBackdrop.gameObject.SetActive(false);}
             frame.gameObject.SetActive(beat<4);
         }
 
@@ -130,6 +172,9 @@ namespace Confiscated
             if(movement!=null){movement.MovementLocked=oldMove;movement.LookLocked=oldLook;}
             if(interactor!=null){interactor.InputLocked=oldInput;interactor.SuppressActionsThisFrame();}
             Cursor.lockState=oldCursorLock;Cursor.visible=oldCursorVisible;
+            stage?.Dispose();stage=null;
+            foreach(var other in hiddenCanvases)if(other!=null)other.enabled=true;
+            hiddenCanvases.Clear();
             var callback=finished;finished=null;Destroy(gameObject);callback?.Invoke();
         }
 

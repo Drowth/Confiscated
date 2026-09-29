@@ -94,7 +94,7 @@ namespace Confiscated
                 string s=paragraph.Trim();if(s.Length==0)continue;
                 int split=s.IndexOf(':');
                 string who=split>=0?s.Substring(0,split):"";
-                if(who=="Mr Reed"||who=="Caretaker"||who=="Miss D Tenison"||who=="PHONE")
+                if(who=="Mr Reed"||who=="Caretaker"||who=="Miss D Tenison"||who=="PHONE"||who=="Smith")
                     parsed.Add(new Line{speaker=who,text=s.Substring(split+1).Trim()});
                 else if(parsed.Count>0){var line=parsed[parsed.Count-1];line.text+="\n"+s;parsed[parsed.Count-1]=line;}
                 else return false;
