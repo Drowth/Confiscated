@@ -17,7 +17,8 @@ namespace Confiscated
         Renderer artwork;
         Material material;
         MaterialPropertyBlock appearance;
-        AudioSource voice,song;
+        AudioSource voice,song,giggle;
+        float nextGiggle;
         Vector3 lastPosition,fleeTarget;
         float travelled,fleeAt,fleeDeadline;
         bool triggered,speaking,fleeing,completed,watched,hiding;
@@ -67,6 +68,8 @@ namespace Confiscated
             {
                 Vector3 direction=Quaternion.Euler(0,i*45,0)*Vector3.forward;
                 float open=Physics.Raycast(position+Vector3.up,direction,out var hit,8,~0,QueryTriggerInteraction.Ignore)?hit.distance:8;
+                // Only open floor inside the library counts: an alcove by an outer wall must not face out through a gap in it.
+                float inside=0;while(inside<open&&shadow.Inside(position+direction*(inside+.25f)))inside+=.25f;open=inside;
                 if(open>best){best=open;facing=Quaternion.LookRotation(direction);}
             }
             return true;
@@ -93,6 +96,13 @@ namespace Confiscated
             song=gameObject.AddComponent<AudioSource>();song.playOnAwake=false;song.loop=true;song.spatialBlend=1;song.dopplerLevel=0;
             song.minDistance=2;song.maxDistance=20;song.rolloffMode=AudioRolloffMode.Linear;song.volume=.75f;
             song.clip=Resources.Load<AudioClip>("Audio/CopycatRingAroundTheRosie");
+            // Following, she giggles now and then, smeared with echo and reverb so it seems to come from the whole corridor.
+            var laugh=new GameObject("Copycat giggle");laugh.transform.SetParent(transform,false);laugh.transform.localPosition=Vector3.up*1.2f;
+            giggle=laugh.AddComponent<AudioSource>();giggle.playOnAwake=false;giggle.spatialBlend=.85f;giggle.dopplerLevel=0;
+            giggle.minDistance=2.5f;giggle.maxDistance=28;giggle.rolloffMode=AudioRolloffMode.Linear;giggle.volume=.9f;
+            giggle.clip=Resources.Load<AudioClip>("Audio/CopycatGiggle");
+            var echo=laugh.AddComponent<AudioEchoFilter>();echo.delay=260;echo.decayRatio=.55f;echo.wetMix=.7f;echo.dryMix=.85f;
+            var reverb=laugh.AddComponent<AudioReverbFilter>();reverb.reverbPreset=AudioReverbPreset.Hallway;
             lastPosition=transform.position;
         }
 
@@ -131,6 +141,7 @@ namespace Confiscated
             }
             else if(agent.isOnNavMesh)
             {
+                Giggle();
                 agent.isStopped=false;
                 float copiedSpeed=movement.Controller!=null?movement.Controller.velocity.magnitude:0;
                 agent.speed=Mathf.Clamp(copiedSpeed+.55f,1.35f,4.8f);
@@ -159,7 +170,7 @@ namespace Confiscated
         void Reveal(Transform player)
         {
             if(speaking)return;
-            speaking=true;watched=false;RevealCount++;StopAgent();Face(player.position);
+            speaking=true;watched=false;RevealCount++;StopAgent();Face(player.position);if(giggle!=null)giggle.Stop();
             if(voice.clip!=null)voice.Play();
             float duration=voice.clip!=null?voice.clip.length:5f;
             HudController.Instance?.SetBark("Copycat: "+RevealLine,duration+.5f);
@@ -201,6 +212,15 @@ namespace Confiscated
             else if(song.isPlaying){if(Hiding)song.Pause();else song.Stop();}
         }
         public bool Singing=>song!=null&&song.isPlaying;
+        public int Giggles{get;private set;}
+        /// <summary>Every 6-11 s while she creeps after Smith (the first soon after she is spotted), never over her reveal.</summary>
+        void Giggle()
+        {
+            if(giggle==null||giggle.clip==null)return;
+            if(nextGiggle==0){nextGiggle=Time.time+Random.Range(1.5f,3f);return;}
+            if(Time.time<nextGiggle||giggle.isPlaying)return;
+            nextGiggle=Time.time+Random.Range(6f,11f);giggle.pitch=Random.Range(.88f,1.02f);giggle.Play();Giggles++;
+        }
         void StopAgent(){if(agent!=null&&agent.enabled&&agent.isOnNavMesh){agent.isStopped=true;agent.velocity=Vector3.zero;}}
         void Face(Vector3 point){Vector3 direction=point-transform.position;direction.y=0;if(direction.sqrMagnitude>.01f)transform.rotation=Quaternion.LookRotation(direction);}
         void Animate()
