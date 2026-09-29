@@ -169,6 +169,7 @@ namespace Confiscated
             if(GetComponent<PlayerBreathingAudio>()==null)gameObject.AddComponent<PlayerBreathingAudio>();
             if(GetComponent<PlayerFootstepAudio>()==null)gameObject.AddComponent<PlayerFootstepAudio>();
             if(GetComponent<DoorSlam>()==null)gameObject.AddComponent<DoorSlam>();
+            if(GetComponent<ShadowLightBudget>()==null)gameObject.AddComponent<ShadowLightBudget>();
             // Loaded now, not at the first slip: a late start would put the thud after the floor impact.
             FallVoice=gameObject.AddComponent<AudioSource>();FallVoice.playOnAwake=false;FallVoice.spatialBlend=0;FallVoice.volume=.85f;
             FallVoice.clip=Resources.Load<AudioClip>("Audio/PlayerFall");if(FallVoice.clip!=null)FallVoice.clip.LoadAudioData();
