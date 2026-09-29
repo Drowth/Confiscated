@@ -14,6 +14,7 @@ namespace Confiscated
         GameObject root;
         Text toyText,glueText,sweetsText;
         Image toyPanel,gluePanel,glueIcon,sweetsPanel;
+        bool hadToy,hadGlue,hadSweets;
         void Awake(){inventory=GetComponent<PlayerInventory>();player=GetComponent<PlayerInteractor>();}
         void Update()
         {
@@ -25,14 +26,24 @@ namespace Confiscated
             if(root==null)return;
             if(decoy==null)decoy=GetComponent<ClockworkDecoy>();
             if(glue==null)glue=GetComponent<GlueDeployer>();
-            toyText.text="[1] WIND-UP TOY\n"+(decoy!=null&&decoy.Charges>0?"Place distraction  x"+decoy.Charges:"Find one to collect");
-            toyPanel.color=new Color(.94f,.91f,.79f,decoy!=null&&decoy.Charges>0?.9f:.55f);
-            glueText.text="[2 / G] GLUE\n"+(glue!=null&&glue.Charges>0?"Drop trap  x"+glue.Charges:"Find in Art Room");
-            gluePanel.color=new Color(.94f,.91f,.79f,glue!=null&&glue.Charges>0?.9f:.55f);
+            var sweets=GetComponent<Sweets>();
+            int toys=decoy!=null?decoy.Charges:0,glues=glue!=null?glue.Charges:0,bag=sweets!=null?sweets.Count:0;
+            // A card appears the first time its item is picked up, then stays (greyed once used up) for the rest of the run.
+            hadToy|=toys>0;hadGlue|=glues>0;hadSweets|=bag>0;
+            toyText.text="[1] WIND-UP TOY\n"+(toys>0?"Place distraction  x"+toys:"None left");
+            toyPanel.color=new Color(.94f,.91f,.79f,toys>0?.9f:.55f);
+            glueText.text="[2 / G] GLUE\n"+(glues>0?"Drop trap  x"+glues:"Used up");
+            gluePanel.color=new Color(.94f,.91f,.79f,glues>0?.9f:.55f);
             glueIcon.sprite=glue!=null?glue.icon:null;glueIcon.enabled=glueIcon.sprite!=null;
-            var sweets=GetComponent<Sweets>();bool haveSweets=sweets!=null&&sweets.Count>0;
-            sweetsText.text="SWEETS\n"+(haveSweets?"For the chatterbox  x"+sweets.Count:"In the school office");
-            sweetsPanel.color=new Color(.94f,.91f,.79f,haveSweets?.9f:.55f);
+            sweetsText.text="SWEETS\n"+(bag>0?"For the chatterbox  x"+bag:"All given out");
+            sweetsPanel.color=new Color(.94f,.91f,.79f,bag>0?.9f:.55f);
+            // Shown cards pack against the right edge, in their usual order.
+            float x=694-226;
+            foreach(var (panel,shown) in new[]{(sweetsPanel,hadSweets),(gluePanel,hadGlue),(toyPanel,hadToy)})
+            {
+                if(panel.gameObject.activeSelf!=shown)panel.gameObject.SetActive(shown);
+                if(shown){panel.rectTransform.anchoredPosition=new Vector2(x,0);x-=234;}
+            }
         }
         void Build()
         {
