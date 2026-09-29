@@ -23,7 +23,7 @@ namespace Confiscated
         {
             volume=GetComponent<Volume>();volume.isGlobal=true;volume.weight=0;
             // The library's own eerie loop (seamless: LibraryMusicLoop is crossfaded at its loop point).
-            music=gameObject.AddComponent<AudioSource>();music.clip=Resources.Load<AudioClip>("Audio/LibraryMusicLoop");music.loop=true;music.playOnAwake=false;
+            music=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Music);music.clip=Resources.Load<AudioClip>("Audio/LibraryMusicLoop");music.loop=true;music.playOnAwake=false;
             music.spatialBlend=0;music.volume=0;music.priority=150;
         }
         void OnDisable(){Weight=0;}

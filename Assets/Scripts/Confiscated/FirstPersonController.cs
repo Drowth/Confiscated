@@ -171,7 +171,7 @@ namespace Confiscated
             if(GetComponent<DoorSlam>()==null)gameObject.AddComponent<DoorSlam>();
             if(GetComponent<ShadowLightBudget>()==null)gameObject.AddComponent<ShadowLightBudget>();
             // Loaded now, not at the first slip: a late start would put the thud after the floor impact.
-            FallVoice=gameObject.AddComponent<AudioSource>();FallVoice.playOnAwake=false;FallVoice.spatialBlend=0;FallVoice.volume=.85f;
+            FallVoice=SchoolAudio.Create(gameObject);FallVoice.playOnAwake=false;FallVoice.spatialBlend=0;FallVoice.volume=.85f;
             FallVoice.clip=Resources.Load<AudioClip>("Audio/PlayerFall");if(FallVoice.clip!=null)FallVoice.clip.LoadAudioData();
             if (cameraPivot == null)
             {
@@ -237,6 +237,7 @@ namespace Confiscated
             if(IsFallen){PoseFall();return;}
             if(LookLocked||ComicDialogue.IsActive||cameraPivot==null)return;
             bool lookingBack=Keyboard.current!=null&&Keyboard.current.spaceKey.isPressed;
+            if(lookingBack&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&Time.timeScale>0)ContextualControlHints.Used(ContextualControlHints.Action.LookBack);
             cameraPivot.localRotation=Quaternion.Euler(new Vector3(pitch,lookingBack?180:0,-lean*leanRollDegrees)+(chaseCamera!=null?chaseCamera.ExhaustionSway:Vector3.zero));
             var p=cameraPivot.localPosition;p.x=lean*leanDistance;cameraPivot.localPosition=p;
         }
@@ -266,6 +267,7 @@ namespace Confiscated
                 want*=Mathf.Clamp01(room/leanDistance);
             }
             lean=Mathf.MoveTowards(lean,want,Time.deltaTime/leanSeconds);
+            if(allowed&&Mathf.Abs(lean)>.15f)ContextualControlHints.Used(ContextualControlHints.Action.Lean);
         }
         public float Lean=>lean;
 
@@ -352,6 +354,7 @@ namespace Confiscated
             controller.Move(velocity * Time.deltaTime);
             Vector3 moved=transform.position-before;moved.y=0;
             IsSprinting=sprinting&&input.sqrMagnitude>.01f&&moved.magnitude>Time.deltaTime*.1f;
+            if(IsSprinting)ContextualControlHints.Used(ContextualControlHints.Action.Run);
         }
 
         static void SetCursorLocked(bool locked)

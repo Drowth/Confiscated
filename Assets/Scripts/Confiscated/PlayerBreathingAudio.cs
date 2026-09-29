@@ -12,7 +12,7 @@ namespace Confiscated
             movement=GetComponent<FirstPersonController>();
             running=Resources.Load<AudioClip>("Audio/RunHardBreathing");
             recovery=Resources.Load<AudioClip>("Audio/RunStopBreathing");
-            Voice=gameObject.AddComponent<AudioSource>();Voice.playOnAwake=false;Voice.loop=true;Voice.spatialBlend=0;Voice.volume=0;
+            Voice=SchoolAudio.Create(gameObject);Voice.playOnAwake=false;Voice.loop=true;Voice.spatialBlend=0;Voice.volume=0;
         }
         void LateUpdate()
         {

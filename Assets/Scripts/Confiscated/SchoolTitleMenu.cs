@@ -205,7 +205,7 @@ namespace Confiscated
             {var e=new GameObject("School menu events",typeof(EventSystem));e.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();}
             var root=new GameObject("School title canvas",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));root.transform.SetParent(transform,false);
             canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=29000;
-            musicSource=gameObject.AddComponent<AudioSource>();musicSource.loop=true;musicSource.playOnAwake=false;musicSource.spatialBlend=0;musicSource.volume=.35f;musicSource.priority=160;
+            musicSource=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Music);musicSource.loop=true;musicSource.playOnAwake=false;musicSource.spatialBlend=0;musicSource.volume=.35f;musicSource.priority=160;
             var scaler=root.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=.5f;
             ImageRect("Top cinema bar",root.transform,new Vector2(0,.925f),Vector2.one,Color.black);
             ImageRect("Bottom cinema bar",root.transform,Vector2.zero,new Vector2(1,.075f),Color.black);

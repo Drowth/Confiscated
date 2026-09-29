@@ -54,7 +54,7 @@ namespace Confiscated
             if(cutout!=null)idle=cutout.sharedMaterial.GetTexture("_BaseMap");
             properties=new MaterialPropertyBlock();previous=transform.position;
             var emitter=new GameObject("Caretaker footfalls");emitter.transform.SetParent(transform,false);emitter.transform.localPosition=Vector3.up*.1f;
-            Footsteps=emitter.AddComponent<AudioSource>();Footsteps.playOnAwake=false;Footsteps.spatialBlend=1;
+            Footsteps=SchoolAudio.Create(emitter,SchoolAudio.Channel.Effects,true);Footsteps.playOnAwake=false;Footsteps.spatialBlend=1;
             Footsteps.rolloffMode=AudioRolloffMode.Linear;Footsteps.minDistance=2;Footsteps.maxDistance=28;Footsteps.dopplerLevel=0;
             if(motion!=null)motion.externalGait=true;
         }

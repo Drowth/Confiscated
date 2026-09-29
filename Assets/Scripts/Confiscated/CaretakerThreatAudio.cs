@@ -13,7 +13,7 @@ namespace Confiscated
         {
             ai=GetComponent<CaretakerAI>();
             var mouth=new GameObject("Patrol whistle");mouth.transform.SetParent(transform,false);mouth.transform.localPosition=Vector3.up*1.75f;
-            Whistle=mouth.AddComponent<AudioSource>();Whistle.playOnAwake=false;Whistle.spatialBlend=1;Whistle.dopplerLevel=0;
+            Whistle=SchoolAudio.Create(mouth,SchoolAudio.Channel.Effects,true);Whistle.playOnAwake=false;Whistle.spatialBlend=1;Whistle.dopplerLevel=0;
             Whistle.rolloffMode=AudioRolloffMode.Linear;Whistle.minDistance=3;Whistle.maxDistance=whistleRange;Whistle.volume=.55f;
             var pulse=new GameObject("Player chase heartbeat");pulse.transform.SetParent(transform,false);
             Heartbeat=pulse.AddComponent<AudioSource>();Heartbeat.playOnAwake=false;Heartbeat.spatialBlend=0;Heartbeat.loop=true;Heartbeat.clip=heartbeat;Heartbeat.volume=0;

@@ -241,11 +241,11 @@ namespace Confiscated
         void OnDestroy(){Finish();if(profile!=null)Destroy(profile);if(instance==this)instance=null;}
         void Build()
         {
-            reedVoice=gameObject.AddComponent<AudioSource>();
+            reedVoice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);
             reedVoice.clip=Resources.Load<AudioClip>("Audio/MrReedTalk1");
             reedVoice.playOnAwake=false;reedVoice.loop=true;reedVoice.spatialBlend=0;
             reedVoice.volume=.65f;reedVoice.ignoreListenerPause=true;
-            lineVoice=gameObject.AddComponent<AudioSource>();lineVoice.playOnAwake=false;lineVoice.loop=false;lineVoice.spatialBlend=0;lineVoice.ignoreListenerPause=true;
+            lineVoice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);lineVoice.playOnAwake=false;lineVoice.loop=false;lineVoice.spatialBlend=0;lineVoice.ignoreListenerPause=true;
 
             var g=new GameObject("Comic dialogue canvas",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));g.transform.SetParent(transform,false);
             canvas=g.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=30000;

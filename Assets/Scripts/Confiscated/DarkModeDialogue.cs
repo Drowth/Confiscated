@@ -96,7 +96,7 @@ namespace Confiscated
         {
             if(source==null)
             {
-                source=gameObject.AddComponent<AudioSource>();source.playOnAwake=false;source.loop=false;
+                source=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);source.playOnAwake=false;source.loop=false;
                 source.spatialBlend=1;source.rolloffMode=AudioRolloffMode.Linear;source.minDistance=5;source.maxDistance=30;source.dopplerLevel=0;TalkingMouth.Register(source);
             }
             source.clip=clip;source.Play();

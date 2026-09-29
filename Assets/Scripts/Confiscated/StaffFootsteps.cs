@@ -14,7 +14,7 @@ namespace Confiscated
         void Awake()
         {
             steps=new[]{Resources.Load<AudioClip>("Audio/PlayerFootstep1"),Resources.Load<AudioClip>("Audio/PlayerFootstep2")};
-            source=gameObject.AddComponent<AudioSource>();source.playOnAwake=false;source.spatialBlend=1;
+            source=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Effects,true);source.playOnAwake=false;source.spatialBlend=1;
             source.rolloffMode=AudioRolloffMode.Linear;source.minDistance=1.5f;source.maxDistance=18f;source.dopplerLevel=0;
             last=transform.position;
         }

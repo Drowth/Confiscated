@@ -13,8 +13,10 @@ namespace Confiscated
         FirstPersonController player;
         float baseFov, offset;
         public float AppliedOffset => offset;
+        public float BaseFov=>baseFov;
+        public void SetBaseFov(float value){baseFov=Mathf.Clamp(value,50,90);PlayerPrefs.SetFloat("Confiscated.BaseFov",baseFov);if(view!=null)view.fieldOfView=baseFov+offset;}
         public bool Active => player!=null&&player.enabled&&!player.IsFallen&&!player.MovementLocked&&!player.LookLocked&&!ComicDialogue.IsActive&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&Time.timeScale>0;
-        void Awake(){player=GetComponent<FirstPersonController>();view=GetComponentInChildren<Camera>();if(view!=null)baseFov=view.fieldOfView;intensity=PlayerPrefs.GetFloat("Confiscated.CameraIntensity",intensity);}
+        void Awake(){player=GetComponent<FirstPersonController>();view=GetComponentInChildren<Camera>();if(view!=null){baseFov=Mathf.Clamp(PlayerPrefs.GetFloat("Confiscated.BaseFov",view.fieldOfView),50,90);view.fieldOfView=baseFov;}intensity=PlayerPrefs.GetFloat("Confiscated.CameraIntensity",intensity);}
         public void SetIntensity(float value){intensity=Mathf.Clamp01(value);PlayerPrefs.SetFloat("Confiscated.CameraIntensity",intensity);if(intensity==0)Restore();}
         void Update()
         {

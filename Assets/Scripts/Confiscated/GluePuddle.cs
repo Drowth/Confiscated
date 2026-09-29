@@ -20,7 +20,7 @@ namespace Confiscated
         float removeAt;
         void Start()
         {
-            StuckAudio=gameObject.AddComponent<AudioSource>();StuckAudio.playOnAwake=false;StuckAudio.loop=false;
+            StuckAudio=SchoolAudio.Create(gameObject);StuckAudio.playOnAwake=false;StuckAudio.loop=false;
             StuckAudio.clip=stuckSound;StuckAudio.spatialBlend=1;StuckAudio.minDistance=2;StuckAudio.maxDistance=22;
             StuckAudio.dopplerLevel=0;StuckAudio.volume=.85f;
         }

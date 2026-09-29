@@ -21,7 +21,7 @@ namespace Confiscated
             if(voice==null)
             {
                 var clip=Resources.Load<AudioClip>("Audio/DinnerLadyTellTale");if(clip==null)return;
-                voice=gameObject.AddComponent<AudioSource>();voice.clip=clip;voice.playOnAwake=false;voice.loop=false;
+                voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.clip=clip;voice.playOnAwake=false;voice.loop=false;
                 voice.spatialBlend=1;voice.rolloffMode=AudioRolloffMode.Linear;voice.minDistance=4;voice.maxDistance=tellNoiseRadius;voice.dopplerLevel=0;TalkingMouth.Register(voice);
             }
             voice.Play();

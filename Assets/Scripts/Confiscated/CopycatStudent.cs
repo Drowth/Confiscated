@@ -89,16 +89,16 @@ namespace Confiscated
                 artwork.sharedMaterial=material;
             }
             appearance=new MaterialPropertyBlock();
-            voice=gameObject.AddComponent<AudioSource>();voice.playOnAwake=false;voice.loop=false;voice.spatialBlend=1;
+            voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.playOnAwake=false;voice.loop=false;voice.spatialBlend=1;
             voice.minDistance=3;voice.maxDistance=45;voice.rolloffMode=AudioRolloffMode.Linear;voice.volume=1;
             voice.clip=Resources.Load<AudioClip>("Audio/CopycatReveal");
             // Hidden in the maze she sings to herself: a lure you hear between the shelves before you see her.
-            song=gameObject.AddComponent<AudioSource>();song.playOnAwake=false;song.loop=true;song.spatialBlend=1;song.dopplerLevel=0;
+            song=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);song.playOnAwake=false;song.loop=true;song.spatialBlend=1;song.dopplerLevel=0;
             song.minDistance=2;song.maxDistance=20;song.rolloffMode=AudioRolloffMode.Linear;song.volume=.75f;
             song.clip=Resources.Load<AudioClip>("Audio/CopycatRingAroundTheRosie");
             // Following, she giggles now and then, smeared with echo and reverb so it seems to come from the whole corridor.
             var laugh=new GameObject("Copycat giggle");laugh.transform.SetParent(transform,false);laugh.transform.localPosition=Vector3.up*1.2f;
-            giggle=laugh.AddComponent<AudioSource>();giggle.playOnAwake=false;giggle.spatialBlend=.85f;giggle.dopplerLevel=0;
+            giggle=SchoolAudio.Create(laugh,SchoolAudio.Channel.Voice,true);giggle.playOnAwake=false;giggle.spatialBlend=.85f;giggle.dopplerLevel=0;
             giggle.minDistance=2.5f;giggle.maxDistance=28;giggle.rolloffMode=AudioRolloffMode.Linear;giggle.volume=.9f;
             giggle.clip=Resources.Load<AudioClip>("Audio/CopycatGiggle");
             var echo=laugh.AddComponent<AudioEchoFilter>();echo.delay=260;echo.decayRatio=.55f;echo.wetMix=.7f;echo.dryMix=.85f;

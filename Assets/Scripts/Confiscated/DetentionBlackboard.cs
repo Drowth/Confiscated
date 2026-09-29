@@ -132,7 +132,7 @@ namespace Confiscated
             eraser=Rect("Board rubber",surface,Vector2.zero,new Vector2(98,54));var felt=eraser.gameObject.AddComponent<Image>();felt.sprite=boardPaper;felt.color=new Color(.20f,.23f,.24f);felt.raycastTarget=false;
             var wood=Rect("Wooden grip",eraser,new Vector2(0,9),new Vector2(98,39));var grip=wood.gameObject.AddComponent<Image>();grip.sprite=woodPaper;grip.raycastTarget=false;
             var rim=Rect("Rubber outline",eraser,Vector2.zero,eraser.sizeDelta);var outline=rim.gameObject.AddComponent<SketchBorder>();outline.color=Navy;outline.raycastTarget=false;eraser.gameObject.SetActive(false);
-            friction=gameObject.AddComponent<AudioSource>();friction.playOnAwake=false;friction.loop=true;friction.spatialBlend=0;
+            friction=SchoolAudio.Create(gameObject);friction.playOnAwake=false;friction.loop=true;friction.spatialBlend=0;
             frictionClip=Resources.Load<AudioClip>("Audio/ChalkboardRubber");friction.clip=frictionClip;
             m.SetActive(false);Refresh();
         }

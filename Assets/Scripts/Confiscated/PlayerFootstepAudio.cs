@@ -17,7 +17,7 @@ namespace Confiscated
         {
             movement=GetComponent<FirstPersonController>();
             left=Resources.Load<AudioClip>("Audio/PlayerFootstep1");right=Resources.Load<AudioClip>("Audio/PlayerFootstep2");
-            Feet=gameObject.AddComponent<AudioSource>();Feet.playOnAwake=false;Feet.spatialBlend=0;Feet.dopplerLevel=0;
+            Feet=SchoolAudio.Create(gameObject);Feet.playOnAwake=false;Feet.spatialBlend=0;Feet.dopplerLevel=0;
             previous=transform.position;
         }
         void LateUpdate()

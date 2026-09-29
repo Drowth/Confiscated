@@ -138,7 +138,7 @@ namespace Confiscated
             meter=Panel("Clean meter",track,Vector2.zero,new Vector2(530,18),new Color(.78f,.71f,.38f),boardPaper);meter.pivot=new Vector2(0,.5f);meter.anchoredPosition=new Vector2(-265,0);
             progress=Label("",sheet,new Vector2(0,-403),22);
             var close=Panel("Step away",sheet,new Vector2(0,-467),new Vector2(260,46),Cream,boardPaper);close.GetComponent<Image>().raycastTarget=true;var button=close.gameObject.AddComponent<Button>();button.targetGraphic=close.GetComponent<Image>();button.onClick.AddListener(Close);var caption=Label("Step away  [Esc]",close,Vector2.zero,22);caption.color=Ink;
-            sound=gameObject.AddComponent<AudioSource>();sound.playOnAwake=false;sound.spatialBlend=0;
+            sound=SchoolAudio.Create(gameObject);sound.playOnAwake=false;sound.spatialBlend=0;
             clapSound=MakeSound(false);cleanSound=MakeSound(true);Refresh();m.SetActive(false);
         }
         RectTransform Rubber(string name,Vector2 pos,out RubberDirt dirt)

@@ -30,7 +30,7 @@ namespace Confiscated
 
         void Awake()
         {
-            Source=GetComponent<AudioSource>();Source.Stop();Source.playOnAwake=false;
+            Source=GetComponent<AudioSource>();SchoolAudio.Route(Source,SchoolAudio.Channel.Music);Source.Stop();Source.playOnAwake=false;
             Source.clip=music;Source.loop=true;Source.spatialBlend=0;Source.dopplerLevel=0;
             Source.volume=0;Source.priority=160;
             game=FindFirstObjectByType<GameManager>();bells=FindFirstObjectByType<SchoolBellSystem>();phone=FindFirstObjectByType<PhoneRinger>();

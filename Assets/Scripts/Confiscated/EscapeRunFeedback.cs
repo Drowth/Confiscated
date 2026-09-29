@@ -13,9 +13,9 @@ namespace Confiscated
         {
             run=GetComponent<SchoolRunController>();lights=FindObjectsByType<Light>(FindObjectsSortMode.None);intensities=new float[lights.Length];for(int i=0;i<lights.Length;i++)intensities[i]=lights[i].intensity;
             hum=Resources.Load<AudioClip>("Audio/SchoolAmbience");step=Tone("Caretaker keys and footsteps",.3f,false);sting=Resources.Load<AudioClip>("Audio/ItemPickup");
-            pickupAudio=gameObject.AddComponent<AudioSource>();pickupAudio.playOnAwake=false;pickupAudio.spatialBlend=0;pickupAudio.volume=.65f;
-            ambience=gameObject.AddComponent<AudioSource>();ambience.playOnAwake=false;ambience.loop=true;ambience.spatialBlend=0;ambience.clip=hum;ambience.volume=0;if(hum!=null)ambience.Play();
-            steps=run.caretaker.gameObject.AddComponent<AudioSource>();steps.spatialBlend=1;steps.rolloffMode=AudioRolloffMode.Linear;steps.minDistance=2;steps.maxDistance=28;steps.playOnAwake=false;
+            pickupAudio=SchoolAudio.Create(gameObject);pickupAudio.playOnAwake=false;pickupAudio.spatialBlend=0;pickupAudio.volume=.65f;
+            ambience=SchoolAudio.Create(gameObject);ambience.playOnAwake=false;ambience.loop=true;ambience.spatialBlend=0;ambience.clip=hum;ambience.volume=0;if(hum!=null)ambience.Play();
+            steps=SchoolAudio.Create(run.caretaker.gameObject);steps.spatialBlend=1;steps.rolloffMode=AudioRolloffMode.Linear;steps.minDistance=2;steps.maxDistance=28;steps.playOnAwake=false;
         }
         public void PickupCue(){if(pickupAudio!=null&&sting!=null)pickupAudio.PlayOneShot(sting);}
         void Build()
@@ -25,7 +25,7 @@ namespace Confiscated
             var rect=go.GetComponent<RectTransform>();rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.offsetMin=rect.offsetMax=Vector2.zero;
             var edge=new GameObject("Pursuit edge shade",typeof(RectTransform),typeof(ThreatVignette));edge.transform.SetParent(go.transform,false);var er=edge.GetComponent<RectTransform>();er.anchorMin=Vector2.zero;er.anchorMax=Vector2.one;er.offsetMin=er.offsetMax=Vector2.zero;vignette=edge.GetComponent<ThreatVignette>();vignette.raycastTarget=false;
             kit=Label(go.transform,new Vector2(24,65),new Vector2(750,40),20);
-            controls=KeyCapHints.Row(go.transform,30,18,new Color(.93f,.91f,.78f),("F LMB","interact"),("Q E","lean"),("1 RMB","toy"),("SHIFT","run"),("SPACE","look back"),("T","torch"),("TAB","bag"));
+            controls=new GameObject("Contextual control hints",typeof(RectTransform)).GetComponent<RectTransform>();controls.SetParent(go.transform,false);controls.gameObject.AddComponent<ContextualControlHints>().Build();
             controls.anchorMin=controls.anchorMax=controls.pivot=Vector2.zero;controls.anchoredPosition=new Vector2(24,14);controls.sizeDelta=new Vector2(1100,30);
             staminaLabel=Label(go.transform,new Vector2(24,104),new Vector2(300,32),24);
             staminaLabel.text="STAMINA";

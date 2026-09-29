@@ -64,10 +64,10 @@ namespace Confiscated
         void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
-            voice = gameObject.AddComponent<AudioSource>();
+            voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);
             voice.playOnAwake = false; voice.spatialBlend = 1; voice.minDistance = 3; voice.maxDistance = 32;
             voice.rolloffMode = AudioRolloffMode.Linear; voice.volume = .85f;
-            feet = gameObject.AddComponent<AudioSource>();
+            feet=SchoolAudio.Create(gameObject);
             feet.playOnAwake = false; feet.spatialBlend = 1; feet.minDistance = 5; feet.maxDistance = 40;
             feet.rolloffMode = AudioRolloffMode.Linear; feet.volume = .85f;
             appearance = new MaterialPropertyBlock(); previous = transform.position;

@@ -20,7 +20,7 @@ namespace Confiscated
             var emitter=new GameObject("Walking keys sound");
             emitter.transform.SetParent(transform,false);
             emitter.transform.localPosition=new Vector3(-.3f,1.05f,0);
-            source=emitter.AddComponent<AudioSource>();
+            source=SchoolAudio.Create(emitter,SchoolAudio.Channel.Effects,true);
             source.playOnAwake=false;source.loop=true;source.spatialBlend=1;
             source.rolloffMode=AudioRolloffMode.Linear;source.minDistance=1;
             source.maxDistance=audibleDistance;source.dopplerLevel=0;source.volume=0;

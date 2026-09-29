@@ -269,7 +269,7 @@ namespace Confiscated
             if(voice==null)
             {
                 var mouth=new GameObject("Caretaker voice");mouth.transform.SetParent(transform,false);mouth.transform.localPosition=Vector3.up*1.7f;
-                voice=mouth.AddComponent<AudioSource>();voice.playOnAwake=false;voice.loop=false;
+                voice=SchoolAudio.Create(mouth,SchoolAudio.Channel.Voice,true);voice.playOnAwake=false;voice.loop=false;
                 voice.spatialBlend=1;voice.dopplerLevel=0;voice.rolloffMode=AudioRolloffMode.Linear;voice.minDistance=6;voice.maxDistance=40;TalkingMouth.Register(voice);
             }
             if(!priority&&(voice.isPlaying||Time.time<nextVoiceAt))return false;

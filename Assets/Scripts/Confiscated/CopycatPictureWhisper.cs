@@ -19,7 +19,7 @@ namespace Confiscated
         void Awake()
         {
             picture=GetComponent<Renderer>();
-            voice=gameObject.AddComponent<AudioSource>();
+            voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);
             voice.playOnAwake=false;voice.spatialBlend=1;voice.dopplerLevel=0;
             voice.rolloffMode=AudioRolloffMode.Linear;voice.minDistance=1.2f;voice.maxDistance=5;
             voice.volume=.48f;

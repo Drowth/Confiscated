@@ -54,7 +54,7 @@ namespace Confiscated
             movement.MovementLocked=true;movement.LookLocked=true;player.InputLocked=true;
             Cursor.lockState=CursorLockMode.None;Cursor.visible=true;
             if(locker!=null)DoorSounds.For(locker.gameObject,DoorSounds.Kind.Locker).Play(true);
-            IsOpen=true;openedFrame=Time.frameCount;canvas.gameObject.SetActive(true);
+            IsOpen=true;ContextualControlHints.Used(ContextualControlHints.Action.Bag);openedFrame=Time.frameCount;canvas.gameObject.SetActive(true);
             hudCanvas=HudController.Instance!=null?HudController.Instance.GetComponentInParent<Canvas>():null;
             if(hudCanvas!=null){hudWasEnabled=hudCanvas.enabled;hudCanvas.enabled=false;}
             ConfigureMode();

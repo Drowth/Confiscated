@@ -59,13 +59,13 @@ namespace Confiscated
         {
             path=new NavMeshPath();
             if(silhouette.Length>0&&silhouette[0]!=null){skin=new Material(silhouette[0].sharedMaterial);foreach(var r in silhouette)r.sharedMaterial=skin;}
-            voice=gameObject.AddComponent<AudioSource>();voice.playOnAwake=false;voice.spatialBlend=1;voice.rolloffMode=AudioRolloffMode.Linear;
+            voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.playOnAwake=false;voice.spatialBlend=1;voice.rolloffMode=AudioRolloffMode.Linear;
             voice.minDistance=2;voice.maxDistance=20;voice.dopplerLevel=0;
             catchClip=Resources.Load<AudioClip>("Audio/LibraryShadowGetOut");
             seeYou=Resources.Load<AudioClip>("Audio/LibraryShadowISeeYou");spotted=Resources.Load<AudioClip>("Audio/LibraryShadowSpotted");scream=Resources.Load<AudioClip>("Audio/LibraryShadowScream");
-            breath=gameObject.AddComponent<AudioSource>();breath.clip=Resources.Load<AudioClip>("Audio/LibraryShadowBreathLoop");breath.loop=true;breath.playOnAwake=false;
+            breath=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Effects,true);breath.clip=Resources.Load<AudioClip>("Audio/LibraryShadowBreathLoop");breath.loop=true;breath.playOnAwake=false;
             breath.spatialBlend=1;breath.rolloffMode=AudioRolloffMode.Linear;breath.minDistance=1.5f;breath.maxDistance=14;breath.dopplerLevel=0;breath.volume=0;
-            sting=gameObject.AddComponent<AudioSource>();sting.playOnAwake=false;sting.spatialBlend=0;
+            sting=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Effects,true);sting.playOnAwake=false;sting.spatialBlend=0;
             Place(0);Wander();Visual(true);
         }
         void OnDestroy(){if(skin!=null)Destroy(skin);}

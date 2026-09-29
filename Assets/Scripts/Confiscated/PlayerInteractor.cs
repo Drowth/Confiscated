@@ -75,7 +75,7 @@ namespace Confiscated
 
             if (current.holdSeconds <= 0f)
             {
-                if (interactAction.WasPressedThisFrame() || (Mouse.current!=null&&Mouse.current.leftButton.wasPressedThisFrame)) current.Interact(this);
+                if (interactAction.WasPressedThisFrame() || (Mouse.current!=null&&Mouse.current.leftButton.wasPressedThisFrame)) {current.Interact(this);ContextualControlHints.Used(ContextualControlHints.Action.Interact);}
             }
             else
             {
@@ -85,7 +85,7 @@ namespace Confiscated
                     if (holdProgress >= 1f)
                     {
                         holdProgress = 0f;
-                        current.Interact(this);
+                        current.Interact(this);ContextualControlHints.Used(ContextualControlHints.Action.Interact);
                     }
                 }
                 else holdProgress = 0f;

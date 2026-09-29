@@ -43,7 +43,7 @@ namespace Confiscated
             if(GameManager.Instance==null||!GameManager.Instance.IsPlaying||player.InputLocked||ComicDialogue.IsActive||Time.timeScale<=0)return false;
             if(!HasTorch){HudController.Instance?.SetStatus(SchoolGameMode.Dark?"Follow the amber light to your locker. Press F, then move the torch into your satchel.":"Your torch is in your locker. Press F at the locker, then move it into your satchel.",6);return false;}
             if(!on&&flat){HudController.Instance?.SetStatus("Torch battery's flat. Give it a moment to recharge.",3);return false;}
-            on=!on;return true;
+            on=!on;ContextualControlHints.Used(ContextualControlHints.Action.Torch);return true;
         }
         void Update(){if(Keyboard.current!=null&&Keyboard.current.tKey.wasPressedThisFrame)Toggle();}
         void LateUpdate()

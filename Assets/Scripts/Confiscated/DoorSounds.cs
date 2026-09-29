@@ -10,7 +10,7 @@ namespace Confiscated
         int openVariant,closeVariant;bool opening;
         void Awake()
         {
-            Source=gameObject.AddComponent<AudioSource>();Source.playOnAwake=false;Source.spatialBlend=1;
+            Source=SchoolAudio.Create(gameObject);Source.playOnAwake=false;Source.spatialBlend=1;
             Source.rolloffMode=AudioRolloffMode.Linear;Source.minDistance=1.5f;Source.maxDistance=20;Source.dopplerLevel=0;Source.volume=.65f;
         }
         public static DoorSounds For(GameObject target,Kind type)
@@ -27,7 +27,7 @@ namespace Confiscated
         {
             if(unlockSource==null)
             {
-                unlockSource=gameObject.AddComponent<AudioSource>();unlockSource.playOnAwake=false;
+                unlockSource=SchoolAudio.Create(gameObject);unlockSource.playOnAwake=false;
                 unlockSource.spatialBlend=1;unlockSource.rolloffMode=AudioRolloffMode.Linear;
                 unlockSource.minDistance=1.5f;unlockSource.maxDistance=20;unlockSource.dopplerLevel=0;unlockSource.volume=.65f;
                 unlockSource.clip=Resources.Load<AudioClip>("Audio/Doors/UnlockLock");
@@ -39,7 +39,7 @@ namespace Confiscated
         {
             if(slamSource==null)
             {
-                slamSource=gameObject.AddComponent<AudioSource>();slamSource.playOnAwake=false;
+                slamSource=SchoolAudio.Create(gameObject);slamSource.playOnAwake=false;
                 // Partly 2D: the player's shoulder is on the door, so it lands in the chest rather than across the room.
                 slamSource.spatialBlend=.6f;slamSource.rolloffMode=AudioRolloffMode.Linear;
                 slamSource.minDistance=3;slamSource.maxDistance=45;slamSource.dopplerLevel=0;slamSource.volume=1;

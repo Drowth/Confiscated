@@ -41,10 +41,10 @@ namespace Confiscated
             owner=GetComponent<PlayerInteractor>();
             var old=GetComponent<AudioSource>();if(old!=null){old.Stop();old.playOnAwake=false;}
             var emitter=new GameObject("Phone sound emitter");emitter.transform.SetParent(transform,false);
-            source=emitter.AddComponent<AudioSource>();
+            source=SchoolAudio.Create(emitter,SchoolAudio.Channel.Effects,true);
             source.spatialBlend = 1f;source.minDistance=.8f;source.maxDistance=24;source.dopplerLevel=0;source.volume=.65f;
             source.playOnAwake = false;
-            hum=emitter.AddComponent<AudioSource>();hum.spatialBlend=1f;hum.minDistance=.8f;hum.maxDistance=16;hum.dopplerLevel=0;hum.volume=.5f;
+            hum=SchoolAudio.Create(emitter,SchoolAudio.Channel.Effects,true);hum.spatialBlend=1f;hum.minDistance=.8f;hum.maxDistance=16;hum.dopplerLevel=0;hum.volume=.5f;
             hum.playOnAwake=false;hum.loop=true;hum.clip=TempAudio.Buzz;
         }
         void LateUpdate()

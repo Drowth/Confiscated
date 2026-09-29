@@ -18,7 +18,7 @@ namespace Confiscated
 
         void Awake()
         {
-            source=GetComponent<AudioSource>();
+            source=GetComponent<AudioSource>();SchoolAudio.Route(source,SchoolAudio.Channel.Effects,true);
             if(gong!=null){gongPosition=gong.localPosition;gongRotation=gong.localRotation;}
             if(striker!=null){strikerPosition=striker.localPosition;strikerRotation=striker.localRotation;}
             Rest();

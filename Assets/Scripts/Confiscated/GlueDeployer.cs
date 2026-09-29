@@ -18,7 +18,7 @@ namespace Confiscated
         void Awake()
         {
             player=GetComponent<PlayerInteractor>();
-            DropAudio=gameObject.AddComponent<AudioSource>();DropAudio.playOnAwake=false;DropAudio.loop=false;
+            DropAudio=SchoolAudio.Create(gameObject);DropAudio.playOnAwake=false;DropAudio.loop=false;
             DropAudio.spatialBlend=1;DropAudio.minDistance=1;DropAudio.maxDistance=14;DropAudio.dopplerLevel=0;
             DropAudio.volume=.8f;
         }
@@ -48,7 +48,7 @@ namespace Confiscated
             // Wall to wall across the corridor, so nobody can step round it.
             LastDeployed.halfWidth=width/2;LastDeployed.halfDepth=Depth/2;
             var art=placed.transform.Find("Sketched glue on floor");if(art!=null)art.localScale=new Vector3(width+.1f,Depth+.15f,1);
-            Charges--;DropAudio.clip=dropSound;DropAudio.Play();
+            Charges--;ContextualControlHints.Used(ContextualControlHints.Action.Glue);DropAudio.clip=dropSound;DropAudio.Play();
             HudController.Instance?.SetStatus("Glue across the corridor. Whoever follows you sticks!",3);
             return true;
         }

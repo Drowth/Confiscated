@@ -18,7 +18,7 @@ namespace Confiscated
         static readonly Color Cream=new(.97f,.94f,.83f),Ink=new(.055f,.075f,.105f),Amber=new(1,.87f,.51f);
         Canvas canvas;
         Button resume;
-        Text effectsLabel,screenLabel,volumeLabel,lookLabel;
+        Text effectsLabel,screenLabel,hintsLabel;
         PlayerInteractor player;FirstPersonController movement;
         bool oldMove,oldLook,oldInput,oldCursor,oldAudio,modalLastFrame,fullScreen;
         CursorLockMode oldLock;
@@ -98,6 +98,7 @@ namespace Confiscated
             float f=feel!=null?feel.intensity:1;
             effectsLabel.text="CAMERA + VHS: "+(f==0?"OFF":f<1?"REDUCED":"NORMAL");
             screenLabel.text=fullScreen?"FULL SCREEN":"WINDOWED";
+            hintsLabel.text=ContextualControlHints.AlwaysShow?"HINTS: ALWAYS":"HINTS: FADE WHEN LEARNED";
         }
 
         void Build()
@@ -109,27 +110,36 @@ namespace Confiscated
             canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=31000;
             var scaler=root.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=.5f;
             ImageRect("Dim",root.transform,Vector2.zero,Vector2.one,new Color(.02f,.03f,.05f,.72f));
-            var paper=ImageRect("Paper",root.transform,new Vector2(.25f,.13f),new Vector2(.75f,.89f),Cream);
+            var paper=ImageRect("Paper",root.transform,new Vector2(.1f,.09f),new Vector2(.9f,.91f),Cream);
             var edge=Rect("Pencil edge",paper.transform,Vector2.zero,Vector2.one).gameObject.AddComponent<SketchBorder>();edge.color=Ink;edge.raycastTarget=false;
             var p=paper.transform;
-            var title=Label("PAUSED",p,new Vector2(.06f,.86f),new Vector2(.94f,.97f),58,Ink);title.alignment=TextAnchor.MiddleCenter;
-            var note=Label("The run clock keeps ticking while you're paused.",p,new Vector2(.06f,.80f),new Vector2(.94f,.86f),20,new Color(.35f,.3f,.22f));note.alignment=TextAnchor.MiddleCenter;
+            var title=Label("PAUSED",p,new Vector2(.06f,.9f),new Vector2(.94f,.99f),58,Ink);title.alignment=TextAnchor.MiddleCenter;
+            var note=Label("The run clock keeps ticking while you're paused.",p,new Vector2(.06f,.85f),new Vector2(.94f,.9f),20,new Color(.35f,.3f,.22f));note.alignment=TextAnchor.MiddleCenter;
 
-            resume=MakeButton("Resume",p,new Vector2(.06f,.665f),new Vector2(.47f,.775f),Close);
-            MakeButton("Restart run",p,new Vector2(.06f,.535f),new Vector2(.47f,.645f),()=>Leave(()=>GameManager.Instance.RestartRun()));
-            MakeButton("Title screen",p,new Vector2(.06f,.405f),new Vector2(.47f,.515f),()=>Leave(()=>GameManager.Instance.ReturnToTitle()));
-            MakeButton("Quit game",p,new Vector2(.06f,.275f),new Vector2(.47f,.385f),Quit);
+            resume=MakeButton("Resume",p,new Vector2(.04f,.71f),new Vector2(.30f,.8f),Close);
+            MakeButton("Restart run",p,new Vector2(.04f,.57f),new Vector2(.30f,.66f),()=>Leave(()=>GameManager.Instance.RestartRun()));
+            MakeButton("Title screen",p,new Vector2(.04f,.43f),new Vector2(.30f,.52f),()=>Leave(()=>GameManager.Instance.ReturnToTitle()));
+            MakeButton("Quit game",p,new Vector2(.04f,.29f),new Vector2(.30f,.38f),Quit);
 
-            volumeLabel=Label("",p,new Vector2(.53f,.735f),new Vector2(.94f,.785f),21,Ink);
-            MakeSlider("Volume",p,new Vector2(.53f,.675f),new Vector2(.94f,.73f),0,1,AudioListener.volume,v=>{AudioListener.volume=v;PlayerPrefs.SetFloat(VolumeKey,v);volumeLabel.text="VOLUME  "+Mathf.RoundToInt(v*100)+"%";});
-            lookLabel=Label("",p,new Vector2(.53f,.605f),new Vector2(.94f,.655f),21,Ink);
-            MakeSlider("Mouse sensitivity",p,new Vector2(.53f,.545f),new Vector2(.94f,.60f),.02f,.2f,movement.MouseSensitivity,v=>{movement.MouseSensitivity=v;lookLabel.text="MOUSE SENSITIVITY  "+Mathf.RoundToInt(v/.08f*100)+"%";});
-            effectsLabel=MakeButton("Effects",p,new Vector2(.53f,.405f),new Vector2(.94f,.515f),CycleEffects).GetComponentInChildren<Text>();effectsLabel.fontSize=24;
-            screenLabel=MakeButton("Screen",p,new Vector2(.53f,.275f),new Vector2(.94f,.385f),ToggleScreen).GetComponentInChildren<Text>();screenLabel.fontSize=24;
+            Setting(p,"MASTER",.35f,.72f,0,1,AudioListener.volume,v=>{AudioListener.volume=v;PlayerPrefs.SetFloat(VolumeKey,v);},v=>Mathf.RoundToInt(v*100)+"%");
+            Setting(p,"MUSIC",.35f,.58f,0,1,SchoolAudio.GetLevel(SchoolAudio.Channel.Music),v=>SchoolAudio.SetLevel(SchoolAudio.Channel.Music,v),v=>Mathf.RoundToInt(v*100)+"%");
+            Setting(p,"EFFECTS",.35f,.44f,0,1,SchoolAudio.GetLevel(SchoolAudio.Channel.Effects),v=>SchoolAudio.SetLevel(SchoolAudio.Channel.Effects,v),v=>Mathf.RoundToInt(v*100)+"%");
+            Setting(p,"VOICE",.35f,.30f,0,1,SchoolAudio.GetLevel(SchoolAudio.Channel.Voice),v=>SchoolAudio.SetLevel(SchoolAudio.Channel.Voice,v),v=>Mathf.RoundToInt(v*100)+"%");
+            Setting(p,"MOUSE SENSITIVITY",.68f,.72f,.02f,.2f,movement.MouseSensitivity,v=>movement.MouseSensitivity=v,v=>Mathf.RoundToInt(v/.08f*100)+"%");
+            var feel=movement.GetComponent<ChaseCamera>();
+            Setting(p,"FIELD OF VIEW",.68f,.58f,50,90,feel.BaseFov,v=>feel.SetBaseFov(v),v=>Mathf.RoundToInt(v)+"°");
+            effectsLabel=MakeButton("Effects",p,new Vector2(.68f,.44f),new Vector2(.96f,.51f),CycleEffects).GetComponentInChildren<Text>();effectsLabel.fontSize=22;
+            hintsLabel=MakeButton("Hints",p,new Vector2(.68f,.33f),new Vector2(.96f,.40f),()=>{ContextualControlHints.AlwaysShow=!ContextualControlHints.AlwaysShow;Refresh();}).GetComponentInChildren<Text>();hintsLabel.fontSize=20;
+            screenLabel=MakeButton("Screen",p,new Vector2(.68f,.22f),new Vector2(.96f,.29f),ToggleScreen).GetComponentInChildren<Text>();screenLabel.fontSize=22;
 
-            KeyRow(p,.145f,.225f,("WASD","move"),("SHIFT","run"),("Q E","lean"),("SPACE","look back"));
-            KeyRow(p,.05f,.13f,("F LMB","interact"),("1 RMB","wind-up toy"),("2","glue (or G)"),("TAB","bag"));
+            KeyRow(p,.105f,.18f,("WASD","move"),("SHIFT","run"),("Q E","lean"),("SPACE","look back"),("T","torch"));
+            KeyRow(p,.025f,.10f,("F LMB","interact"),("1 RMB","wind-up toy"),("2 G","glue"),("TAB","bag"));
             root.SetActive(false);
+        }
+        void Setting(Transform parent,string name,float x,float y,float low,float high,float value,UnityEngine.Events.UnityAction<float> change,System.Func<float,string> display)
+        {
+            var label=Label("",parent,new Vector2(x,y+.045f),new Vector2(x+.28f,y+.09f),21,Ink);
+            MakeSlider(name,parent,new Vector2(x,y),new Vector2(x+.28f,y+.04f),low,high,value,v=>{change(v);label.text=name+"  "+display(v);});
         }
         static void KeyRow(Transform paper,float bottom,float top,params (string keys,string label)[] hints)
         {

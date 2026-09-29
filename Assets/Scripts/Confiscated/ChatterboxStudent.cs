@@ -79,7 +79,7 @@ namespace Confiscated
         void Awake()
         {
             // Both voices come from where he sits: quieter as you walk away.
-            voice=gameObject.AddComponent<AudioSource>();voice.playOnAwake=false;voice.loop=true;Spatial(voice);voice.volume=.18f;
+            voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.playOnAwake=false;voice.loop=true;Spatial(voice);voice.volume=.18f;
             // Quiet, original cartoon syllables for lines without a recording.
             const int rate=22050;float[] samples=new float[rate/2];
             for(int i=0;i<samples.Length;i++)
@@ -90,7 +90,7 @@ namespace Confiscated
                 samples[i]=envelope*(.5f*Mathf.Sin(2*Mathf.PI*hz*t)+.22f*Mathf.Sin(4*Mathf.PI*hz*t)+.12f*Mathf.Sin(6*Mathf.PI*hz*t));
             }
             chatterClip=AudioClip.Create("Chatterbox syllables",samples.Length,1,rate,false);chatterClip.SetData(samples,0);voice.clip=chatterClip;
-            speech=gameObject.AddComponent<AudioSource>();speech.playOnAwake=false;speech.loop=false;Spatial(speech);
+            speech=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);speech.playOnAwake=false;speech.loop=false;Spatial(speech);
         }
         static void Spatial(AudioSource s){s.spatialBlend=1;s.rolloffMode=AudioRolloffMode.Linear;s.minDistance=2;s.maxDistance=16;s.dopplerLevel=0;}
         void LateUpdate()

@@ -27,7 +27,7 @@ namespace Confiscated
             if (!NavMesh.SamplePosition(desired, out var floor, .7f, NavMesh.AllAreas) || NavMesh.Raycast(transform.position, floor.position, out _, NavMesh.AllAreas)) return false;
             if (Physics.Linecast(transform.position + Vector3.up * .4f, floor.position + Vector3.up * .4f, ~0, QueryTriggerInteraction.Ignore)) return false;
             Charges--;
-            TotalDeployedThisRun++;
+            TotalDeployedThisRun++;ContextualControlHints.Used(ContextualControlHints.Action.Toy);
             GameObject toy = Instantiate(toyPrefab, floor.position, Quaternion.LookRotation(forward));
             toy.name = "Ticking wind-up decoy";
             // A flat cutout must stay square-on to whoever is looking; a modelled toy reads from any side.
@@ -45,7 +45,7 @@ namespace Confiscated
             AudioSource quack = null;
             if (quackClip != null)
             {
-                quack = toy.AddComponent<AudioSource>();
+                quack=SchoolAudio.Create(toy);
                 quack.clip = quackClip; quack.playOnAwake = false; quack.loop = false;
                 quack.spatialBlend = 1f; quack.minDistance = 2f; quack.maxDistance = 16f; quack.volume = .85f;
                 quack.Play();

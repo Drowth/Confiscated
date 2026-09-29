@@ -106,7 +106,7 @@ namespace Confiscated
         {
             if(caughtAudio==null)
             {
-                caughtAudio=gameObject.AddComponent<AudioSource>();caughtAudio.playOnAwake=false;
+                caughtAudio=SchoolAudio.Create(gameObject);caughtAudio.playOnAwake=false;
                 caughtAudio.loop=false;caughtAudio.spatialBlend=0;caughtAudio.volume=.8f;
                 caughtAudio.clip=Resources.Load<AudioClip>("Audio/PlayerCaught");
             }

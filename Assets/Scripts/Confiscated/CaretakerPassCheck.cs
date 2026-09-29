@@ -19,7 +19,7 @@ namespace Confiscated
         AudioSource steps;
         void Awake()
         {
-            ai=GetComponent<CaretakerAI>();steps=gameObject.AddComponent<AudioSource>();
+            ai=GetComponent<CaretakerAI>();steps=SchoolAudio.Create(gameObject);
             steps.spatialBlend=1;steps.minDistance=1;steps.maxDistance=13;steps.playOnAwake=false;steps.volume=.1f;steps.pitch=1.65f;
         }
         void Update()

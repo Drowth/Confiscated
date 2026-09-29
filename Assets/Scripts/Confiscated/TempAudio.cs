@@ -91,7 +91,10 @@ namespace Confiscated
 
         public static void PlayAt(AudioClip clip, Vector3 position, float volume = 1f)
         {
-            if (clip != null) AudioSource.PlayClipAtPoint(clip, position, volume);
+            if(clip==null)return;
+            var emitter=new GameObject("One-shot sound");emitter.transform.position=position;
+            var source=SchoolAudio.Create(emitter);source.clip=clip;source.spatialBlend=1;source.volume=volume;source.Play();
+            Object.Destroy(emitter,clip.length);
         }
     }
 }
