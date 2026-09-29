@@ -17,7 +17,7 @@ namespace Confiscated
         Renderer artwork;
         Material material;
         MaterialPropertyBlock appearance;
-        AudioSource voice;
+        AudioSource voice,song;
         Vector3 lastPosition,fleeTarget;
         float travelled,fleeAt,fleeDeadline;
         bool triggered,speaking,fleeing,completed,watched,hiding;
@@ -89,12 +89,17 @@ namespace Confiscated
             voice=gameObject.AddComponent<AudioSource>();voice.playOnAwake=false;voice.loop=false;voice.spatialBlend=1;
             voice.minDistance=3;voice.maxDistance=45;voice.rolloffMode=AudioRolloffMode.Linear;voice.volume=1;
             voice.clip=Resources.Load<AudioClip>("Audio/CopycatReveal");
+            // Hidden in the maze she sings to herself: a lure you hear between the shelves before you see her.
+            song=gameObject.AddComponent<AudioSource>();song.playOnAwake=false;song.loop=true;song.spatialBlend=1;song.dopplerLevel=0;
+            song.minDistance=2;song.maxDistance=20;song.rolloffMode=AudioRolloffMode.Linear;song.volume=.75f;
+            song.clip=Resources.Load<AudioClip>("Audio/CopycatRingAroundTheRosie");
             lastPosition=transform.position;
         }
 
         void Update()
         {
             if(completed||run==null||run.period==null||run.period.Player==null)return;
+            Sing(Hiding&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&run.RoundStarted&&!ComicDialogue.IsActive&&Time.timeScale>0);
             if(GameManager.Instance==null||!GameManager.Instance.IsPlaying||!run.RoundStarted||ComicDialogue.IsActive||Time.timeScale<=0)
             {StopAgent();return;}
             if(movement==null)movement=run.period.Player.GetComponent<FirstPersonController>();
@@ -188,6 +193,14 @@ namespace Confiscated
             }
         }
 
+        // Pauses rather than stops for a dialogue balloon; spotting her cuts the song dead.
+        void Sing(bool on)
+        {
+            if(song==null||song.clip==null)return;
+            if(on){if(!song.isPlaying){if(song.time>0)song.UnPause();else song.Play();}}
+            else if(song.isPlaying){if(Hiding)song.Pause();else song.Stop();}
+        }
+        public bool Singing=>song!=null&&song.isPlaying;
         void StopAgent(){if(agent!=null&&agent.enabled&&agent.isOnNavMesh){agent.isStopped=true;agent.velocity=Vector3.zero;}}
         void Face(Vector3 point){Vector3 direction=point-transform.position;direction.y=0;if(direction.sqrMagnitude>.01f)transform.rotation=Quaternion.LookRotation(direction);}
         void Animate()
