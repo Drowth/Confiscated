@@ -1,0 +1,12 @@
+01_AfterTheBell.wav | He said I could come out after the bell.
+02_HeMustntHave.wav | I heard it. I did. He mustn't have.
+03_StoppedKnocking.wav | I was very good. I stopped knocking.
+04_CountedKeys.wav | He counted all his keys. He didn't count us.
+05_EllieWaited.wav | Ellie said she'd wait for me.
+06_PaintedName.wav | They painted over my name.
+07_EveryoneTaller.wav | Everyone else gets taller.
+08_RemembersMe.wav | He remembers me when I tell him things.
+09_FindMe.wav | If I help him find you, perhaps he'll find me.
+10_DontShutIt.wav | Don't let him shut it.
+11_DontForget.wav | You won't forget where I am, will you?
+12_SaySorry.wav | I'm still waiting for him to say sorry.

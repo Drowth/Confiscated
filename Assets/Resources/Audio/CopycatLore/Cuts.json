@@ -1,0 +1,86 @@
+[
+  {
+    "file": "01_AfterTheBell.wav",
+    "text": "He said I could come out after the bell.",
+    "source": "he saiod i could comeout after the bell.mp3",
+    "start": 0,
+    "end": 4.1
+  },
+  {
+    "file": "02_HeMustntHave.wav",
+    "text": "I heard it. I did. He mustn't have.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 0,
+    "end": 4.65
+  },
+  {
+    "file": "03_StoppedKnocking.wav",
+    "text": "I was very good. I stopped knocking.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 4.65,
+    "end": 8.13
+  },
+  {
+    "file": "04_CountedKeys.wav",
+    "text": "He counted all his keys. He didn't count us.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 8.13,
+    "end": 12.4
+  },
+  {
+    "file": "05_EllieWaited.wav",
+    "text": "Ellie said she'd wait for me.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 12.4,
+    "end": 14.9
+  },
+  {
+    "file": "06_PaintedName.wav",
+    "text": "They painted over my name.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 14.9,
+    "end": 17.05
+  },
+  {
+    "file": "07_EveryoneTaller.wav",
+    "text": "Everyone else gets taller.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 17.05,
+    "end": 19.4
+  },
+  {
+    "file": "08_RemembersMe.wav",
+    "text": "He remembers me when I tell him things.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 19.4,
+    "end": 22.2
+  },
+  {
+    "file": "09_FindMe.wav",
+    "text": "If I help him find you, perhaps he'll find me.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 22.2,
+    "end": 26.04
+  },
+  {
+    "file": "10_DontShutIt.wav",
+    "text": "Don't let him shut it.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 26.04,
+    "end": 28.1
+  },
+  {
+    "file": "11_DontForget.wav",
+    "text": "You won't forget where I am, will you?",
+    "source": "all speech, needs cutting.mp3",
+    "start": 28.1,
+    "end": 31.45
+  },
+  {
+    "file": "12_SaySorry.wav",
+    "text": "I'm still waiting for him to say sorry.",
+    "source": "all speech, needs cutting.mp3",
+    "start": 31.45,
+    "end": 34.59
+  }
+]
