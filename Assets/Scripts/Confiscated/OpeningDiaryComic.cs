@@ -57,7 +57,7 @@ namespace Confiscated
             root.transform.SetParent(transform,false);
             var canvas=root.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=30001;
             var scaler=root.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=.5f;
+            scaler.referenceResolution=new Vector2(1920,1080);scaler.matchWidthOrHeight=1f;
             group=root.GetComponent<CanvasGroup>();group.blocksRaycasts=true;group.alpha=0;
             var background=ImageRect("Ink surround",root.transform,Vector2.zero,new Vector2(1920,1080),new Color(.025f,.035f,.045f,1));
             background.rectTransform.anchorMin=Vector2.zero;background.rectTransform.anchorMax=Vector2.one;

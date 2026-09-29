@@ -114,6 +114,7 @@ namespace Confiscated.EditorTools
                 Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(5.36f,.66f,CounterZ+.4f),new Vector2(1.5f,.4f),180,.011f);
             }
             else Plaque(g,"PLEASE WAIT\nTO BE SEEN",new Vector3(6.0f,.72f,CounterZ+.325f),new Vector2(.95f,.36f),180,.011f);
+            WaitingRoomAssetHubSetup.ApplyToWaitingArea(g);
         }
 
         /// <summary>
