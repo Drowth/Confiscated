@@ -9000,7 +9000,7 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 50170879}
-  m_Text: LUNCH & PLAY
+  m_Text: SCHOOL HISTORY
   m_OffsetZ: 0
   m_CharacterSize: 0.032
   m_LineSpacing: 1
@@ -85290,7 +85290,7 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 409958810}
-  m_Text: PLAY FAIR
+  m_Text: ART CLUB
   m_OffsetZ: 0
   m_CharacterSize: 0.032
   m_LineSpacing: 1
@@ -117603,7 +117603,7 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 563114474}
-  m_Text: OUR SCHOOL
+  m_Text: OUR HELPERS
   m_OffsetZ: 0
   m_CharacterSize: 0.032
   m_LineSpacing: 1
@@ -133723,7 +133723,7 @@ PrefabInstance:
     - target: {fileID: 7132408101892014338, guid: 847d8b5222ade3d45a5391cd002cdef0, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 02cc857ccd62d9c4fa2df99d3baa022d, type: 2}
+      objectReference: {fileID: 2100000, guid: 35e90c238f0107045b74b1738824cc59, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -150680,7 +150680,7 @@ PrefabInstance:
     - target: {fileID: 7132408101892014338, guid: 847d8b5222ade3d45a5391cd002cdef0, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 78bb082b390f20143b9026e3f8324db6, type: 2}
+      objectReference: {fileID: 2100000, guid: 2881ea9952c1d0945861228161688af0, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -320732,7 +320732,7 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1534998056}
-  m_Text: OUR SCHOOL GARDEN
+  m_Text: PLAYTIME
   m_OffsetZ: 0
   m_CharacterSize: 0.032
   m_LineSpacing: 1
@@ -321442,7 +321442,7 @@ PrefabInstance:
     - target: {fileID: 7132408101892014338, guid: 847d8b5222ade3d45a5391cd002cdef0, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 02cc857ccd62d9c4fa2df99d3baa022d, type: 2}
+      objectReference: {fileID: 2100000, guid: c6ecec7ea38cebd45ad6f05baaf2cb58, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -359467,6 +359467,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: P_ArtDisplay
       objectReference: {fileID: 0}
+    - target: {fileID: 7132408101892014338, guid: 847d8b5222ade3d45a5391cd002cdef0, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 8a0c39858ae05904289aa7ea83c2edea, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -392457,7 +392461,7 @@ PrefabInstance:
     - target: {fileID: 7132408101892014338, guid: 847d8b5222ade3d45a5391cd002cdef0, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 02cc857ccd62d9c4fa2df99d3baa022d, type: 2}
+      objectReference: {fileID: 2100000, guid: b1ce745a6c7fffe4095b20f22eb85bec, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -429609,7 +429613,7 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2031402929}
-  m_Text: OUR WORK
+  m_Text: OUR FUTURES
   m_OffsetZ: 0
   m_CharacterSize: 0.032
   m_LineSpacing: 1
@@ -449503,7 +449507,7 @@ PrefabInstance:
     - target: {fileID: 7132408101892014338, guid: 847d8b5222ade3d45a5391cd002cdef0, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 78bb082b390f20143b9026e3f8324db6, type: 2}
+      objectReference: {fileID: 2100000, guid: 697e5f0fa4b85514594e707e7e549c42, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
