@@ -12,7 +12,7 @@ namespace Confiscated.EditorTools
     /// The secret isolation ("reflection") room, cut from the south-east corner of the never-opened South room A with its
     /// one door on the south-west corridor wall (Docs/IsolationRoom.md). Narrow on purpose (the level is hand-built): it
     /// only ever destroys its own root, and it deactivates the one corridor wall piece (Wall_35) it replaces with pieces
-    /// that leave the doorway. The NavMesh is not rebaked; staff can't open the door anyway.
+    /// that leave the (boarded) doorway. The NavMesh is not rebaked; staff can't open the door anyway.
     /// </summary>
     public static class IsolationRoomSetup
     {
@@ -51,19 +51,35 @@ namespace Confiscated.EditorTools
             Solid("Lining east north",shell,new Vector3(X1-.01f,1.5f,(Opening1+Z1)/2),new Vector3(.02f,3,Z1-Opening1),cellMat,false);
             Solid("Lining east header",shell,new Vector3(X1-.01f,(Header+3)/2,(Opening0+Opening1)/2),new Vector3(.02f,3-Header,Opening1-Opening0),cellMat,false);
 
-            // ---- The door: a copy of the room's other classroom door, drab grey-green, locked, never opened by staff.
-            var doorGo=Object.Instantiate(template,root);doorGo.name="Reflection room door";
-            doorGo.transform.position=template.transform.position+Vector3.forward*(DoorZ-template.transform.position.z);
-            doorGo.transform.rotation=template.transform.rotation;
-            foreach(var t in doorGo.GetComponentsInChildren<Transform>(true).Where(t=>t.name=="Closed door signage").ToArray())Object.DestroyImmediate(t.gameObject);
-            var door=doorGo.GetComponent<OfficeDoor>();
-            door.secret=true;door.startsUnlocked=false;door.closedForRun=false;door.closedDuringLessons=false;door.runRequiredLevel=0;door.mission=null;door.mainExit=false;
-            var doorMat=Tinted("M_Door_Isolation",AssetDatabase.LoadAssetAtPath<Material>(MatDir+"M_Door_Classroom.mat"),new Color(.4f,.47f,.47f));
-            var leaf=doorGo.GetComponentsInChildren<MeshRenderer>(true).First(r=>r.name=="Leaf");leaf.sharedMaterial=doorMat;
-            room.door=door;
-            // Inside face of the leaf: the same word over and over, scratched with a compass point.
-            var scratched=Text(leaf.transform,"sorry sorry sorry sorry\nsorry sorry sorry\nsorry sorry sorry sorry\nsorry sorry",Vector3.zero,.011f,Graphite);
-            PlaceOnLeaf(scratched,leaf,.8f,true);
+            // ---- The way in: the old door frame, the doorway boarded over with plywood and nailed planks. The plywood stops
+            // 4 cm short of the floor, so the bulb's light shows underneath (the strip on the corridor floor, below).
+            var frame=Object.Instantiate(template,root);frame.name="Boarded doorway frame";
+            frame.transform.position=template.transform.position+Vector3.forward*(DoorZ-template.transform.position.z);
+            frame.transform.rotation=template.transform.rotation;
+            foreach(var t in frame.GetComponentsInChildren<Transform>(true).Where(t=>t.name=="Closed door signage"||t.name=="Hinge1"||t.name=="SignPlate").ToArray())
+                if(t!=null)Object.DestroyImmediate(t.gameObject);
+            Object.DestroyImmediate(frame.GetComponent<OfficeDoor>());
+            var boarded=Group("Boarded doorway",root);boarded.position=new Vector3(WallX,0,DoorZ);
+            var wood=Tinted("M_Isolation_Planks",AssetDatabase.LoadAssetAtPath<Material>(MatDir+"M_Wood_Desk.mat"),new Color(.86f,.8f,.7f));
+            var ply=Tinted("M_Isolation_Plywood",AssetDatabase.LoadAssetAtPath<Material>(MatDir+"M_Wood_Desk.mat"),new Color(.5f,.47f,.42f));
+            var nail=AssetDatabase.LoadAssetAtPath<Material>(MatDir+"M_Chapter_Grey.mat");
+            var sheet=Plank("Plywood sheet",boarded,new Vector3(WallX,.04f+(2.2f-.04f)/2,DoorZ),new Vector3(.03f,2.2f-.04f,1.52f),0,ply);
+            var pulled=new System.Collections.Generic.List<Transform>();
+            float[,] rows={{.42f,-5},{.86f,4},{1.3f,-3},{1.74f,6},{2.08f,-2}};
+            for(int i=rows.GetLength(0)-1;i>=0;i--)
+            {
+                var plank=Plank("Plank "+(i+1),boarded,new Vector3(-14.795f,rows[i,0],DoorZ),new Vector3(.025f,.16f,1.9f),rows[i,1],wood);
+                foreach(float end in new[]{-.84f,.84f})Nail(plank,end,nail);
+                pulled.Add(plank);
+            }
+            var brace=Plank("Diagonal brace",boarded,new Vector3(-14.768f,1.2f,DoorZ),new Vector3(.025f,.15f,2.35f),38,wood);
+            foreach(float end in new[]{-1.05f,1.05f,0f})Nail(brace,end,nail);
+            pulled.Insert(0,brace);pulled.Add(sheet);
+            var doorway=boarded.gameObject.AddComponent<BoardedDoorway>();doorway.boards=pulled.ToArray();doorway.holdSeconds=1.5f;
+            room.boards=doorway;
+            // The cell side of the plywood: the same word over and over, scratched with a compass point.
+            var scratched=Text(boarded,"sorry sorry sorry sorry\nsorry sorry sorry\nsorry sorry sorry sorry\nsorry sorry",new Vector3(WallX-.018f,.95f,DoorZ),.011f,Graphite);
+            scratched.localRotation=Quaternion.Euler(0,90,0);scratched.SetParent(sheet,true);
             var sign=GameObject.Find("School/Details/South room A east sign");
             if(sign!=null)
             {
@@ -109,10 +125,16 @@ namespace Confiscated.EditorTools
             var flicker=bulb.gameObject.AddComponent<LightFlicker>();flicker.mode=LightFlicker.Mode.Bulb;flicker.baseIntensity=1.6f;flicker.depth=.2f;
             room.bulb=bulb;
 
-            // ---- Light under the door, on the corridor floor (only during the Dark Mode blackout).
+            // ---- Light under the boards, on the corridor floor.
             var leak=Group("Light under the door",root);leak.position=new Vector3(WallX+WallT/2,.004f,DoorZ);
-            Strip(leak,.07f,.55f);Strip(leak,.22f,.22f);Strip(leak,.45f,.09f);
-            room.lightUnderDoor=leak.gameObject;leak.gameObject.SetActive(false);
+            // Soft falloff from overlapping strips, plus the bright slot itself under the plywood.
+            Strip(leak,.03f,.45f);Strip(leak,.09f,.22f);Strip(leak,.18f,.12f);Strip(leak,.32f,.06f);
+            var slot=GameObject.CreatePrimitive(PrimitiveType.Quad);slot.name="Lit gap";slot.transform.SetParent(leak,false);
+            Object.DestroyImmediate(slot.GetComponent<Collider>());
+            slot.transform.position=new Vector3(WallX+.02f,.022f,DoorZ);slot.transform.rotation=Quaternion.Euler(0,-90,0);slot.transform.localScale=new Vector3(1.5f,.036f,1);
+            slot.GetComponent<MeshRenderer>().sharedMaterial=Unlit("M_Isolation_Bulb",new Color(1,.86f,.55f),false);
+            slot.GetComponent<MeshRenderer>().shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
+            room.lightUnderDoor=leak.gameObject;
 
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             Selection.activeGameObject=root.gameObject;
@@ -165,14 +187,20 @@ namespace Confiscated.EditorTools
             g.GetComponent<MeshRenderer>().shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
             return g;
         }
-        static void PlaceOnLeaf(Transform text,MeshRenderer leaf,float height,bool inside)
+        /// <summary>A board: pencil wood box, long along world z, tilted `tilt` degrees about the wall's normal.</summary>
+        static Transform Plank(string name,Transform parent,Vector3 at,Vector3 size,float tilt,Material mat)
         {
-            var b=leaf.localBounds;
-            // The leaf's thin axis is local z; the cell side is the door's +Z (the side it swings towards from the corridor).
-            float z=inside?b.max.z+.002f:b.min.z-.002f;
-            text.localPosition=new Vector3(b.center.x,b.min.y+height,z);
-            text.localRotation=Quaternion.Euler(0,inside?180:0,0);
-            text.localScale=new Vector3(1/leaf.transform.lossyScale.x,1/leaf.transform.lossyScale.y,1/leaf.transform.lossyScale.z);
+            var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(parent,false);
+            g.transform.position=at;g.transform.rotation=Quaternion.Euler(tilt,0,0);g.transform.localScale=size;
+            IllustratedArtSetup.Tiled(g.GetComponent<MeshRenderer>(),mat,"isolation",1);
+            return g.transform;
+        }
+        static void Nail(Transform plank,float along,Material mat)
+        {
+            var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name="Nail";Object.DestroyImmediate(g.GetComponent<Collider>());
+            g.transform.SetParent(plank,false);g.transform.localPosition=new Vector3(.6f,0,along/plank.localScale.z);
+            g.transform.localScale=new Vector3(.4f,.018f/plank.localScale.y,.018f/plank.localScale.z);
+            g.GetComponent<MeshRenderer>().sharedMaterial=mat;g.GetComponent<MeshRenderer>().shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
         }
         static void SchoolRunSetupNotice(Transform parent,Vector3 p,float yaw,string text)
         {

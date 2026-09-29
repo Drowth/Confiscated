@@ -24,9 +24,6 @@ namespace Confiscated
         bool escaped;
         /// <summary>True once the escape has swung the main entrance open.</summary>
         public bool Escaped => escaped;
-        [Tooltip("The secret isolation room: locked, staff never open it, and it only opens in Dark Mode once IsolationRoom.Unlocked.")]
-        public bool secret;
-        bool SecretLocked => secret && !IsolationRoom.Open;
         public int runRequiredLevel;
         public string runLockName;
         public bool IsUnlocked { get; private set; }
@@ -55,8 +52,6 @@ namespace Confiscated
 
         public override string GetPrompt(PlayerInteractor player)
         {
-            if (SecretLocked) return IsolationRoom.LockedPrompt;
-            if (secret && !IsUnlocked) return "F: open the reflection room";
             if (SchoolRunController.Instance != null && closedForRun) return "Closed for this school day.";
             if (LessonLocked) return "Closed during lessons.";
             if (ExitGated)
@@ -74,7 +69,7 @@ namespace Confiscated
         }
 
         static bool HasCarriedKey(PlayerInteractor player)=>player.GetComponent<PlayerInventory>()?.HasCarried(InventoryItemKind.OfficeKey)??false;
-        public override bool CanInteract(PlayerInteractor player) => secret ? !SecretLocked : ExitGated ? SchoolRunController.Instance.ReadyToEscape : !DetentionLocked && !LessonLocked && !(SchoolRunController.Instance != null && closedForRun) && (IsUnlocked || (SchoolRunController.Instance != null && runRequiredLevel > 0 ? SchoolRunController.Instance.CanOpenStorage(runRequiredLevel) : mission != null && HasCarriedKey(player)));
+        public override bool CanInteract(PlayerInteractor player) => ExitGated ? SchoolRunController.Instance.ReadyToEscape : !DetentionLocked && !LessonLocked && !(SchoolRunController.Instance != null && closedForRun) && (IsUnlocked || (SchoolRunController.Instance != null && runRequiredLevel > 0 ? SchoolRunController.Instance.CanOpenStorage(runRequiredLevel) : mission != null && HasCarriedKey(player)));
         /// <summary>A shut, unlocked door the player could open anyway: running into it barges it open instead.</summary>
         public bool CanSlam(PlayerInteractor player) => openAmount < .08f && slamAge < 0 && !ExitGated && IsUnlocked && player != null && CanInteract(player);
         public void Slam(Vector3 from)
@@ -106,11 +101,7 @@ namespace Confiscated
                 SchoolRunController.Instance.Escape();
                 return;
             }
-            if (!IsUnlocked && secret)
-            {
-                IsUnlocked = true; doorSounds.PlayUnlock(); requestedOpen = true;
-            }
-            else if (!IsUnlocked)
+            if (!IsUnlocked)
             {
                 if (SchoolRunController.Instance != null && runRequiredLevel > 0) { }
                 else if (mission == null || !mission.Unlock()) return;
@@ -141,7 +132,7 @@ namespace Confiscated
                 var nearest = caretaker != null && Vector3.Distance(caretaker.transform.position, transform.position) < 2.2f ? caretaker.transform : run?.secondStaff?.transform;
                 if (nearest != null) SwingAwayFrom(nearest.position);
             }
-            if (run != null && (closedForRun || runRequiredLevel > 0 && !IsUnlocked) || secret) staffPassing = false;
+            if (run != null && (closedForRun || runRequiredLevel > 0 && !IsUnlocked)) staffPassing = false;
             if (run != null && closedForRun) requestedOpen = false;
             if (LessonLocked) { staffPassing = false; requestedOpen = false; }
             // Lesson doors swing open once when the round starts: stopping to open them mid-chase was where most bot runs died.
