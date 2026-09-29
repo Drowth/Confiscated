@@ -35,7 +35,8 @@ namespace Confiscated.EditorTools
             new Job{models=new[]{"TallStorageCupboard"},match=t=>t.name.StartsWith("P_TallStorage")},
             new Job{models=new[]{"MaintenanceShelving"},match=t=>t.name=="MaintenanceShelving",keep=p=>!new[]{"SideL","SideR","Back","Shelf","Box","Paper","Lettering"}.Contains(p.name)},
             // The teacher sits at the kneehole and drawers (the model's front), backed onto the board wall; the class sees the panel.
-            new Job{models=new[]{"TeacherDesk"},match=t=>t.name.StartsWith("P_Desk")||t.name=="Decoy teacher desk",keep=p=>p.name.ToLowerInvariant().Contains("book"),facing=Facing.TowardWall},
+            // Not Classroom 8's paired pupil desks: those use the PupilDesk model (placed by hand, 2026-09-29).
+            new Job{models=new[]{"TeacherDesk"},match=t=>t.name.StartsWith("P_Desk")&&t.parent?.name!="Paired pupil desk"||t.name=="Decoy teacher desk",keep=p=>p.name.ToLowerInvariant().Contains("book"),facing=Facing.TowardWall},
             // Corridor lockers (not the player's own): six worn variants, the same one every build for a given locker.
             new Job{models=Enumerable.Range(1,7).Select(i=>"SchoolLocker"+i).ToArray(),match=t=>t.name=="Locker"&&t.GetComponent<Renderer>()!=null&&t.GetComponentInParent<PlayerLocker>()==null},
             // School office (SchoolOfficeSetup rebuilds it after this pass, then calls back for just these). The hatch model
