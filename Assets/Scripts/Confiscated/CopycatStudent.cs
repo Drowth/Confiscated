@@ -4,12 +4,13 @@ using UnityEngine.Rendering;
 
 namespace Confiscated
 {
-    /// <summary>A pupil who advances only while unseen, betrays Smith, then flees.</summary>
+    /// <summary>A pupil hiding in a library-maze alcove. Once Smith spots her she follows, advancing only while unseen,
+    /// betrays Smith, then flees.</summary>
     [DisallowMultipleComponent]
     public sealed class CopycatStudent : MonoBehaviour
     {
         const string RevealLine="Smith... I copied every step. Now the caretaker knows exactly where you are.";
-        const float TriggerDistance=17f,SpeakDistance=1.75f;
+        const float TriggerDistance=17f,SpotDistance=12f,SpeakDistance=1.75f;
         NavMeshAgent agent;
         SchoolRunController run;
         FirstPersonController movement;
@@ -19,7 +20,7 @@ namespace Confiscated
         AudioSource voice;
         Vector3 lastPosition,fleeTarget;
         float travelled,fleeAt,fleeDeadline;
-        bool triggered,speaking,fleeing,completed,watched;
+        bool triggered,speaking,fleeing,completed,watched,hiding;
 
         public bool Triggered=>triggered;
         public bool Speaking=>speaking;
@@ -27,13 +28,16 @@ namespace Confiscated
         public bool Completed=>completed;
         public bool FrozenByGaze=>watched&&triggered&&!fleeing;
         public int RevealCount{get;private set;}
+        /// <summary>Waiting in a library alcove until the player sees her.</summary>
+        public bool Hiding=>hiding&&!triggered;
 
         public static void Install(SchoolRunController owner)
         {
             if(owner==null||FindFirstObjectByType<CopycatStudent>()!=null)return;
-            Vector3 intended=new(-5.2f,0,51.4f);
+            bool hidden=HidingPlace(out var intended,out var facing);
+            if(!hidden){intended=new(-5.2f,0,51.4f);facing=Quaternion.Euler(0,180,0);}
             if(!NavMesh.SamplePosition(intended,out var floor,5f,NavMesh.AllAreas))return;
-            var root=new GameObject("Copycat pupil");root.transform.SetPositionAndRotation(floor.position,Quaternion.Euler(0,180,0));
+            var root=new GameObject("Copycat pupil");root.transform.SetPositionAndRotation(floor.position,facing);
             root.SetActive(false);
             var nav=root.AddComponent<NavMeshAgent>();nav.radius=.22f;nav.height=1.55f;nav.baseOffset=0;
             nav.speed=2.75f;nav.acceleration=18;nav.angularSpeed=720;nav.stoppingDistance=1.2f;nav.autoBraking=false;
@@ -41,9 +45,31 @@ namespace Confiscated
             var visual=GameObject.CreatePrimitive(PrimitiveType.Quad);visual.name="Copycat artwork";visual.transform.SetParent(root.transform,false);
             visual.transform.localPosition=new Vector3(0,.93f,0);visual.transform.localScale=new Vector3(1.12f,1.86f,1);
             Destroy(visual.GetComponent<Collider>());
-            var copycat=root.AddComponent<CopycatStudent>();copycat.run=owner;copycat.artwork=visual.GetComponent<MeshRenderer>();
+            var copycat=root.AddComponent<CopycatStudent>();copycat.run=owner;copycat.artwork=visual.GetComponent<MeshRenderer>();copycat.hiding=hidden;
             copycat.artwork.shadowCastingMode=ShadowCastingMode.On;
             root.SetActive(true);
+        }
+
+        /// <summary>A random dead end of the library maze (the shadow's alcoves), not the glue's, facing its open side.</summary>
+        static bool HidingPlace(out Vector3 position,out Quaternion facing)
+        {
+            position=default;facing=Quaternion.identity;
+            var shadow=FindFirstObjectByType<LibraryShadow>(FindObjectsInactive.Include);
+            if(shadow==null||shadow.alcoves==null)return false;
+            var glue=FindFirstObjectByType<GluePickup>(FindObjectsInactive.Include);
+            var options=new System.Collections.Generic.List<Transform>();
+            foreach(var alcove in shadow.alcoves)
+                if(alcove!=null&&(glue==null||Vector3.Distance(alcove.position,glue.transform.position)>3))options.Add(alcove);
+            if(options.Count==0)return false;
+            position=options[Random.Range(0,options.Count)].position;
+            float best=-1;
+            for(int i=0;i<8;i++)
+            {
+                Vector3 direction=Quaternion.Euler(0,i*45,0)*Vector3.forward;
+                float open=Physics.Raycast(position+Vector3.up,direction,out var hit,8,~0,QueryTriggerInteraction.Ignore)?hit.distance:8;
+                if(open>best){best=open;facing=Quaternion.LookRotation(direction);}
+            }
+            return true;
         }
 
         void Awake()
@@ -84,7 +110,12 @@ namespace Confiscated
             if(!triggered)
             {
                 StopAgent();
-                if(delta.magnitude<=TriggerDistance&&Vector3.Dot(transform.forward,delta.normalized)>.25f&&ClearView(player))triggered=true;
+                if(hiding?delta.magnitude<=SpotDistance&&LibraryWindow.InLibrary(player.position)&&PlayerCanSeeMe():
+                    delta.magnitude<=TriggerDistance&&Vector3.Dot(transform.forward,delta.normalized)>.25f&&ClearView(player))
+                {
+                    triggered=true;
+                    if(hiding)PlayerThoughts.Instance?.Think("Someone else is in here... hiding in the shelves.");
+                }
                 Animate();return;
             }
             if(delta.magnitude<=SpeakDistance){Reveal(player);Animate();return;}
