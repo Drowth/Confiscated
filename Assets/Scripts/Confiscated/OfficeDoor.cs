@@ -31,6 +31,10 @@ namespace Confiscated
         DoorSounds doorSounds;
         bool requestedOpen, openedForRound;
         float openAmount;
+        // Seconds since a sprinting player barged the door open (DoorSlam), or -1. Drives a fast swing that bangs off the wall.
+        float slamAge = -1;
+        const float SlamHit = .085f, SlamSeconds = .9f;
+        public bool Slamming => slamAge >= 0;
         // +1 swings the leaves towards the door's +Z side (the authored openAngle), -1 towards -Z. Picked each time the door
         // starts opening from shut, so it always swings away from whoever opens it: the push plate moves away from you.
         float swing = 1;
@@ -66,10 +70,22 @@ namespace Confiscated
 
         static bool HasCarriedKey(PlayerInteractor player)=>player.GetComponent<PlayerInventory>()?.HasCarried(InventoryItemKind.OfficeKey)??false;
         public override bool CanInteract(PlayerInteractor player) => ExitGated ? SchoolRunController.Instance.ReadyToEscape : !DetentionLocked && !LessonLocked && !(SchoolRunController.Instance != null && closedForRun) && (IsUnlocked || (SchoolRunController.Instance != null && runRequiredLevel > 0 ? SchoolRunController.Instance.CanOpenStorage(runRequiredLevel) : mission != null && HasCarriedKey(player)));
+        /// <summary>A shut, unlocked door the player could open anyway: running into it barges it open instead.</summary>
+        public bool CanSlam(PlayerInteractor player) => openAmount < .08f && slamAge < 0 && !ExitGated && IsUnlocked && player != null && CanInteract(player);
+        public void Slam(Vector3 from)
+        {
+            swing = transform.InverseTransformPoint(from).z <= 0 ? 1 : -1;
+            requestedOpen = true; slamAge = 0; openAmount = 1;
+            doorSounds.PlaySlam();
+        }
+        /// <summary>0 shut, 1 fully open. Accelerates into the wall, then rebounds in shrinking bounces.</summary>
+        static float SlamCurve(float t) => t < SlamHit ? Mathf.Pow(t / SlamHit, 1.6f) :
+            1 - .16f * Mathf.Abs(Mathf.Sin((t - SlamHit) * 13f)) * Mathf.Exp(-(t - SlamHit) * 5.5f);
         public void SetDetentionDoor(bool locked)
         {
             requestedOpen = !locked;
             if (!locked) return;
+            slamAge = -1;
             if(openAmount>0)doorSounds?.Play(false);
             openAmount = 0;
             hinge.localRotation = closedRotation;
@@ -132,11 +148,13 @@ namespace Confiscated
                 if (p.sqrMagnitude < 1.1f * 1.1f) shouldOpen = true;
             }
             float previousAmount=openAmount;
-            openAmount = Mathf.MoveTowards(openAmount, shouldOpen ? 1f : 0f, Time.deltaTime * 3f);
+            if (slamAge >= 0) { slamAge += Time.deltaTime; if (slamAge > SlamSeconds) slamAge = -1; }
+            else openAmount = Mathf.MoveTowards(openAmount, shouldOpen ? 1f : 0f, Time.deltaTime * 3f);
             doorSounds.Movement(previousAmount,openAmount);
-            hinge.localRotation = closedRotation * Quaternion.Euler(0, swing * openAngle * Mathf.SmoothStep(0, 1, openAmount), 0);
+            float fold = slamAge >= 0 ? SlamCurve(slamAge) : Mathf.SmoothStep(0, 1, openAmount);
+            hinge.localRotation = closedRotation * Quaternion.Euler(0, swing * openAngle * fold, 0);
             if (secondHinge != null)
-                secondHinge.localRotation = secondClosedRotation * Quaternion.Euler(0, swing * secondOpenAngle * Mathf.SmoothStep(0, 1, openAmount), 0);
+                secondHinge.localRotation = secondClosedRotation * Quaternion.Euler(0, swing * secondOpenAngle * fold, 0);
         }
     }
 }

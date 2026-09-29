@@ -413,6 +413,8 @@ namespace Confiscated
             state=State.Investigate;arrivedAtPoi=true;lookUntil=Time.time+lookAroundSeconds*.5f;
         }
 
+        /// <summary>Whether a noise here would send him to look (chasing, frozen, glued or in a retry grace he ignores it).</summary>
+        public bool WouldHear(Vector3 pos, float radius) => isActiveAndEnabled && !IsGlued && state != State.Chase && state != State.Frozen && Time.time >= ignorePlayerUntil && Vector3.Distance(transform.position, pos) <= radius;
         void OnNoise(Vector3 pos, float radius, string source)
         {
             // The toy is handled by HearToy (it needs the toy itself, to destroy it).
@@ -424,7 +426,7 @@ namespace Confiscated
             arrivedAtPoi = false;
             pointOfInterest = pos;
             if (NavMesh.SamplePosition(pos, out var hit, 2f, NavMesh.AllAreas)) pointOfInterest = hit.position;
-            HudController.Instance?.SetStatus(source == "phone" ? "He heard the phone!" : source == "search sweep" ? "He's checking the area. Stay out of sight." : "He heard something...", 2f);
+            HudController.Instance?.SetStatus(source == "phone" ? "He heard the phone!" : source == DoorSlam.Source ? "He heard the door slam. He's coming to look!" : source == "search sweep" ? "He's checking the area. Stay out of sight." : "He heard something...", 2f);
             if (source != "search sweep") Say(heardTake++ % 2 == 0 ? "CaretakerWhosThere" : "CaretakerHeardThat");
             GoTo(pointOfInterest, investigateSpeed);
         }

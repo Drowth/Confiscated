@@ -6,7 +6,7 @@ namespace Confiscated
         public enum Kind { Generic,Office,Heavy,Main,Locker }
         public Kind kind;
         public AudioSource Source {get;private set;}
-        AudioSource unlockSource;
+        AudioSource unlockSource,slamSource;
         int openVariant,closeVariant;bool opening;
         void Awake()
         {
@@ -34,6 +34,20 @@ namespace Confiscated
             }
             if(unlockSource.clip!=null)unlockSource.Play();
         }
+        /// <summary>A sprinting barge: a boom and crack heard across the school, with the door's own wood layered on top.</summary>
+        public void PlaySlam()
+        {
+            if(slamSource==null)
+            {
+                slamSource=gameObject.AddComponent<AudioSource>();slamSource.playOnAwake=false;
+                // Partly 2D: the player's shoulder is on the door, so it lands in the chest rather than across the room.
+                slamSource.spatialBlend=.6f;slamSource.rolloffMode=AudioRolloffMode.Linear;
+                slamSource.minDistance=3;slamSource.maxDistance=45;slamSource.dopplerLevel=0;slamSource.volume=1;
+            }
+            slamSource.pitch=Random.Range(.9f,1.04f);slamSource.PlayOneShot(TempAudio.Slam,1);
+            var wood=Resources.Load<AudioClip>("Audio/Doors/"+(kind==Kind.Heavy?"FireDoorHeavy":closeVariant++%2==0?"DoorClose":"DoorClose1"));
+            if(wood!=null)slamSource.PlayOneShot(wood,.95f);
+        }
         public void Play(bool open)
         {
             string name;
@@ -49,6 +63,6 @@ namespace Confiscated
             var clip=Resources.Load<AudioClip>("Audio/Doors/"+name);
             if(clip!=null){Source.Stop();Source.clip=clip;Source.Play();}
         }
-        void OnDestroy(){if(Source!=null)Destroy(Source);if(unlockSource!=null)Destroy(unlockSource);}
+        void OnDestroy(){if(Source!=null)Destroy(Source);if(unlockSource!=null)Destroy(unlockSource);if(slamSource!=null)Destroy(slamSource);}
     }
 }

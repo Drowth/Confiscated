@@ -111,6 +111,8 @@ namespace Confiscated
             cameraPivot.localRotation=Quaternion.Slerp(fallCameraRotation,lying,Mathf.SmoothStep(0,1,Mathf.Clamp01(t/.48f))*(1-rising))*Quaternion.Euler(impact*2,0,impact*2);
         }
         public bool IsSprinting { get; private set; }
+        /// <summary>Direction the player is trying to sprint this frame, even when a shut door stops them (DoorSlam); zero otherwise.</summary>
+        public Vector3 SprintIntent { get; private set; }
         public bool ForcedCorridorRun { get; private set; }
         public float ForcedRunRemaining { get; private set; }
         Vector3 forcedRunDirection;
@@ -166,6 +168,7 @@ namespace Confiscated
             chaseCamera=GetComponent<ChaseCamera>();if(chaseCamera==null)chaseCamera=gameObject.AddComponent<ChaseCamera>();
             if(GetComponent<PlayerBreathingAudio>()==null)gameObject.AddComponent<PlayerBreathingAudio>();
             if(GetComponent<PlayerFootstepAudio>()==null)gameObject.AddComponent<PlayerFootstepAudio>();
+            if(GetComponent<DoorSlam>()==null)gameObject.AddComponent<DoorSlam>();
             // Loaded now, not at the first slip: a late start would put the thud after the floor impact.
             FallVoice=gameObject.AddComponent<AudioSource>();FallVoice.playOnAwake=false;FallVoice.spatialBlend=0;FallVoice.volume=.85f;
             FallVoice.clip=Resources.Load<AudioClip>("Audio/PlayerFall");if(FallVoice.clip!=null)FallVoice.clip.LoadAudioData();
@@ -214,7 +217,7 @@ namespace Confiscated
 
         void Update()
         {
-            IsSprinting=false;
+            IsSprinting=false;SprintIntent=Vector3.zero;
             if(IsFallen)
             {
                 if(ComicDialogue.IsActive||MovementLocked||LookLocked||GameManager.Instance!=null&&!GameManager.Instance.IsPlaying)CancelFall();
@@ -338,6 +341,7 @@ namespace Confiscated
             if(IsDistracted)speed*=.45f;
 
             Vector3 planar = (transform.right * input.x + transform.forward * input.y) * speed;
+            if (sprinting && planar.sqrMagnitude > .01f) SprintIntent = planar.normalized;
 
             if (controller.isGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
             verticalVelocity += gravity * Time.deltaTime;

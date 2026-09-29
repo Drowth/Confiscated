@@ -29,9 +29,15 @@ namespace Confiscated
             bool chased=run!=null&&run.RoundStarted&&run.caretaker.Current==CaretakerAI.State.Chase;
             float target=intensity*((chased?chaseWidening:0)+(player.IsSprinting?sprintWidening:0));
             offset=Mathf.Lerp(offset,target,1-Mathf.Exp(-Time.deltaTime*3));
-            view.fieldOfView=baseFov+offset;
+            view.fieldOfView=baseFov+offset+KickPower*5;
         }
-        public Vector3 ExhaustionSway => Active&&player.SprintFraction<=.2f ? new Vector3(Mathf.Sin(Time.time*1.8f)*.3f,0,Mathf.Sin(Time.time*1.4f)*.45f)*intensity : Vector3.zero;
+        public Vector3 ExhaustionSway => !Active ? Vector3.zero : (player.SprintFraction<=.2f ? new Vector3(Mathf.Sin(Time.time*1.8f)*.3f,0,Mathf.Sin(Time.time*1.4f)*.45f)*intensity : Vector3.zero)+KickSway;
+        // A physical jolt (a door slam): the head snaps back and rattles, on unscaled time so it plays through the hit-stop.
+        float kickAt=-10,kickStrength;
+        public void Kick(float strength){kickAt=Time.unscaledTime;kickStrength=strength;}
+        float KickAge=>Time.unscaledTime-kickAt;
+        float KickPower=>KickAge>.7f?0:kickStrength*intensity*Mathf.Exp(-KickAge*8);
+        Vector3 KickSway{get{float s=KickPower,a=KickAge;return s==0?Vector3.zero:new Vector3(-2.4f*s+Mathf.Sin(a*71)*1.4f*s,Mathf.Sin(a*53)*.9f*s,Mathf.Sin(a*62)*2f*s);}}
         void Restore(){if(view!=null&&offset!=0)view.fieldOfView=baseFov;offset=0;}
         void OnDisable(){Restore();}
     }

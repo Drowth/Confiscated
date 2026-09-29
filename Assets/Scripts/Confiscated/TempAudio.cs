@@ -10,7 +10,7 @@ namespace Confiscated
     {
         const int Rate = 22050;
 
-        static AudioClip ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip, jingleClip, whisperClip, buzzClip;
+        static AudioClip slamClip, ringClip, warnClip, thudClip, caughtClip, winClip, pickupClip, jingleClip, whisperClip, buzzClip;
 
         public static AudioClip Ring => ringClip ??= Build("Temp_Ring", 1.6f, t =>
         {
@@ -25,6 +25,16 @@ namespace Confiscated
 
         public static AudioClip Thud => thudClip ??= Build("Temp_Thud", 0.18f, t =>
             0.8f * Mathf.Sin(2f * Mathf.PI * (140f - 300f * t) * t) * Mathf.Exp(-t * 22f));
+
+        // A door barged open: splintery crack, low boom, latch rattle, then the leaf banging off the wall 85 ms later.
+        public static AudioClip Slam => slamClip ??= BuildNoise("Temp_Slam", 1f, (t, hiss) =>
+        {
+            float v = hiss * Mathf.Exp(-t * 55f) * .9f + Mathf.Sin(2f * Mathf.PI * (62f - 30f * t) * t) * Mathf.Exp(-t * 7f) * .95f
+                + Mathf.Sin(2f * Mathf.PI * 165f * t) * Mathf.Exp(-t * 30f) * .5f + hiss * .18f * Mathf.Exp(-t * 9f) * (.5f + .5f * Mathf.Sin(2f * Mathf.PI * 31f * t));
+            float d = t - .085f;
+            if (d > 0f) v += Mathf.Sin(2f * Mathf.PI * 95f * d) * Mathf.Exp(-d * 18f) * .6f + hiss * Mathf.Exp(-d * 60f) * .35f;
+            return v;
+        });
 
         public static AudioClip Caught => caughtClip ??= Build("Temp_Caught", 0.9f, t =>
             0.5f * Mathf.Sin(2f * Mathf.PI * (220f - 120f * t) * t) * (1f - t / 0.9f));
