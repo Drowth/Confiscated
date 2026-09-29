@@ -5,6 +5,7 @@ namespace Confiscated
     public sealed class SweetJar : Interactable
     {
         public GameObject contents;
+        public GameObject emptyVisual;
         public bool Taken {get;private set;}
         public override string GetPrompt(PlayerInteractor p)=>Taken?"The sweet jar is empty.":"F: take a bag of sweets";
         public override bool CanInteract(PlayerInteractor p)=>!Taken&&SchoolRunController.Instance!=null&&SchoolRunController.Instance.RoundStarted;
@@ -13,7 +14,8 @@ namespace Confiscated
             if(!CanInteract(p))return;
             Taken=true;Sweets.On(p).Collect(Sweets.BagSize);TempAudio.PlayAt(TempAudio.Pickup,transform.position,.5f);
             if(contents!=null)contents.SetActive(false);
+            if(emptyVisual!=null)emptyVisual.SetActive(true);
         }
-        public void Refill(){Taken=false;if(contents!=null)contents.SetActive(true);}
+        public void Refill(){Taken=false;if(contents!=null)contents.SetActive(true);if(emptyVisual!=null)emptyVisual.SetActive(false);}
     }
 }
