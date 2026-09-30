@@ -1,6 +1,7 @@
 using UnityEngine;
 namespace Confiscated
 {
+    [DefaultExecutionOrder(100)]
     public sealed class DinnerTrolleyPatrol : MonoBehaviour
     {
         public Vector3 end;public float speed=1.25f,waitSeconds=2.5f;
@@ -9,6 +10,14 @@ namespace Confiscated
         [Tooltip("Player closer than this (metres, floor plane, in her sight) is 'going past' and gets told on.")]
         public float tellDistance=2.8f,tellNoiseRadius=22,tellCooldownSeconds=14;
         public Transform visual;
+        public float patrolExtension=8f,spotRange=12f,pushSpeed=2.7f,pushCooldown=10f;
+        public bool Pursuing {get;private set;}
+        public Vector3 PatrolStart=>start;
+        public Vector3 PatrolEnd=>patrolEnd;
+        Vector3 patrolEnd,heading;
+        float pushReadyAt,pushEnds,conversationUntil;
+        Renderer cutout;Texture frontArt,rearArt,huntArt;MaterialPropertyBlock artBlock;
+        public bool ShowingRear {get;private set;}
         public bool Waiting => Time.time<waitUntil;
         public bool Outbound => outbound;
         public int Tellings {get;private set;}
@@ -17,6 +26,7 @@ namespace Confiscated
         AudioSource freezerRequest;
         public void RequestFreezerRepair(float conversationSeconds)
         {
+            Pursuing=false;conversationUntil=Time.time+conversationSeconds;
             waitUntil=Mathf.Max(waitUntil,Time.time+conversationSeconds);
             tellReadyAt=Mathf.Max(tellReadyAt,Time.time+conversationSeconds);
             var clip=Resources.Load<AudioClip>("Audio/DinnerLadyFreezerRequest");if(clip==null)return;
@@ -39,7 +49,41 @@ namespace Confiscated
             if(clip!=null&&run.caretaker.Say("CaretakerFreezerReply",true))
                 HudController.Instance?.SetBark("Caretaker: Just give it a swift kick, that's all I did last time. Fine, let me take a look.",clip.length);
         }
-        void Start(){start=transform.position;waitUntil=Time.time+3;if(visual!=null)visual.localRotation=Quaternion.Euler(0,180,0);}
+        void Start()
+        {
+            start=transform.position;heading=(end-start).normalized;
+            patrolEnd=ClearPoint(end,heading,patrolExtension);
+            start=ClearPoint(start,-heading,patrolExtension);
+            waitUntil=Time.time+3;
+            foreach(var r in GetComponentsInChildren<Renderer>())if(r.name=="Dinner lady cutout")cutout=r;
+            if(cutout!=null){frontArt=cutout.sharedMaterial.GetTexture("_BaseMap");rearArt=Resources.Load<Texture2D>("Art/DinnerLadyRear");huntArt=Resources.Load<Texture2D>("Art/Hunt/T_DinnerLady_Hunt");artBlock=new MaterialPropertyBlock();}
+            if(visual!=null)visual.localRotation=Quaternion.Euler(0,180,0);
+        }
+        Vector3 ClearPoint(Vector3 from,Vector3 direction,float distance)
+        {
+            var run=SchoolRunController.Instance;
+            foreach(var hit in Physics.SphereCastAll(from+Vector3.up*.85f,.45f,direction,distance,~0,QueryTriggerInteraction.Ignore))
+                if(!hit.transform.IsChildOf(transform)&&(run==null||!hit.transform.IsChildOf(run.period.Player.transform)))distance=Mathf.Min(distance,Mathf.Max(0,hit.distance-.15f));
+            return from+direction*distance;
+        }
+        bool Sees(Transform player)
+        {
+            Vector3 delta=player.position-transform.position;delta.y=0;
+            if(delta.magnitude>spotRange||Vector3.Dot(heading,delta.normalized)<.2f)return false;
+            Vector3 eye=transform.position+Vector3.up*1.5f;
+            Vector3 sight=player.position+Vector3.up*1.1f-eye;
+            foreach(var hit in Physics.RaycastAll(eye,sight.normalized,sight.magnitude,~0,QueryTriggerInteraction.Ignore))
+                if(!hit.transform.IsChildOf(player)&&!hit.transform.IsChildOf(transform))return false;
+            return true;
+        }
+        void Apologise()
+        {
+            var clip=Resources.Load<AudioClip>("Audio/DinnerLadyApology");
+            HudController.Instance?.SetBark("Dinner lady: Oh, sorry, love! Didn't see you there.",clip!=null?clip.length:3.5f);
+            if(clip==null)return;
+            if(voice==null){voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.spatialBlend=1;voice.minDistance=4;voice.maxDistance=22;TalkingMouth.Register(voice);}
+            voice.Stop();voice.PlayOneShot(clip);
+        }
         void Shout()
         {
             if(DarkModeDialogue.Active)return; // The contextual HUD line plays its own matching voice.
@@ -73,10 +117,18 @@ namespace Confiscated
             var run=SchoolRunController.Instance;if(run==null||GameManager.Instance==null||!GameManager.Instance.IsPlaying||ComicDialogue.IsActive)return;
             var player=run.period.Player.transform;
             if(run.RoundStarted)TellTale(player);
+            if(Time.time<conversationUntil)return;
+            var movement=player.GetComponent<FirstPersonController>();
+            if(!Pursuing&&run.RoundStarted&&Time.time>=pushReadyAt&&movement!=null&&!movement.IsFallen&&Sees(player))
+            {Pursuing=true;pushEnds=Time.time+6;warnedAt=Time.time;announced=true;waitUntil=0;HudController.Instance?.SetStatus("Dinner lady: Mind out, love.",1.4f);}
+            if(Pursuing&&(Time.time>=pushEnds||Vector3.Distance(player.position,transform.position)>spotRange+3))
+            {Pursuing=false;pushReadyAt=Time.time+pushCooldown;}
             if(Time.time<waitUntil)return;
-            Vector3 target=outbound?end:start;var step=Vector3.MoveTowards(transform.position,target,speed*Time.deltaTime);
+            Vector3 target=Pursuing?player.position:outbound?patrolEnd:start;target.y=transform.position.y;
             Vector3 direction=target-transform.position;direction.y=0;
             if(direction.sqrMagnitude>.001f)direction.Normalize();
+            heading=direction;
+            var step=ClearPoint(transform.position,direction,Mathf.Min(Vector3.Distance(transform.position,target),(Pursuing?pushSpeed:speed)*Time.deltaTime));
             Vector3 delta=player.position-transform.position;delta.y=0;
             float ahead=Vector3.Dot(delta,direction);
             float lateral=(delta-direction*ahead).magnitude;
@@ -86,30 +138,36 @@ namespace Confiscated
                 HudController.Instance?.SetStatus("Dinner lady: Mind out, love.",2.4f);
                 announced=true;warnedAt=Time.time;
             }
-            if(ahead>0&&ahead<1.45f&&lateral<1.05f)
+            if(ahead>0&&ahead<1.45f&&lateral<1.05f&&Time.time>=pushReadyAt&&Sees(player))
             {
                 if(!announced){announced=true;warnedAt=Time.time;HudController.Instance?.SetStatus("Dinner lady: Mind out, love.",2.4f);}
                 if(Time.time-warnedAt<warningSeconds)return;
-                var movement=player.GetComponent<FirstPersonController>();
                 if(movement!=null&&!movement.IsFallen)
                 {
                     movement.KnockDown(direction);Collisions++;
                     NoiseEvents.Emit(transform.position,28,"trolley collision");
-                    HudController.Instance?.SetBark("Dinner lady: I did warn you, love!",2.5f);
+                    Apologise();
                 }
                 // Back away after a collision so the trolley cannot pin the player against scenery.
-                outbound=!outbound;waitUntil=Time.time+1.75f;announced=false;return;
+                Pursuing=false;pushReadyAt=Time.time+pushCooldown;outbound=!outbound;waitUntil=Time.time+1.75f;announced=false;return;
             }
+            bool blocked=Vector3.Distance(step,transform.position)<.00001f;
             transform.position=step;
-            if(Vector3.Distance(step,target)<.01f){outbound=!outbound;waitUntil=Time.time+waitSeconds;announced=false;}
+            if(!Pursuing&&(Vector3.Distance(step,target)<.01f||blocked)){outbound=!outbound;waitUntil=Time.time+waitSeconds;announced=false;}
         }
         void LateUpdate()
         {
             if(visual==null||ComicDialogue.IsActive)return;
-            var run=SchoolRunController.Instance;if(run==null||!run.RoundStarted||GameManager.Instance==null||!GameManager.Instance.IsPlaying)return;
-            Vector3 d=run.period.Player.transform.position-transform.position;d.y=0;
-            if(d.magnitude<1.8f)return;
-            visual.localRotation=Quaternion.RotateTowards(visual.localRotation,Quaternion.Euler(0,outbound?180:0,0),Time.deltaTime*120);
+            var run=SchoolRunController.Instance;if(run==null||GameManager.Instance==null||!GameManager.Instance.IsPlaying)return;
+            if(heading.sqrMagnitude>.01f)visual.rotation=Quaternion.RotateTowards(visual.rotation,Quaternion.LookRotation(heading)*Quaternion.Euler(0,90,0),Time.deltaTime*180);
+            if(cutout!=null&&rearArt!=null)
+            {
+                ShowingRear=Vector3.Dot(heading,run.period.Player.transform.position-cutout.transform.position)<-.2f;
+                bool hunt=run.GetComponent<HuntFaces>()?.CrowdTurned==true;
+                cutout.GetPropertyBlock(artBlock);artBlock.SetTexture("_BaseMap",ShowingRear?rearArt:hunt&&huntArt!=null?huntArt:frontArt);
+                if(ShowingRear)artBlock.SetFloat("_MouthOpen",0);
+                cutout.SetPropertyBlock(artBlock);
+            }
         }
     }
 }

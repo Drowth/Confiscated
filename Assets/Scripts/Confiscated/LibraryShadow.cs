@@ -23,7 +23,8 @@ namespace Confiscated
         public Animator animator;
         public Bounds room;
         public int areaMask=1<<3;
-        public float wanderSpeed=1.1f,huntSpeed=3.3f,noticeSeconds=1.3f,reactionSeconds=.3f,lingerSeconds=3;
+        public float wanderSpeed=1.1f,huntSpeed=3.3f,noticeSeconds=1.3f,lingerSeconds=3;
+        public const float reactionSeconds=.35f;
         public float moveSense=8,lightSense=14,movingSpeed=.35f,catchRadius=.75f,goneSeconds=2.5f;
         public const string CatchLine="GET OUT!";
         /// <summary>The library's own belonging: a catch puts it back in its box on the returns desk.</summary>
@@ -41,9 +42,9 @@ namespace Confiscated
         // and a scream for the catch jumpscare.
         AudioClip seeYou,spotted,scream;float outOfViewSince=-999;bool inView;
         // Separate sightings need time out of view and a global cooldown so shelf-edge glimpses cannot spam the sting.
-        public const float JumpscareSeconds=2.05f,NewSightingSeconds=3,SpottedCooldown=12,SpottedRange=14,TorchGraceSeconds=.75f;
-        float nextSpottedAt;
-        float litSeconds,calmSince=-1;
+        public const float JumpscareSeconds=2.05f,NewSightingSeconds=3,SpottedCooldown=12,SpottedRange=14,TorchGraceSeconds=.35f,MovementGraceSeconds=.35f;
+        float nextSpottedAt,nextNoticeVoiceAt;
+        float litSeconds,movingSeconds,calmSince=-1;
         public int Spotted {get;private set;}
         public bool Catching=>catching;
         [Tooltip("Chance each wander goes to a window's pool of light instead of an alcove, so it can be glimpsed from the corridor.")]
@@ -82,7 +83,7 @@ namespace Confiscated
             // A new round (or a retry) starts it over in a random alcove.
             if(round&&!wasRound){Place(Random.Range(0,alcoves.Length));Wander();}wasRound=round;
             bool live=round&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&!Paused&&!ComicDialogue.IsActive&&Time.timeScale>0;
-            if(!live){havePlayer=false;litSeconds=0;LostSight();Visual(false);Breathe(false);return;}
+            if(!live){havePlayer=false;litSeconds=movingSeconds=0;LostSight();Visual(false);Breathe(false);return;}
             if(catching){LostSight();return;}
             var player=run.period.Player;Vector3 at=player.transform.position;
             // Walking speed from the player's own movement; warps (a throw-out, a retry) are not movement.
@@ -93,6 +94,8 @@ namespace Confiscated
             // A torch has to stay on it for a moment before it counts -- a quick sweep of the beam past it is forgiven.
             bool lit=inside&&Flat(at-transform.position)<=lightSense&&TorchLightsMe(player)&&Sight(player,at);
             litSeconds=lit?litSeconds+Time.deltaTime:0;
+            bool moving=inside&&PlayerSpeed>movingSpeed&&Flat(at-transform.position)<=moveSense&&Sight(player,at);
+            movingSeconds=moving?movingSeconds+Time.deltaTime:0;
             if(inside&&!Shushed)Shushed=true;
             // Out of the library: it forgets the player and goes back to drifting.
             if(!inside&&(Current==Phase.Notice||Current==Phase.Hunt))Wander();
@@ -109,15 +112,15 @@ namespace Confiscated
                 case Phase.Notice:
                     Face(at-transform.position);
                     // A moment to react, then any movement or light gives the player away.
-                    if(Time.time>=phaseEnds-noticeSeconds+Mathf.Max(.65f,reactionSeconds)&&Gives(player,at)){Hunt();break;}
+                    if(Time.time>=phaseEnds-noticeSeconds+reactionSeconds&&Gives(player,at)){Hunt();break;}
                     if(Time.time>=phaseEnds){PassedBy++;Current=Phase.Wander;repath=0;}
                     break;
                 case Phase.Hunt:
-                    // Freezing and dousing the torch still works after the shush: it hesitates, then loses interest.
-                    if(PlayerSpeed<=movingSpeed&&!Lit)
+                    // Commit to the rush first; sustained stillness and darkness can calm it only afterward.
+                    if(Time.time>=phaseEnds&&PlayerSpeed<=movingSpeed&&!Lit)
                     {
                         if(calmSince<0)calmSince=Time.time;
-                        if(Time.time-calmSince>=.65f){PassedBy++;Wander();break;}
+                        if(Time.time-calmSince>=1.6f){PassedBy++;Wander();break;}
                         Face(at-transform.position);break;
                     }
                     calmSince=-1;
@@ -127,7 +130,7 @@ namespace Confiscated
                     if(Time.time>=phaseEnds)Wander();
                     break;
             }
-            if(Current==Phase.Hunt&&calmSince<0){Vector3 gap=at-transform.position;gap.y=0;if(gap.magnitude<catchRadius){StartCoroutine(Catch(player));return;}}
+            if(Current==Phase.Hunt){Vector3 gap=at-transform.position;gap.y=0;if(gap.magnitude<catchRadius){StartCoroutine(Catch(player));return;}}
             // From anywhere, not just inside: seen through a library window from the corridor counts too (the glass is
             // on Ignore Raycast, so it doesn't block the sight line).
             Sighting(player);
@@ -151,7 +154,7 @@ namespace Confiscated
         {
             float d=Flat(at-transform.position);
             if(d>Mathf.Max(moveSense,lightSense)||!Sight(player,at))return false;
-            return Lit||PlayerSpeed>movingSpeed&&d<=moveSense;
+            return Lit||movingSeconds>=MovementGraceSeconds&&d<=moveSense;
         }
         /// <summary>While it is shushing: any movement at all, or a light held on it.</summary>
         bool Gives(PlayerInteractor player,Vector3 at)=>(PlayerSpeed>movingSpeed||Lit)&&Sight(player,at);
@@ -176,9 +179,13 @@ namespace Confiscated
         void Notice(Vector3 at)
         {
             Notices++;Current=Phase.Notice;phaseEnds=Time.time+noticeSeconds;Face(at-transform.position);
-            if(seeYou!=null){voice.pitch=1;voice.PlayOneShot(seeYou,1);}else Whisper(1,1);
+            if(Time.time>=nextNoticeVoiceAt&&!voice.isPlaying)
+            {
+                if(seeYou!=null){voice.pitch=1;voice.PlayOneShot(seeYou,1);}else Whisper(1,1);
+                nextNoticeVoiceAt=Time.time+Mathf.Max(18,seeYou!=null?seeYou.length+1:0);
+            }
         }
-        void Hunt(){Current=Phase.Hunt;calmSince=-1;repath=0;phaseEnds=Time.time+1.6f;}
+        void Hunt(){Current=Phase.Hunt;calmSince=-1;repath=0;phaseEnds=Time.time+2.5f;}
         /// <summary>
         /// The jumpscare, in four beats, the shape every good one shares: a held breath, a rush, the hit, a hard cut.
         /// 1. It is gone, its breathing stops, and a whisper comes from nowhere. 2. It appears dead ahead and rushes the
