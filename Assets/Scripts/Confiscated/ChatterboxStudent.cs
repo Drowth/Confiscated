@@ -51,7 +51,7 @@ namespace Confiscated
         static bool KeyStillOnTrolley{get{var run=SchoolRunController.Instance;var office=GameManager.Instance!=null?GameManager.Instance.officeMission:null;
             return run!=null&&!run.RoundStarted&&office!=null&&!office.HasKey&&!office.OfficeUnlocked;}}
         // His first chat (once; a chase retry already knows): the only place the library shadow's rules are given (Docs/LibraryMaze.md).
-        public const string RumourLine="My brother says something lives in the library. Stand still with your torch off and it walks right past you. Move, and... GONE! Anyway... where are you going?";
+        public const string RumourLine="Don't go in the library. There's a thing in there. When it shushes you, stand dead still and turn your torch off, and it goes right past. If it catches you moving, it throws you out!";
         const string RumourClip="ChatterboxLibraryRumour";
         public bool ToldRumour {get;private set;}
         // After the rumour he is a roaming blocker: he calls you over from across a corridor, and after each chat he moves to
