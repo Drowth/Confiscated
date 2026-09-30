@@ -34,7 +34,12 @@ namespace Confiscated
             ["CaretakerSpotted"]=new("Caretaker","Oi, Smith! The dark won't hide you from me!", "CaretakerSpotted"),
             ["CaretakerSearch"]=new("Caretaker","Darkness won't hide you, Smith. I can still hear you.","CaretakerSearch"),
             ["CaretakerWhosThere"]=new("Caretaker","Who's there? I heard someone in the dark.","CaretakerWhosThere"),
-            ["CaretakerHeardThat"]=new("Caretaker","I heard that, Smith. Power cut or not, I'll find you.","CaretakerHeardThat")
+            ["CaretakerHeardThat"]=new("Caretaker","I heard that, Smith. Power cut or not, I'll find you.","CaretakerHeardThat"),
+            // Mr Reed chases with the caretaker's AI but his own voice (CaretakerAI.Say maps Caretaker* to Reed*).
+            ["ReedSpotted"]=new("Mr Reed","Smith! I can see that torch from here!","ReedSpotted"),
+            ["ReedSearch"]=new("Mr Reed","Power cut or not, Smith, you're still in school.","ReedSearch"),
+            ["ReedWhosThere"]=new("Mr Reed","Who's there? Back to your classroom, whoever you are.","ReedWhosThere"),
+            ["ReedHeardThat"]=new("Mr Reed","I heard that. Nobody's going home early today.","ReedHeardThat")
         };
         public static readonly Line[] Chatterbox=
         {

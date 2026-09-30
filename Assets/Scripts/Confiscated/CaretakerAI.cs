@@ -255,7 +255,7 @@ namespace Confiscated
         {
             state = State.Chase;
             dwelling = false;chatting = false;
-            if(passCheck==null||!passCheck.WitnessedOffence){HudController.Instance?.SetStatus("The caretaker has seen you! LEG IT!", 2.5f);ShoutSpotted();}
+            if(passCheck==null||!passCheck.WitnessedOffence){HudController.Instance?.SetStatus(SchoolRunController.Instance!=null&&SchoolRunController.Instance.secondStaff==this?"Mr Reed has seen you! LEG IT!":"The caretaker has seen you! LEG IT!", 2.5f);ShoutSpotted();}
             GoTo(player.position, chaseSpeed);
         }
 
@@ -273,8 +273,13 @@ namespace Confiscated
                 voice.spatialBlend=1;voice.dopplerLevel=0;voice.rolloffMode=AudioRolloffMode.Linear;voice.minDistance=6;voice.maxDistance=40;TalkingMouth.Register(voice);
             }
             if(!priority&&(voice.isPlaying||Time.time<nextVoiceAt))return false;
+            // Mr Reed runs on this AI as the second enforcer but speaks his own lines. Outside Dark Mode only the two
+            // that don't mention the power cut are his; the rest stay silent rather than borrow the caretaker's voice.
+            bool reed=SchoolRunController.Instance!=null&&SchoolRunController.Instance.secondStaff==this;
+            if(reed)clipName=clipName.Replace("Caretaker","Reed");
             bool dark=DarkModeDialogue.TryBark(clipName,out var line);
-            var clip=dark?DarkModeDialogue.Voice(line):Resources.Load<AudioClip>("Audio/"+clipName);if(clip==null)return false;
+            string normal=!reed?"Audio/"+clipName:clipName=="ReedHeardThat"||clipName=="ReedWhosThere"?"Audio/DarkMode/"+clipName:null;
+            var clip=dark?DarkModeDialogue.Voice(line):normal!=null?Resources.Load<AudioClip>(normal):null;if(clip==null)return false;
             voice.clip=clip;voice.Play();nextVoiceAt=Time.time+clip.length+5f;
             if(dark)HudController.Instance?.SetBark(line.Caption,Mathf.Max(4,clip.length));
             return true;
