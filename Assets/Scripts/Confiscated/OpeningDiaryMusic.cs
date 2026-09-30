@@ -28,8 +28,8 @@ namespace Confiscated
                 float t=(Time.unscaledTime-endedAt)/.65f;source.volume=endingVolume*(1-Mathf.Clamp01(t));
                 if(t>=1)Destroy(gameObject);return;
             }
-            float target=ComicDialogue.IsActive?.07f:.18f;
-            source.volume=Mathf.MoveTowards(source.volume,target,Time.unscaledDeltaTime*.225f);
+            float target=ComicDialogue.IsActive?.084f:.216f;
+            source.volume=Mathf.MoveTowards(source.volume,target,Time.unscaledDeltaTime*.27f);
         }
     }
 }
