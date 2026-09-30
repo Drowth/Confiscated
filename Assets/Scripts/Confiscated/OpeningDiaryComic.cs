@@ -40,6 +40,7 @@ namespace Confiscated
         Image[] covers;
         Text caption, progress;
         OpeningMemoryStage stage;
+        OpeningDiaryMusic music;
         float oldTime, startedAt, beatAt, skipHeld;
         bool oldMove, oldLook, oldInput, oldCursorVisible, ending;
         CursorLockMode oldCursorLock;
@@ -54,6 +55,7 @@ namespace Confiscated
             oldCursorLock=Cursor.lockState;oldCursorVisible=Cursor.visible;
             Cursor.lockState=CursorLockMode.None;Cursor.visible=false;
             Build(art);stage=OpeningMemoryStage.Create(art);
+            music=OpeningDiaryMusic.Play(transform);
             HideOtherCanvases();
             beat=0;startedAt=beatAt=Time.unscaledTime;SetBeat();
         }
@@ -107,13 +109,13 @@ namespace Confiscated
             var kb=Keyboard.current;var mouse=Mouse.current;var pad=Gamepad.current;
             bool skip=(kb!=null&&kb.escapeKey.isPressed)||(pad!=null&&pad.buttonEast.isPressed);
             skipHeld=skip?skipHeld+Time.unscaledDeltaTime:0;
-            if(skipHeld>.65f){Finish();return;}
+            if(skipHeld>.65f){Finish(true);return;}
             bool next=(kb!=null&&(kb.spaceKey.wasPressedThisFrame||kb.enterKey.wasPressedThisFrame))||
                 (mouse!=null&&mouse.leftButton.wasPressedThisFrame)||(pad!=null&&pad.buttonSouth.wasPressedThisFrame);
             if(now-beatAt>Seconds[beat]||(next&&now-beatAt>.35f))
             {
                 beat++;
-                if(beat==Lines.Length){Finish();return;}
+                if(beat==Lines.Length){Finish(next);return;}
                 beatAt=now;SetBeat();
             }
             group.alpha=Mathf.Clamp01((now-startedAt)/.35f);
@@ -165,9 +167,10 @@ namespace Confiscated
             frame.gameObject.SetActive(beat<4);
         }
 
-        void Finish()
+        void Finish(bool skipped=false)
         {
             if(ending)return;ending=true;
+            music?.Release(skipped);music=null;
             Time.timeScale=oldTime;
             if(movement!=null){movement.MovementLocked=oldMove;movement.LookLocked=oldLook;}
             if(interactor!=null){interactor.InputLocked=oldInput;interactor.SuppressActionsThisFrame();}
