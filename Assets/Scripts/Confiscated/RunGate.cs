@@ -29,6 +29,13 @@ namespace Confiscated
             if (kind == Kind.Exit) { DoorSounds.For(gameObject,DoorSounds.Kind.Main).Play(true); SchoolRunController.Instance.Escape(); return; }
             Cleared = true;if(kind==Kind.Chain)SchoolRunController.Instance.CageOpen=true;
             if (obstacle != null) { obstacle.localPosition = clearedLocalPosition; obstacle.localRotation = Quaternion.Euler(clearedLocalEuler); }
+            if(kind==Kind.Shortcut)
+            {
+                var sound=SchoolAudio.Create(obstacle!=null?obstacle.gameObject:gameObject);
+                sound.clip=Resources.Load<AudioClip>("Audio/DinnerTrolleyMove");sound.spatialBlend=1;
+                sound.rolloffMode=AudioRolloffMode.Linear;sound.minDistance=2;sound.maxDistance=25;sound.dopplerLevel=0;sound.volume=.85f;
+                if(sound.clip!=null){sound.Play();Destroy(sound,sound.clip.length+.1f);}else Destroy(sound);
+            }
             var blocker = GetComponent<NavMeshObstacle>(); if (blocker != null) blocker.enabled = false;
             NoiseEvents.Emit(transform.position, 45, "moving furniture");
             HudController.Instance?.SetStatus(kind == Kind.Chain ? "Chain cut. The cage stays open." : "Shortcut cleared. He may have heard that.", 4);
