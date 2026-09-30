@@ -2,7 +2,8 @@ using UnityEngine;
 namespace Confiscated
 {
     /// <summary>
-    /// The player's heartbeat during the chase (never the opening errand). It beats while something is actively after
+    /// The player's heartbeat, from the moment Smith first walks into the dining hall after the caretaker's trolley
+    /// (or the round starting, on a retry) -- never earlier in the opening. It beats while something is actively after
     /// Smith -- the caretaker or Mr Reed chasing, or the library shadow hunting him inside the library -- at any range,
     /// and whenever the caretaker (or Mr Reed) is within Range even if not chasing yet. Louder and faster the closer
     /// that threat is, easing off as it drops away. Made lazily by CaretakerThreatAudio, which holds the clip, so it
@@ -15,7 +16,7 @@ namespace Confiscated
         public AudioSource Source {get;private set;}
         public float NearestThreat {get;private set;}=float.MaxValue;
         CaretakerAI[] caretakers;LibraryShadow[] shadows;
-        float refreshAt;
+        float refreshAt;bool reachedDining;
 
         public static void Ensure(AudioClip clip)
         {
@@ -33,8 +34,9 @@ namespace Confiscated
         {
             var gm=GameManager.Instance;var run=SchoolRunController.Instance;
             var player=run!=null&&run.period!=null?run.period.Player:null;
-            // Only once the chase is on (phone recovered, round started): during the opening errand nobody can catch you.
-            bool active=gm!=null&&gm.IsPlaying&&!ComicDialogue.IsActive&&Time.timeScale>0&&player!=null&&run.RoundStarted;
+            // Silent through the classroom and the newsletter run; from the first step into the dining hall on, it stays live.
+            if(player!=null&&run.Dining.Contains(player.transform.position))reachedDining=true;
+            bool active=gm!=null&&gm.IsPlaying&&!ComicDialogue.IsActive&&Time.timeScale>0&&player!=null&&(run.RoundStarted||reachedDining);
             if(!active){NearestThreat=float.MaxValue;Source.Stop();Source.volume=0;Source.pitch=1;return;}
             if(Time.time>=refreshAt){Refresh();refreshAt=Time.time+1;}
             NearestThreat=Nearest(player.transform.position,out bool chased);
