@@ -86,14 +86,14 @@ namespace Confiscated
         }
         void Shout()
         {
-            if(DarkModeDialogue.Active)return; // The contextual HUD line plays its own matching voice.
+            var clip=Resources.Load<AudioClip>("Audio/DinnerLadyTellTale");if(clip==null)return;
             if(voice==null)
             {
-                var clip=Resources.Load<AudioClip>("Audio/DinnerLadyTellTale");if(clip==null)return;
-                voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.clip=clip;voice.playOnAwake=false;voice.loop=false;
+                voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.playOnAwake=false;voice.loop=false;
                 voice.spatialBlend=1;voice.rolloffMode=AudioRolloffMode.Linear;voice.minDistance=4;voice.maxDistance=tellNoiseRadius;voice.dopplerLevel=0;TalkingMouth.Register(voice);
             }
-            voice.Play();
+            voice.Stop();voice.clip=clip;voice.Play();
+            HudController.Instance?.SetBark("Dinner lady: Does the Caretaker know you're not in class? He will be cross, like he was back that day.",clip.length);
         }
         /// <summary>She tells the caretaker as you pass her, even while she waits at either end of her round.</summary>
         void TellTale(Transform player)
@@ -109,7 +109,6 @@ namespace Confiscated
             told=true;Tellings++;tellReadyAt=Time.time+tellCooldownSeconds;
             // Emit first: the caretaker's own "He heard something..." status must not replace her line.
             NoiseEvents.Emit(transform.position,tellNoiseRadius,"dinner lady");
-            HudController.Instance?.SetStatus("Dinner lady: Caretaker, there's a student out of class!",3);
             Shout();
         }
         void Update()
