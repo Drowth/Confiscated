@@ -17,6 +17,12 @@ Shader "Confiscated/Character Cutout"
         [HideInInspector] _MouthRect("Mouth centre / half size (texture UV)", Vector) = (0,0,0,0)
         [HideInInspector] _MouthSkinUV("Skin sample (texture UV)", Vector) = (0,0,0,0)
         [HideInInspector] _MouthStyle("0 draws an open mouth, 1 draws a closed one", Float) = 0
+        [HideInInspector] _CopycatVisibility("Copycat torch visibility", Range(0,1)) = 1
+        [HideInInspector] _CopycatBlink("Copycat blink", Range(0,1)) = 0
+        [HideInInspector] _BlinkEye1("Blink eye 1", Vector) = (0,0,0,0)
+        [HideInInspector] _BlinkEye2("Blink eye 2", Vector) = (0,0,0,0)
+        [HideInInspector] _BlinkEye3("Blink eye 3", Vector) = (0,0,0,0)
+        [HideInInspector] _BlinkEye4("Blink eye 4", Vector) = (0,0,0,0)
     }
     SubShader
     {
@@ -42,6 +48,8 @@ Shader "Confiscated/Character Cutout"
                 float4 _EyeGlowLeft, _EyeGlowRight;
                 float4 _MouthRect, _MouthSkinUV;
                 half _MouthOpen, _MouthStyle;
+                half _CopycatVisibility, _CopycatBlink;
+                float4 _BlinkEye1, _BlinkEye2, _BlinkEye3, _BlinkEye4;
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; };
@@ -125,6 +133,22 @@ Shader "Confiscated/Character Cutout"
                 float smile = (1 - smoothstep(.12, .12 + aa * 2, curve)) * (1 - smoothstep(.7, .8, abs(d.x)));
                 return lerp(lerp(skin, ink, smile), art, smoothstep(1, 1.25, r));
             }
+            half3 BlinkEye(half3 art, float2 uv, float4 eye)
+            {
+                if (_CopycatBlink <= 0 || eye.z <= 0) return art;
+                float2 d = (uv - eye.xy) / eye.zw;
+                float radius = length(d);
+                float patch = 1 - smoothstep(.9, 1.13, radius);
+                float exposed = 1 - _CopycatBlink;
+                float lid = smoothstep(exposed - .07, exposed + .04, abs(d.y));
+                half3 skin = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap,
+                    float2(uv.x, eye.y - eye.w * 1.7)).rgb * _BaseColor.rgb;
+                art = lerp(art, skin, patch * lid * _CopycatBlink);
+                float crease = abs(d.y - (-.08 + .16 * d.x * d.x));
+                float line = (1 - smoothstep(.045, .105, crease))
+                    * (1 - smoothstep(.76, .94, abs(d.x))) * patch * smoothstep(.72, .94, _CopycatBlink);
+                return lerp(art, half3(.008,.011,.025), line);
+            }
             half4 Frag(Varyings input) : SV_Target
             {
                 half4 colour = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
@@ -133,7 +157,12 @@ Shader "Confiscated/Character Cutout"
                 if (_MagentaKey > .5) clip(.10 - min(colour.r - colour.g, colour.b - colour.g));
                 clip(colour.a - _Cutoff);
                 colour.rgb = TalkingMouth(colour.rgb, input.uv);
+                colour.rgb = BlinkEye(colour.rgb, input.uv, _BlinkEye1);
+                colour.rgb = BlinkEye(colour.rgb, input.uv, _BlinkEye2);
+                colour.rgb = BlinkEye(colour.rgb, input.uv, _BlinkEye3);
+                colour.rgb = BlinkEye(colour.rgb, input.uv, _BlinkEye4);
                 colour.rgb = MixFog(colour.rgb * SchoolIllustrationLight(input.positionWS,input.positionCS), input.fog);
+                colour.rgb *= _CopycatVisibility;
                 half glow=max(EyeGlow(input.uv,_EyeGlowLeft),EyeGlow(input.uv,_EyeGlowRight))*_SchoolDarkness;
                 colour.rgb=lerp(colour.rgb,half3(glow,glow*.006,glow*.002),saturate(glow));
                 return half4(colour.rgb, 1);

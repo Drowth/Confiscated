@@ -15,13 +15,13 @@ namespace Confiscated
         SchoolRunController run;
         FirstPersonController movement;
         Renderer artwork;
-        Material material;
+        Material material,rearMaterial;
         MaterialPropertyBlock appearance;
         AudioSource voice,song,giggle;
-        float nextGiggle;
+        float nextGiggle,nextBlink,blinkAt,torchExposure;
         Vector3 lastPosition,fleeTarget;
         float travelled,fleeAt,fleeDeadline;
-        bool triggered,speaking,fleeing,completed,watched,hiding;
+        bool triggered,speaking,fleeing,completed,watched,hiding,wasSeen;
 
         public bool Triggered=>triggered;
         public bool Speaking=>speaking;
@@ -31,6 +31,7 @@ namespace Confiscated
         public int RevealCount{get;private set;}
         /// <summary>Waiting in a library alcove until the player sees her.</summary>
         public bool Hiding=>hiding&&!triggered;
+        public bool LitByTorch=>torchExposure>.1f;
 
         public static void Install(SchoolRunController owner)
         {
@@ -86,9 +87,22 @@ namespace Confiscated
             {
                 material=new Material(shader);material.name="Copycat pupil (runtime)";
                 material.SetTexture("_BaseMap",texture);material.SetFloat("_Cutoff",.35f);
+                material.SetFloat("_CopycatVisibility",.015f);
+                // Eye positions in the two horizontal walk cells of CopycatWalk.
+                material.SetVector("_BlinkEye1",new Vector4(.241f,.803f,.028f,.043f));
+                material.SetVector("_BlinkEye2",new Vector4(.306f,.831f,.028f,.043f));
+                material.SetVector("_BlinkEye3",new Vector4(.662f,.803f,.028f,.043f));
+                material.SetVector("_BlinkEye4",new Vector4(.727f,.831f,.028f,.043f));
                 artwork.sharedMaterial=material;
+                var rearTexture=Resources.Load<Texture2D>("Art/CopycatRearWalk");
+                if(rearTexture!=null)
+                {
+                    rearMaterial=new Material(shader);rearMaterial.name="Copycat pupil rear (runtime)";
+                    rearMaterial.SetTexture("_BaseMap",rearTexture);rearMaterial.SetFloat("_Cutoff",.35f);
+                    rearMaterial.SetFloat("_CopycatVisibility",.015f);
+                }
             }
-            appearance=new MaterialPropertyBlock();
+            appearance=new MaterialPropertyBlock();nextBlink=Time.time+Random.Range(2f,4f);
             voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.playOnAwake=false;voice.loop=false;voice.spatialBlend=1;
             voice.minDistance=3;voice.maxDistance=45;voice.rolloffMode=AudioRolloffMode.Linear;voice.volume=1;
             voice.clip=Resources.Load<AudioClip>("Audio/CopycatReveal");
@@ -109,11 +123,13 @@ namespace Confiscated
         void Update()
         {
             if(completed||run==null||run.period==null||run.period.Player==null)return;
-            Sing(Hiding&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&run.RoundStarted&&!ComicDialogue.IsActive&&Time.timeScale>0);
+            Sing(Hiding&&LibraryWindow.InLibrary(run.period.Player.transform.position)&&
+                GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&run.RoundStarted&&!ComicDialogue.IsActive&&Time.timeScale>0);
             if(GameManager.Instance==null||!GameManager.Instance.IsPlaying||!run.RoundStarted||ComicDialogue.IsActive||Time.timeScale<=0)
             {StopAgent();return;}
             if(movement==null)movement=run.period.Player.GetComponent<FirstPersonController>();
             Transform player=run.period.Player.transform;
+            LightAndBlink(run.period.Player);
             if(fleeing){Flee();Animate();return;}
             if(speaking)
             {
@@ -159,12 +175,38 @@ namespace Confiscated
 
         bool PlayerCanSeeMe()
         {
-            var camera=Camera.main;if(camera==null||artwork==null)return false;
+            var camera=Camera.main;if(camera==null||artwork==null||!artwork.enabled)return false;
             Vector3 point=artwork.bounds.center,screen=camera.WorldToViewportPoint(point);
             if(screen.z<=0||screen.x<-.03f||screen.x>1.03f||screen.y<-.03f||screen.y>1.03f)return false;
             if(Physics.Linecast(camera.transform.position,point,out var hit,~0,QueryTriggerInteraction.Ignore))
                 return hit.transform==transform||hit.transform.IsChildOf(transform);
             return true;
+        }
+
+        void LightAndBlink(PlayerInteractor player)
+        {
+            bool maze=LibraryWindow.InLibrary(transform.position);
+            torchExposure=maze?TorchExposure(player):1;
+            if(artwork!=null)artwork.enabled=!maze||torchExposure>.08f;
+            bool seen=PlayerCanSeeMe();
+            if(seen&&!wasSeen)nextBlink=Mathf.Min(nextBlink,Time.time+Random.Range(.45f,1.1f));
+            wasSeen=seen;
+        }
+
+        float TorchExposure(PlayerInteractor player)
+        {
+            var torch=player.GetComponent<PlayerTorch>();var beam=torch!=null?torch.Beam:null;
+            if(beam==null||!torch.IsOn||artwork==null)return 0;
+            Vector3 point=artwork.bounds.center,from=beam.transform.position,to=point-from;
+            float distance=to.magnitude;if(distance<.1f||distance>beam.range)return 0;
+            float angle=Vector3.Angle(beam.transform.forward,to);
+            if(angle>beam.spotAngle*.5f)return 0;
+            if(Physics.Linecast(from,point,out var hit,~(1<<2),QueryTriggerInteraction.Ignore)&&
+                !hit.transform.IsChildOf(transform)&&!hit.transform.IsChildOf(player.transform))return 0;
+            float aim=Mathf.InverseLerp(beam.spotAngle*.5f,beam.innerSpotAngle*.5f,angle);
+            float reach=Mathf.InverseLerp(beam.range,beam.range*.35f,distance);
+            float strength=Mathf.Clamp01(beam.intensity/(16*LibraryDarkness.LiftFactor));
+            return aim*reach*strength;
         }
 
         void Reveal(Transform player)
@@ -226,11 +268,27 @@ namespace Confiscated
         void Animate()
         {
             if(artwork==null||appearance==null)return;
+            if(rearMaterial!=null&&material!=null)
+            {
+                var camera=Camera.main;
+                bool fromBehind=fleeing&&camera!=null&&
+                    Vector3.Dot(transform.forward,camera.transform.position-transform.position)<-.1f;
+                var desired=fromBehind?rearMaterial:material;
+                if(artwork.sharedMaterial!=desired)artwork.sharedMaterial=desired;
+            }
             Vector3 moved=transform.position-lastPosition;lastPosition=transform.position;moved.y=0;
             if(moved.magnitude>.001f)travelled+=moved.magnitude;
             int step=Mathf.FloorToInt(travelled/.65f)&1;
-            artwork.GetPropertyBlock(appearance);appearance.SetVector("_BaseMap_ST",new Vector4(.5f,1,step*.5f,0));artwork.SetPropertyBlock(appearance);
+            if(Time.time>=nextBlink){blinkAt=Time.time;nextBlink=Time.time+Random.Range(wasSeen?2.5f:4f,wasSeen?4.5f:7f);}
+            float blinkTime=(Time.time-blinkAt)/.2f;
+            float blink=blinkTime>=0&&blinkTime<1?Mathf.Sin(Mathf.PI*blinkTime):0;
+            float visibility=LibraryWindow.InLibrary(transform.position)?Mathf.Lerp(.025f,1,torchExposure):1;
+            artwork.GetPropertyBlock(appearance);
+            appearance.SetVector("_BaseMap_ST",new Vector4(.5f,1,step*.5f,0));
+            appearance.SetFloat("_CopycatBlink",blink);
+            appearance.SetFloat("_CopycatVisibility",visibility);
+            artwork.SetPropertyBlock(appearance);
         }
-        void OnDestroy(){if(material!=null)Destroy(material);}
+        void OnDestroy(){if(material!=null)Destroy(material);if(rearMaterial!=null)Destroy(rearMaterial);}
     }
 }
