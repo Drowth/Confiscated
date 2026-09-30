@@ -40,9 +40,9 @@ namespace Confiscated
         // Sounds: its breathing (3D loop), "I see you" when it notices you, a wire-scrape sting when it comes into view,
         // and a scream for the catch jumpscare.
         AudioClip seeYou,spotted,scream;float outOfViewSince=-999;bool inView;
-        // Out of sight at least this long before it counts as a fresh sighting -- so a flicker at a shelf edge doesn't
-        // re-trigger the sting, but every genuine new sighting does.
-        public const float JumpscareSeconds=2.05f,NewSightingSeconds=1,SpottedRange=14,TorchGraceSeconds=.75f;
+        // Separate sightings need time out of view and a global cooldown so shelf-edge glimpses cannot spam the sting.
+        public const float JumpscareSeconds=2.05f,NewSightingSeconds=3,SpottedCooldown=12,SpottedRange=14,TorchGraceSeconds=.75f;
+        float nextSpottedAt;
         float litSeconds,calmSince=-1;
         public int Spotted {get;private set;}
         public bool Catching=>catching;
@@ -158,7 +158,8 @@ namespace Confiscated
         bool Lit=>litSeconds>=TorchGraceSeconds;
         bool Sight(PlayerInteractor player,Vector3 at)
         {
-            Vector3 eye=transform.position+Vector3.up*1.6f,head=at+Vector3.up*1.5f;
+            var legs=player.GetComponent<FirstPersonController>();
+            Vector3 eye=transform.position+Vector3.up*1.6f,head=at+Vector3.up*(legs!=null?legs.TorsoHeight:1.2f);
             return !Physics.Linecast(eye,head,out var hit,~(1<<2),QueryTriggerInteraction.Ignore)||hit.transform.IsChildOf(player.transform)||hit.transform.IsChildOf(transform);
         }
 
@@ -312,7 +313,8 @@ namespace Confiscated
             var cam=player.ViewCamera;Vector3 chest=transform.position+Vector3.up*1.4f;Vector3 v=cam.WorldToViewportPoint(chest);
             bool seen=v.z>0&&v.z<SpottedRange&&v.x>.1f&&v.x<.9f&&v.y>.05f&&v.y<.95f&&
                 (!Physics.Linecast(cam.transform.position,chest,out var hit,~(1<<2),QueryTriggerInteraction.Ignore)||hit.transform.IsChildOf(transform)||hit.transform.IsChildOf(player.transform));
-            if(seen&&!inView&&Time.time-outOfViewSince>=NewSightingSeconds){Spotted++;sting.PlayOneShot(spotted,.8f);}
+            if(seen&&!inView&&Time.time-outOfViewSince>=NewSightingSeconds&&Time.time>=nextSpottedAt)
+            {Spotted++;sting.PlayOneShot(spotted,.8f);nextSpottedAt=Time.time+Mathf.Max(SpottedCooldown,spotted.length+1);}
             if(!seen&&inView)outOfViewSince=Time.time;
             inView=seen;
         }
