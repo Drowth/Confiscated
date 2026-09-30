@@ -60,6 +60,7 @@ namespace Confiscated
 
         void Start()
         {
+            worldHead=gameObject.AddComponent<LibraryShadowWorldHead>();worldHead.Build(this);
             path=new NavMeshPath();
             if(silhouette.Length>0&&silhouette[0]!=null){skin=new Material(silhouette[0].sharedMaterial);foreach(var r in silhouette)r.sharedMaterial=skin;}
             voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.playOnAwake=false;voice.spatialBlend=1;voice.rolloffMode=AudioRolloffMode.Linear;
@@ -72,6 +73,7 @@ namespace Confiscated
             Place(0);Wander();Visual(true);
         }
         void OnDestroy(){if(skin!=null)Destroy(skin);}
+        LibraryShadowWorldHead worldHead;
 
         void Update()
         {
@@ -267,6 +269,7 @@ namespace Confiscated
         /// <summary>Direct control of how much of it shows during the scare (Visual is skipped while catching).</summary>
         void Show(float a,float eyeBoost)
         {
+            worldHead?.SetVisible(a,true);
             alpha=a;if(skin!=null){var c=skin.GetColor("_BaseColor");c.a=a;skin.SetColor("_BaseColor",c);}
             foreach(var r in silhouette)if(r!=null)r.enabled=a>.01f;
             if(smoke!=null){var e=smoke.emission;e.enabled=a>.01f;e.rateOverTimeMultiplier=160;}
@@ -349,6 +352,7 @@ namespace Confiscated
         {
             float want=Current==Phase.Gone?0:Current==Phase.Hunt?.95f:Current==Phase.Notice?.85f:.7f;
             alpha=snap?want:Mathf.MoveTowards(alpha,want,Time.deltaTime*(Current==Phase.Gone?6:2));
+            worldHead?.SetVisible(alpha,Current==Phase.Hunt);
             if(skin!=null){var c=skin.GetColor("_BaseColor");c.a=alpha;skin.SetColor("_BaseColor",c);}
             foreach(var r in silhouette)if(r!=null)r.enabled=alpha>.01f;
             if(animator!=null&&animator.runtimeAnimatorController!=null)animator.SetBool("Hunting",Current==Phase.Hunt);

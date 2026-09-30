@@ -1,6 +1,6 @@
 Shader "Confiscated/Shadow Scare Charcoal"
 {
-    Properties { _BaseMap("Generated colour",2D)="white"{} }
+    Properties { _BaseMap("Generated colour",2D)="white"{} _InkBrightness("Ink brightness",Float)=1 _Visibility("Visibility",Range(0,1))=1 }
     SubShader
     {
         Tags { "RenderPipeline"="UniversalPipeline" "RenderType"="Opaque" }
@@ -11,11 +11,13 @@ Shader "Confiscated/Shadow Scare Charcoal"
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             TEXTURE2D(_BaseMap);SAMPLER(sampler_BaseMap);
+            float _InkBrightness,_Visibility;
             struct A { float4 positionOS:POSITION;float3 normalOS:NORMAL;float2 uv:TEXCOORD0; };
             struct V { float4 positionCS:SV_POSITION;float3 normalWS:TEXCOORD0;float3 positionWS:TEXCOORD1;float2 uv:TEXCOORD2;float3 local:TEXCOORD3; };
             V vert(A i) { V o;o.positionCS=TransformObjectToHClip(i.positionOS.xyz);o.positionWS=TransformObjectToWorld(i.positionOS.xyz);o.normalWS=TransformObjectToWorldNormal(i.normalOS);o.uv=i.uv;o.local=i.positionOS.xyz;return o; }
             half4 frag(V i):SV_Target
             {
+                clip(_Visibility-.01);
                 float3 map=SAMPLE_TEXTURE2D(_BaseMap,sampler_BaseMap,i.uv).rgb;
                 float lum=dot(map,float3(.299,.587,.114));
                 float3 p=i.local*100;
@@ -32,7 +34,7 @@ Shader "Confiscated/Shadow Scare Charcoal"
                 float eye=smoothstep(.035,.13,map.r-max(map.g,map.b))*smoothstep(.12,.35,map.r);
                 float socket=1-smoothstep(.7,1.15,length(float2((abs(p.y)-.11)/.065,(p.z-.14)/.055)));
                 eye=max(eye,socket*smoothstep(.05,.15,abs(p.x)));
-                return half4(lerp(ink,float3(.005,.008,.015),eye),1);
+                return half4(lerp(ink,float3(.005,.008,.015),eye)*_InkBrightness*_Visibility,1);
             }
             ENDHLSL
         }

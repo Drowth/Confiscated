@@ -49,7 +49,12 @@ namespace Confiscated.EditorTools
                     if(age<1)return;
                     if(SchoolTitleMenu.IsActive){SchoolTitleMenu.Instance.StartGame();SchoolTitleMenu.Instance.SkipIntro();}
                     ComicDialogue.Cancel();Run.period.PrepareChaseRetry();Run.PrepareChaseRetry();Run.PauseStaff();Run.caretaker.Freeze();
-                    savedMotion=Feel.intensity;Need(Shadow!=null,"live library shadow exists");Next(1);return;
+                    savedMotion=Feel.intensity;Need(Shadow!=null,"live library shadow exists");
+                    var roaming=Shadow.GetComponent<LibraryShadowWorldHead>();Need(roaming!=null&&roaming.Ready,"generated head attached during ordinary play");
+                    Need(Shadow.eyes.Length==2&&Shadow.eyes[0].name=="White slit eye","roaming eyes use the generated head");
+                    roaming.SetVisible(0,false);Need(!Shadow.eyes[0].gameObject.activeInHierarchy,"roaming head conceals with shadow");
+                    roaming.SetVisible(.7f,false);Need(Shadow.eyes[0].gameObject.activeInHierarchy,"roaming head returns with shadow");
+                    Next(1);return;
                 }
                 if(stage==1)
                 {
