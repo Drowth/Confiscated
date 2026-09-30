@@ -174,7 +174,7 @@ namespace Confiscated
             if(free<2){worksheetUI.Feedback("Make two spaces in your satchel for the pass and newsletters.");return;}
             inventory.Collect(passItem);inventory.Collect(papersItem);worksheetUI.Close();Stand();
             Current=Phase.Delivery;AbsentSeconds=0;GameManager.Instance.officeMission.Begin();Objective();
-            HudController.Instance?.SetStatus("Mr Reed: Smith, since you seem so preoccupied, make yourself useful. Take these newsletters, put them in the tray outside the caretaker's office and be quick!",12);
+            HudController.Instance?.SetStatus("Mr Reed: Well, since you're clearly not busy… newsletters. Tray outside the caretaker's office. And be quick about it.",12);
         }
         public void Deliver()
         {
