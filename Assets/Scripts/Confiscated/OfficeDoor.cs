@@ -31,6 +31,7 @@ namespace Confiscated
         DoorSounds doorSounds;
         bool requestedOpen, staffUsedDoor;
         float staffClearAt;
+        bool closingBlocked;
         float openAmount;
         // Seconds since a sprinting player barged the door open (DoorSlam), or -1. Drives a fast swing that bangs off the wall.
         float slamAge = -1;
@@ -66,6 +67,8 @@ namespace Confiscated
                 return SchoolRunController.Instance.CanOpenStorage(runRequiredLevel) ? "F: unlock " + runLockName : runRequiredLevel>=4?"STORE LOCKED - Find its key in EQUIPMENT.":"Lesson in progress. Recover your phone first.";
             if (DetentionLocked) return "Detention. Clear all three blackboards, then clap the rubbers clean to leave.";
             if (!IsUnlocked) return mission != null && HasCarriedKey(player) ? "F: Unlock office" : "Locked. Find the office key on the dining-hall trolley.";
+            if(!requestedOpen&&openAmount>.02f)
+                return closingBlocked?"Doorway occupied. F: keep the door open":"Closing... F: reopen the door";
             return requestedOpen ? "F: close the door" : "F: open the door";
         }
 
@@ -115,6 +118,7 @@ namespace Confiscated
                 HudController.Instance?.SetStatus(runRequiredLevel > 0 ? "Unlocked. This door stays available." : "Unlocked. Find your phone before he comes back.", 3f);
             }
             else requestedOpen = !requestedOpen;
+            if(!requestedOpen)slamAge=-1;
             if (requestedOpen)
             {
                 SwingAwayFrom(player.transform.position);
@@ -152,12 +156,18 @@ namespace Confiscated
                 staffUsedDoor=false;
             }
             bool shouldOpen = !DetentionLocked && (requestedOpen || staffPassing || staffUsedDoor);
-            // Never close a moving leaf onto a player in the doorway.
-            if (!DetentionLocked && !shouldOpen && openAmount > .1f && Camera.main != null)
+            closingBlocked=!requestedOpen&&(staffPassing||staffUsedDoor);
+            // Hold only while the player's body overlaps the doorway, not anywhere within interaction range.
+            var player=run!=null&&run.period!=null?run.period.Player:null;
+            if (!DetentionLocked && !shouldOpen && openAmount > .1f && player != null)
             {
-                Vector3 p = Camera.main.transform.position - transform.position;
-                p.y = 0f;
-                if (p.sqrMagnitude < 1.1f * 1.1f) shouldOpen = true;
+                var body=player.GetComponent<CharacterController>();
+                float radius=body!=null?body.radius*Mathf.Max(player.transform.lossyScale.x,player.transform.lossyScale.z):.3f;
+                Vector3 p=player.transform.position-transform.position;
+                float halfWidth=Mathf.Abs(Vector3.Dot(hinge.position-transform.position,transform.right));
+                if(secondHinge!=null)halfWidth=Mathf.Max(halfWidth,Mathf.Abs(Vector3.Dot(secondHinge.position-transform.position,transform.right)));
+                if(Mathf.Abs(Vector3.Dot(p,transform.forward))<radius+.08f&&Mathf.Abs(Vector3.Dot(p,transform.right))<halfWidth+radius)
+                {shouldOpen=true;closingBlocked=true;}
             }
             float previousAmount=openAmount;
             if (slamAge >= 0) { slamAge += Time.deltaTime; if (slamAge > SlamSeconds) slamAge = -1; }
