@@ -6,12 +6,14 @@ namespace Confiscated
     /// <summary>
     /// Minimal first-person controller for the CONFISCATED! visual test.
     /// Uses the project's InputSystem_Actions asset (Player/Move, Player/Look, Player/Sprint)
-    /// and a CharacterController for collision. No jumping, no crouch, no enemy logic.
+    /// and a CharacterController for collision. Hold Ctrl or C to crouch (see HandleCrouch). No jumping, no enemy logic.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public class FirstPersonController : MonoBehaviour
     {
         public const float ChildEyeHeight=1.28f,ChildBodyHeight=1.4f;
+        // Low enough to fit under a pupil desk: its top's underside is at .71 m and the capsule has a .05 m skin.
+        public const float CrouchBodyHeight=.64f,CrouchEyeHeight=.52f;
         [Header("Input")]
         [SerializeField] InputActionAsset inputActions;
         [SerializeField] string moveActionPath = "Player/Move";
@@ -49,6 +51,19 @@ namespace Confiscated
         [SerializeField] float leanHeadRadius=.16f;
         float lean;
         static readonly RaycastHit[] leanHits=new RaycastHit[8];
+        [Header("Crouch (hold Ctrl / C)")]
+        [SerializeField] float crouchSpeed=1.1f;
+        [Tooltip("Seconds to get down; standing back up is slower, so bolting from cover is a risk.")]
+        [SerializeField] float crouchDownSeconds=.25f,standUpSeconds=.6f;
+        float crouch,appliedCrouch,scrapeAt;
+        static readonly RaycastHit[] headHits=new RaycastHit[8];
+        /// <summary>0 standing, 1 fully crouched.</summary>
+        public float Crouch=>crouch;
+        public bool IsCrouching=>crouch>.5f;
+        /// <summary>Fully crouched with something solid overhead (a pupil desk): can't stand up until you crawl out.</summary>
+        public bool UnderCover {get;private set;}
+        /// <summary>Where staff aim when looking for the player: chest height, lower when crouched.</summary>
+        public float TorsoHeight=>controller!=null?controller.height*.85f:1.2f;
         const string SensitivityKey="Confiscated.MouseSensitivity";
         /// <summary>Pause-menu setting; saved between sessions.</summary>
         public float MouseSensitivity{get=>mouseSensitivity;set{mouseSensitivity=Mathf.Clamp(value,.02f,.2f);PlayerPrefs.SetFloat(SensitivityKey,mouseSensitivity);}}
@@ -228,6 +243,7 @@ namespace Confiscated
             if(ComicDialogue.IsActive)return;
             HandleCursor();
             HandleLook();
+            HandleCrouch();
             HandleMove();
             HandleLean();
         }
@@ -270,6 +286,43 @@ namespace Confiscated
             if(allowed&&Mathf.Abs(lean)>.15f)ContextualControlHints.Used(ContextualControlHints.Action.Lean);
         }
         public float Lean=>lean;
+
+        /// <summary>
+        /// Hold Ctrl or C (or the right stick) to crouch: a smaller body that fits under pupil desks, so staff sight lines
+        /// really are blocked by the desk. Slower, no sprinting, and while something is overhead you stay down.
+        /// </summary>
+        void HandleCrouch()
+        {
+            bool free=!MovementLocked&&!LookLocked&&!ForcedCorridorRun&&(GameManager.Instance==null||GameManager.Instance.IsPlaying);
+            // Sitting, dialogue set-ups and scripted moves place the camera themselves: just be standing for them.
+            if(!free){if(crouch>0||appliedCrouch>0)StandNow();return;}
+            var kb=Keyboard.current;var pad=Gamepad.current;
+            bool held=kb!=null&&(kb.leftCtrlKey.isPressed||kb.rightCtrlKey.isPressed||kb.cKey.isPressed)||pad!=null&&pad.rightStickButton.isPressed;
+            bool blocked=crouch>0&&HeadBlocked();
+            float want=held||blocked?1:0;
+            crouch=Mathf.MoveTowards(crouch,want,Time.deltaTime/(want>crouch?crouchDownSeconds:standUpSeconds));
+            UnderCover=crouch>.95f&&blocked;
+            ApplyCrouch();
+        }
+        bool HeadBlocked()
+        {
+            float r=controller.radius*.9f;Vector3 from=transform.position+Vector3.up*(r+.05f);
+            int count=Physics.SphereCastNonAlloc(from,r,Vector3.up,headHits,ChildBodyHeight-2*r-.05f,~(1<<gameObject.layer),QueryTriggerInteraction.Ignore);
+            for(int i=0;i<count;i++)if(headHits[i].transform!=transform&&!headHits[i].transform.IsChildOf(transform))return true;
+            return false;
+        }
+        void ApplyCrouch()
+        {
+            float h=Mathf.Lerp(ChildBodyHeight,CrouchBodyHeight,crouch);
+            controller.height=h;controller.center=new Vector3(0,h*.5f,0);
+            if(cameraPivot!=null&&(crouch>0||appliedCrouch>0)){var p=cameraPivot.localPosition;p.y=Mathf.Lerp(ChildEyeHeight,CrouchEyeHeight,crouch);cameraPivot.localPosition=p;}
+            appliedCrouch=crouch;
+        }
+        void StandNow()
+        {
+            crouch=appliedCrouch=0;UnderCover=false;
+            controller.height=ChildBodyHeight;controller.center=new Vector3(0,ChildBodyHeight*.5f,0);
+        }
 
         void HandleCursor()
         {
@@ -326,7 +379,7 @@ namespace Confiscated
             if (input.sqrMagnitude > 1f) input.Normalize();
             if (FeetGlued) input = Vector2.zero;
 
-            bool sprinting = !IsDistracted && sprintAction != null && sprintAction.IsPressed();
+            bool sprinting = !IsDistracted && !IsCrouching && sprintAction != null && sprintAction.IsPressed();
             if (SchoolRunController.Instance != null)
             {
                 if (SugarRushing) { sprintReserve = 5; exhausted = false; }
@@ -341,6 +394,7 @@ namespace Confiscated
                 else if (Time.time >= sprintRecoveryAt) sprintReserve = Mathf.Min(5, sprintReserve + Time.deltaTime * .85f);
             }
             float speed = sprinting ? sprintSpeed : walkSpeed;
+            if(crouch>0)speed=Mathf.Lerp(speed,crouchSpeed,crouch);
             if(IsDistracted)speed*=.45f;
 
             Vector3 planar = (transform.right * input.x + transform.forward * input.y) * speed;
@@ -355,6 +409,8 @@ namespace Confiscated
             Vector3 moved=transform.position-before;moved.y=0;
             IsSprinting=sprinting&&input.sqrMagnitude>.01f&&moved.magnitude>Time.deltaTime*.1f;
             if(IsSprinting)ContextualControlHints.Used(ContextualControlHints.Action.Run);
+            // Shuffling about under a desk scrapes the chair: a small noise nearby staff will come to check.
+            if(UnderCover&&moved.magnitude>Time.deltaTime*.3f&&Time.time>=scrapeAt){scrapeAt=Time.time+.9f;NoiseEvents.Emit(transform.position,5,"desk scrape");}
         }
 
         static void SetCursorLocked(bool locked)

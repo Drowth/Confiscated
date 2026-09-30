@@ -55,6 +55,8 @@ namespace Confiscated
         Vector3 pointOfInterest;
         float lookUntil;
         float lastSeenTime;
+        // Set when the player gets under a desk while he can see them (or has only just lost them): he goes straight to them.
+        float sawDuckUntil;
         Vector3 lastSeenPos;
         float suspicion;
         int searchStep;
@@ -215,6 +217,20 @@ namespace Confiscated
 
         void TickChase(bool sees)
         {
+            if (PlayerUnderCover)
+            {
+                // Seen ducking under a desk: that doesn't shake him. He goes to the desk and drags you out -- caught.
+                if (Time.time - lastSeenTime <= loseSightSeconds && sawDuckUntil <= Time.time) sawDuckUntil = Time.time + 8f;
+                if (Time.time < sawDuckUntil)
+                {
+                    GoTo(player.position, chaseSpeed);
+                    SetFacing(player.position - transform.position);
+                    Vector3 gap = player.position - transform.position; gap.y = 0;
+                    if (!IsGlued && gap.magnitude <= catchDistance + .5f) { GameManager.Instance?.Caught(this); Freeze(); }
+                    return;
+                }
+            }
+            else sawDuckUntil = 0;
             if (sees)
             {
                 GoTo(player.position, chaseSpeed);
@@ -442,11 +458,15 @@ namespace Confiscated
         public static bool PlayerHidden;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetHidden()=>PlayerHidden=false;
+        FirstPersonController playerBody;
+        FirstPersonController PlayerBody=>playerBody!=null||player==null?playerBody:(playerBody=player.GetComponent<FirstPersonController>());
+        bool PlayerUnderCover=>PlayerBody!=null&&PlayerBody.UnderCover;
         bool CanSeePlayer()
         {
             if (PlayerHidden) return false;
             Vector3 eye = transform.position + Vector3.up * eyeHeight;
-            Vector3 target = player.position + Vector3.up * 1.2f;
+            // Chest height: a crouched player behind or under a desk really is out of his line of sight.
+            Vector3 target = player.position + Vector3.up * (PlayerBody != null ? PlayerBody.TorsoHeight : 1.2f);
             Vector3 to = target - eye;
             float dist = to.magnitude;
             if (dist > sightRange) return false;

@@ -40,7 +40,7 @@ namespace Confiscated
             travelled-=stride;LastFoot=LastFoot==0?1:0;StepCount++;
             var clip=LastFoot==0?left:right;if(clip==null)return;
             Feet.pitch=Random.Range(.94f,1.06f)*(sprinting?1.05f:1);
-            Feet.PlayOneShot(clip,(sprinting?sprintVolume:walkVolume)*Random.Range(.88f,1));
+            Feet.PlayOneShot(clip,(sprinting?sprintVolume:walkVolume)*Random.Range(.88f,1)*(movement!=null&&movement.IsCrouching?.4f:1));
         }
         void OnDisable(){if(Feet!=null)Feet.Stop();}
         void OnDestroy(){if(Feet!=null)Destroy(Feet);}
