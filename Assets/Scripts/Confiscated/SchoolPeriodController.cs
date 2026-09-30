@@ -5,7 +5,7 @@ namespace Confiscated
 {
     public sealed class SchoolPeriodController : MonoBehaviour
     {
-        public enum Phase { Worksheet, PhoneRinging, Confiscation, Volunteer, Delivery, Return, Review, Complete }
+        public enum Phase { PhoneRinging, Confiscation, Volunteer, Delivery, Return, Complete }
         public Phase Current {get;private set;}
         public PlayerInteractor Player;
         public ClassroomSeat seat;
@@ -15,20 +15,12 @@ namespace Confiscated
         public GameObject phoneProp;
         public PhonePickup phonePickup;
         public InventoryItemDefinition passItem,papersItem;
-        public PeriodWorksheetUI worksheetUI;
         public PeriodInteractable deliveryTray;
-        public float reminderAfter=150,lateAfter=240;
-        public float AbsentSeconds {get;private set;}
-        public int TeacherConcern {get;private set;}
         public bool PapersDelivered {get;private set;}
         public bool PhoneDeposited {get;private set;}
         public bool IsComplete=>Current==Phase.Complete;
         public bool IsRoaming=>Current==Phase.Delivery||Current==Phase.Return;
         public Bounds OfficeBounds=>GameManager.Instance.officeMission.officeBounds;
-        public bool QuickOpening=>SchoolRunController.Instance!=null;
-        public bool CanUseSeat=>!QuickOpening&&(Current==Phase.Worksheet||Current==Phase.Volunteer||Current==Phase.Return||Current==Phase.Review);
-        // The quick opening never returns to the desk, so the seat must not advertise an action it ignores.
-        public string SeatPrompt=>QuickOpening?null:Current==Phase.Return?"F: report the delivery and sit down":Current==Phase.Delivery?"Deliver the newsletters to the office tray first.":"F: look at your worksheet";
         FirstPersonController movement;
         PhoneRinger ringer;
         PlayerInventory inventory;
@@ -42,10 +34,9 @@ namespace Confiscated
             var status=HudController.Instance?.statusText;
             if(status!=null){var rect=status.rectTransform;rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(.5f,0);rect.anchoredPosition=new Vector2(0,15);rect.sizeDelta=new Vector2(1400,105);status.alignment=UnityEngine.TextAnchor.MiddleCenter;}
             phonePickup.enabled=false;phonePickup.phoneVisual.SetActive(false);phoneProp.SetActive(true);
-            caretaker.Freeze();Current=QuickOpening?Phase.PhoneRinging:Phase.Worksheet;Sit();
+            caretaker.Freeze();Current=Phase.PhoneRinging;Sit();
             FaceBlackboard();
-            if(QuickOpening)StartCoroutine(PhoneIncident());
-            else HudController.Instance?.SetStatus("Mr Reed: Morning, Year 6. Look at the picture on your worksheet. What can you see?",10);
+            StartCoroutine(PhoneIncident());
             Objective();
         }
         void Sit()
@@ -60,42 +51,11 @@ namespace Confiscated
             Player.ViewCamera.transform.localPosition=new Vector3(0,standingHeight,0);movement.MovementLocked=false;movement.LookLocked=false;
             movement.Controller.enabled=true;Player.InputLocked=false;Player.SuppressActionsThisFrame();
         }
-        public string Prompt(PeriodInteractable.Role role)
-        {
-            if(role==PeriodInteractable.Role.Delivery)return PapersDelivered?"Newsletters delivered.":IsRoaming&&inventory.HasCarried(InventoryItemKind.Newsletters)?"F: Deliver newsletters":"NEWSLETTERS - office delivery tray";
-            if(QuickOpening)return null;
-            if(role==PeriodInteractable.Role.Teacher)return Current==Phase.Volunteer?"F: volunteer to deliver the newsletters":Current==Phase.Return?"F: report back to Mr Reed":"Mr Reed";
-            return Current==Phase.PhoneRinging||Current==Phase.Confiscation?null:Current==Phase.Volunteer?"F: raise your hand and volunteer":"F: read the worksheet";
-        }
-        public bool CanInteract(PeriodInteractable.Role role)=>role==PeriodInteractable.Role.Delivery?Current==Phase.Delivery&&inventory.HasCarried(InventoryItemKind.Newsletters):!QuickOpening&&(role==PeriodInteractable.Role.Teacher?Current==Phase.Volunteer||Current==Phase.Return:Current==Phase.Worksheet||Current==Phase.Volunteer||Current==Phase.Review);
-        public void Interact(PeriodInteractable.Role role)
-        {
-            if(!CanInteract(role))return;
-            if(role==PeriodInteractable.Role.Delivery){Deliver();return;}
-            if(role==PeriodInteractable.Role.Teacher&&Current==Phase.Return){ReturnToClass();return;}
-            worksheetUI.Open();
-        }
-        public void UseSeat(){if(QuickOpening)return;if(Current==Phase.Return)ReturnToClass();else worksheetUI.Open();}
-        public void ChooseSentence(int index)
-        {
-            if(Current==Phase.Worksheet)
-            {
-                if(index!=2){worksheetUI.Feedback("Mr Reed: No, Smith. Try again.");return;}
-                worksheetUI.Close();Current=Phase.PhoneRinging;Objective();StartCoroutine(PhoneIncident());
-            }
-            else if(Current==Phase.Review)
-            {
-                if(index!=0){worksheetUI.Feedback("Mr Reed: That isn't right, Smith.");return;}
-                worksheetUI.Close();Current=Phase.Complete;ringer.Deactivate();
-                string phone=GameManager.Instance.PhoneStored?"Your phone is in your locker.":Player.HasPhone?"You recovered your phone.":"Your phone is still in the caretaker's office.";
-                if (SchoolRunController.Instance != null)
-                {
-                    Stand(); Object.FindFirstObjectByType<SchoolBellSystem>()?.Ring();
-                    SchoolRunController.Instance.BeginRound();
-                }
-                else GameManager.Instance.CompleteSchoolPeriod((TeacherConcern==0?"Newsletters delivered on time.":"Newsletters delivered. Late back to class.")+"\nWorksheet finished.\n"+phone);
-            }
-        }
+        // Only the office delivery tray is interactive; the teacher and desk worksheet props are scenery.
+        public string Prompt(PeriodInteractable.Role role)=>role!=PeriodInteractable.Role.Delivery?null:
+            PapersDelivered?"Newsletters delivered.":IsRoaming&&inventory.HasCarried(InventoryItemKind.Newsletters)?"F: Deliver newsletters":"NEWSLETTERS - office delivery tray";
+        public bool CanInteract(PeriodInteractable.Role role)=>role==PeriodInteractable.Role.Delivery&&Current==Phase.Delivery&&inventory.HasCarried(InventoryItemKind.Newsletters);
+        public void Interact(PeriodInteractable.Role role){if(CanInteract(role))Deliver();}
         void FaceBlackboard()
         {
             var board=GameObject.Find("School/Details/Year 6 furnishings/TeachingBoard");
@@ -149,31 +109,22 @@ namespace Confiscated
             phoneProp.transform.SetParent(caretaker.transform,false);phoneProp.transform.localPosition=new Vector3(-.3f,1.08f,0);phoneProp.transform.localRotation=Quaternion.Euler(80,0,0);
             carryingPhone=true;caretaker.StartSchoolRoutine();
             Current=Phase.Volunteer;
-            if(QuickOpening)
-            {
-                HudController.Instance?.SetStatus("Smith: This is the last straw.",5);
-                yield return new WaitUntil(() => !ComicDialogue.IsActive);
-                bool memoryFinished=false;
-                if(OpeningDiaryComic.Show(movement,Player,()=>memoryFinished=true))
-                    yield return new WaitUntil(() => memoryFinished);
-                // The memory ends at the classroom handoff; release Smith for the errand.
-                Volunteer();
-                StartCoroutine(Travel(teacher,teacherHome.position));
-            }
-            else
-            {
-                HudController.Instance?.SetStatus("Caretaker: It'll be in my office.\nMr Reed: These newsletters need delivering. Any volunteers?",9);
-                yield return Travel(teacher,teacherHome.position);
-                Objective();worksheetUI.Open();
-            }
+            HudController.Instance?.SetStatus("Smith: This is the last straw.",5);
+            yield return new WaitUntil(() => !ComicDialogue.IsActive);
+            bool memoryFinished=false;
+            if(OpeningDiaryComic.Show(movement,Player,()=>memoryFinished=true))
+                yield return new WaitUntil(() => memoryFinished);
+            // The memory ends at the classroom handoff; release Smith for the errand.
+            Volunteer();
+            StartCoroutine(Travel(teacher,teacherHome.position));
         }
         public void Volunteer()
         {
             if(Current!=Phase.Volunteer)return;
             int free=0;for(int i=0;i<inventory.Capacity(InventoryContainer.Satchel);i++)if(inventory.Get(InventoryContainer.Satchel,i)==null)free++;
-            if(free<2){worksheetUI.Feedback("Make two spaces in your satchel for the pass and newsletters.");return;}
-            inventory.Collect(passItem);inventory.Collect(papersItem);worksheetUI.Close();Stand();
-            Current=Phase.Delivery;AbsentSeconds=0;GameManager.Instance.officeMission.Begin();Objective();
+            if(free<2){HudController.Instance?.SetStatus("Make two spaces in your satchel for the pass and newsletters.",4);return;}
+            inventory.Collect(passItem);inventory.Collect(papersItem);Stand();
+            Current=Phase.Delivery;GameManager.Instance.officeMission.Begin();Objective();
             HudController.Instance?.SetStatus("Mr Reed: Well, since you're clearly not busy… newsletters. Tray outside the caretaker's office. And be quick about it.",12);
         }
         public void Deliver()
@@ -181,7 +132,7 @@ namespace Confiscated
             if(Current!=Phase.Delivery||!inventory.HasCarried(InventoryItemKind.Newsletters)||Vector3.Distance(Player.transform.position,deliveryTray.transform.position)>3)return;
             inventory.RemoveCarried(InventoryItemKind.Newsletters);PapersDelivered=true;Current=Phase.Return;Objective();
             TempAudio.PlayAt(TempAudio.Pickup,Player.ViewCamera.transform.position,.65f);
-            HudController.Instance?.SetStatus(QuickOpening ? "Newsletters delivered! The office key is on the caretaker's trolley - follow it, unseen." : "Newsletters delivered! Return to Mr Reed in Year 6.",5);
+            HudController.Instance?.SetStatus("Newsletters delivered! The office key is on the caretaker's trolley - follow it, unseen.",5);
             var stack=deliveryTray.transform.Find("Delivered papers");if(stack!=null)stack.gameObject.SetActive(true);
         }
         public void PrepareChaseRetry()
@@ -195,16 +146,7 @@ namespace Confiscated
             phonePickup.enabled=true;
             phonePickup.ReturnToOffice();
         }
-        public void StartEscapeRun(){worksheetUI.Close();Current=Phase.Complete;ringer.Deactivate();inventory.RemoveCarried(InventoryItemKind.Newsletters);inventory.RemoveCarried(InventoryItemKind.HallPass);}
-        public void ReturnToClass()
-        {
-            if(QuickOpening)return;
-            if(Current!=Phase.Return||!PapersDelivered||!InClass(Player.transform.position))return;
-            GameManager.Instance.lockerUI?.Close();caretaker.GetComponent<CaretakerPassCheck>()?.CancelCheck();
-            ringer.Deactivate();Current=Phase.Review;Sit();
-            HudController.Instance?.SetStatus(TeacherConcern==0?"Mr Reed: Thank you, Smith. Finish your caption, please.":"Mr Reed: That took rather longer than it should. Finish your caption.",10);
-            Objective();worksheetUI.Open();
-        }
+        public void StartEscapeRun(){Current=Phase.Complete;ringer.Deactivate();inventory.RemoveCarried(InventoryItemKind.Newsletters);inventory.RemoveCarried(InventoryItemKind.HallPass);}
         public static bool InClass(Vector3 p)=>p.x>-32.11f&&p.x<-14.89f&&p.z>19.11f&&p.z<32.45f;
         /// <summary>The classroom plus a metre or so outside each of its two doors (Year 6 north, Year 6 west): during the
         /// errand, a player standing in the doorway is still "in class" (young players hovered there and were caught).</summary>
@@ -218,40 +160,18 @@ namespace Confiscated
             {
                 carryingPhone=false;PhoneDeposited=true;phoneProp.SetActive(false);phonePickup.enabled=true;phonePickup.ReturnToOffice();
             }
-            if(IsRoaming&&!QuickOpening&&GameManager.Instance.IsPlaying)
-            {
-                AbsentSeconds+=Time.deltaTime;
-                int concern=AbsentSeconds>=lateAfter?2:AbsentSeconds>=reminderAfter?1:0;
-                if(concern>TeacherConcern){TeacherConcern=concern;HudController.Instance?.SetStatus(concern==1?"You've been gone a while. Mr Reed said straight there and back.":"You're late. Mr Reed will want an explanation.",7);}
-            }
         }
         void LateUpdate(){if(movement!=null&&GameManager.Instance.IsPlaying&&!IsComplete)Objective();}
         void Objective()
         {
-            if(QuickOpening)
-            {
-                string next=Current==Phase.PhoneRinging?"Your phone is ringing...":Current==Phase.Confiscation?"Your phone is being taken to the caretaker's office.":
-                    !PapersDelivered?"Deliver the newsletters to the office tray.":
-                    GameManager.Instance.officeMission.OfficeUnlocked?"Recover your phone from the CONFISCATED box.":
-                    inventory.HasCarried(InventoryItemKind.OfficeKey)?"Unlock the caretaker's office door.":
-                    SchoolRunController.Instance!=null&&!SchoolRunController.Instance.TrolleyParked?"Follow the caretaker's trolley to the DINING HALL. Stay out of sight.":
-                    SchoolRunController.Instance!=null&&SchoolRunController.Instance.KeyWindowOpen?"His back is turned - take the office key from his trolley, quick!":
-                    "Take the office key from his trolley in the DINING HALL.";
-                HudController.Instance?.SetObjective((PapersDelivered?"Belongings recovered: 0/5\n":"")+next);
-                return;
-            }
-            string title=Current switch
-            {
-                Phase.Worksheet=>"FIRST PERIOD - ENGLISH\nMr Reed is at the board. Look down at your worksheet and press F.",
-                Phase.PhoneRinging=>"YOUR PHONE IS RINGING\nMr Reed is coming over.",
-                Phase.Confiscation=>"CONFISCATED\nThe caretaker is collecting your phone for his office.",
-                Phase.Volunteer=>"A REASON TO LEAVE CLASS\nPress E on your worksheet to raise your hand and volunteer.",
-                Phase.Delivery=>"Deliver the newsletters to the office tray.",
-                Phase.Return=>"Return to Mr Reed in Year 6.",
-                Phase.Review=>"BACK IN CLASS\nFinish the newsletter caption on your worksheet.",
-                _=>"FIRST PERIOD COMPLETE"
-            };
-            HudController.Instance?.SetObjective(title);
+            string next=Current==Phase.PhoneRinging?"Your phone just buzzed...":Current==Phase.Confiscation?"Your phone is being taken to the caretaker's office.":
+                !PapersDelivered?"Deliver the newsletters to the office tray.":
+                GameManager.Instance.officeMission.OfficeUnlocked?"Recover your phone from the CONFISCATED box.":
+                inventory.HasCarried(InventoryItemKind.OfficeKey)?"Unlock the caretaker's office door.":
+                SchoolRunController.Instance!=null&&!SchoolRunController.Instance.TrolleyParked?"Follow the caretaker's trolley to the DINING HALL. Stay out of sight.":
+                SchoolRunController.Instance!=null&&SchoolRunController.Instance.KeyWindowOpen?"His back is turned - take the office key from his trolley, quick!":
+                "Take the office key from his trolley in the DINING HALL.";
+            HudController.Instance?.SetObjective((PapersDelivered?"Belongings recovered: 0/5\n":"")+next);
         }
         IEnumerator Travel(NavMeshAgent actor,Vector3 target)
         {
@@ -265,6 +185,6 @@ namespace Confiscated
             motion?.SetFrozen(true);
             if(Vector3.Distance(actor.transform.position,target)>1)Debug.LogError("School actor could not reach "+target+": "+actor.name);
         }
-        void OnDisable(){if(worksheetUI!=null)worksheetUI.Close();if(ringer!=null)ringer.Deactivate();}
+        void OnDisable(){if(ringer!=null)ringer.Deactivate();}
     }
 }

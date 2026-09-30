@@ -44,7 +44,7 @@ namespace Confiscated
         Quaternion oldRotation,fromRotation,targetRotation;
         float fromFov,targetFov;
         Line current;
-        AudioSource reedVoice,lineVoice;
+        AudioSource lineVoice;
         bool hasRecording;
         /// <summary>Who the current line belongs to in the world (resolved from the speaker name), and the recording it is playing, for TalkingMouth.</summary>
         public Transform SpeakerTransform {get;private set;}
@@ -61,8 +61,8 @@ namespace Confiscated
                 SpeakerTransform.rotation = Quaternion.LookRotation(direction);
         }
         public AudioSource LineVoice=>lineVoice;
-        public bool IsReedVoicePlaying => reedVoice!=null&&reedVoice.isPlaying||lineVoice!=null&&lineVoice.isPlaying;
-        // Written line -> recording in Resources/Audio. A matching line plays its clip and replaces Mr Reed's placeholder babble;
+        public bool IsVoicePlaying=>lineVoice!=null&&lineVoice.isPlaying;
+        // Written line -> recording in Resources/Audio. A matching line plays its clip;
         // the text must match the string the game speaks exactly, so change both together.
         static readonly Dictionary<string,string> recordedLines=new()
         {
@@ -182,11 +182,6 @@ namespace Confiscated
                 }
                 words.text=current.text.Substring(0,shown);
             }
-            if(current.speaker=="Mr Reed"&&!hasRecording&&IsTyping&&shown>0)
-            {
-                if(reedVoice!=null&&reedVoice.clip!=null&&!reedVoice.isPlaying)reedVoice.Play();
-            }
-            else if(reedVoice!=null)reedVoice.Stop();
             if(current.automaticSeconds>0)
             {
                 if(elapsed>=current.automaticSeconds&&!IsTyping)Next();
@@ -219,7 +214,7 @@ namespace Confiscated
                 phoneNotification.transform.localScale=Vector3.one*Mathf.Lerp(1.12f,1f,Mathf.SmoothStep(0,1,pop));
             }
         }
-        void StopVoice(){if(reedVoice!=null)reedVoice.Stop();if(lineVoice!=null)lineVoice.Stop();}
+        void StopVoice(){if(lineVoice!=null)lineVoice.Stop();}
         void Finish()
         {
             StopVoice();
@@ -230,10 +225,9 @@ namespace Confiscated
             if(cameraData!=null){cameraData.renderPostProcessing=oldPost;cameraData.requiresDepthTexture=oldDepth;cameraData.volumeLayerMask=oldVolumeMask;}
             if(events!=null)events.enabled=oldEvents;
             if(player!=null){player.SuppressActionsThisFrame();if(player.HoldAnchor!=null)player.HoldAnchor.gameObject.SetActive(oldHold);}
-            // A worksheet can open after dialogue starts. Its live cursor ownership wins over the old snapshot.
+            // A modal screen can open after dialogue starts. Its live cursor ownership wins over the old snapshot.
             var gm=GameManager.Instance;
-            bool modal=gm!=null&&((gm.schoolPeriod!=null&&gm.schoolPeriod.worksheetUI!=null&&gm.schoolPeriod.worksheetUI.IsOpen)||
-                (gm.lockerUI!=null&&gm.lockerUI.IsOpen)||(gm.detention!=null&&gm.detention.MinigameOpen));
+            bool modal=gm!=null&&((gm.lockerUI!=null&&gm.lockerUI.IsOpen)||(gm.detention!=null&&gm.detention.MinigameOpen));
             Cursor.lockState=modal?CursorLockMode.None:cursorMode;Cursor.visible=modal||oldCursor;Time.timeScale=oldTime;
         }
         public static void Cancel(){if(instance!=null)instance.Finish();}
@@ -241,10 +235,6 @@ namespace Confiscated
         void OnDestroy(){Finish();if(profile!=null)Destroy(profile);if(instance==this)instance=null;}
         void Build()
         {
-            reedVoice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);
-            reedVoice.clip=Resources.Load<AudioClip>("Audio/MrReedTalk1");
-            reedVoice.playOnAwake=false;reedVoice.loop=true;reedVoice.spatialBlend=0;
-            reedVoice.volume=.65f;reedVoice.ignoreListenerPause=true;
             lineVoice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);lineVoice.playOnAwake=false;lineVoice.loop=false;lineVoice.spatialBlend=0;lineVoice.ignoreListenerPause=true;
 
             var g=new GameObject("Comic dialogue canvas",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));g.transform.SetParent(transform,false);

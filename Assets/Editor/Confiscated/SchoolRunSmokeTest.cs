@@ -135,7 +135,7 @@ namespace Confiscated.EditorTools
                     case 0:
                         // The library shadow has its own test; here it must not throw the player out mid-check.
                         Need(Object.FindFirstObjectByType<LibraryShadow>()!=null,"the library shadow is installed");Object.FindFirstObjectByType<LibraryShadow>().Paused=true;
-                        Need(S.Current==SchoolPeriodController.Phase.PhoneRinging&&!S.worksheetUI.IsOpen,"short opening starts the phone incident without a worksheet");introStarted=Time.time;
+                        Need(S.Current==SchoolPeriodController.Phase.PhoneRinging,"short opening starts the phone incident");introStarted=Time.time;
                         Need(!R.KeyAvailable&&!R.ReadyToEscape,"key and escape initially gated");
                         Need(!Item(4).CanInteract(P),"cannot skip to final item");
                         Need(!Object.FindObjectsByType<Interactable>(FindObjectsSortMode.None).Any(t=>(t is RunPickup||t is DecoyPickup||t is AccessToolPickup||t is PhonePickup||t is OfficeKeyPickup||t is ThrowableBall)&&SchoolPeriodController.InClass(t.transform.position)),"starting classroom contains no collectible pickups");
@@ -147,7 +147,7 @@ namespace Confiscated.EditorTools
                         Need(true,"opening ringtone still plays");Need(P.GetComponent<PhoneRinger>().Vibrating&&P.GetComponent<PhoneRinger>().Buzzing,"the desk phone vibrates and buzzes while it rings");Next(2);break;
                     case 2:
                         if(!S.IsRoaming)return;
-                        Dismiss();Need(I.HasCarried(InventoryItemKind.HallPass)&&I.HasCarried(InventoryItemKind.Newsletters)&&!S.worksheetUI.IsOpen,"handoff releases player with pass and papers automatically");
+                        Dismiss();Need(I.HasCarried(InventoryItemKind.HallPass)&&I.HasCarried(InventoryItemKind.Newsletters),"handoff releases player with pass and papers automatically");
                         Need(Time.time-introStarted<60,"opening releases player within 60 simulated seconds ("+(Time.time-introStarted).ToString("F1")+"s, reading time excluded)");
                         Need(SchoolRunController.LessonsInProgress&&Gates.All(g=>!g.IsOpen&&g.barrier.activeSelf),"lesson gates hold the errand inside the west wing");
                         // He spots the player from down the corridor with his own eyes, then has to walk over before asking.
@@ -180,7 +180,7 @@ namespace Confiscated.EditorTools
                         Reach(S.phonePickup,DeskStand(S.phonePickup.transform),S.phonePickup.transform.position+Vector3.up*.3f);
                         Need(S.phonePickup.CanInteract(P),"deposited phone is recoverable");S.phonePickup.Interact(P);Need(R.Count==1&&P.HasPhone&&!R.HasBoltCutters&&!R.HasStoreKey,"phone counts as item one and does not magically award tools");Need(PhoneMessage.Shown&&PhoneMessage.Current!=null&&!ComicDialogue.IsActive,"the phone lights up with Maddie's text (without pausing the game)");
                         Need(R.caretaker.SuspicionSeconds>1f,"early game gives a forgiving beat to duck out of sight when spotted ("+R.caretaker.SuspicionSeconds.ToString("F2")+"s)");
-                        P.GetComponent<PhoneRinger>().Activate();Need(!P.GetComponent<PhoneRinger>().Emitter.isPlaying&&P.GetComponent<PhoneRinger>().SecondsToRing<0,"recovered phone stays silent");
+                        Need(!P.GetComponent<PhoneRinger>().Emitter.isPlaying,"recovered phone stays silent");
                         Need(S.IsComplete,"recovering phone ends lesson errands without returning to starting room");
                         Need(R.RoundStarted&&GameManager.Instance.IsPlaying&&!F.MovementLocked,"phone recovery starts escape run immediately");R.caretaker.Freeze();Time.timeScale=1;Next(30);break;
                     case 30:

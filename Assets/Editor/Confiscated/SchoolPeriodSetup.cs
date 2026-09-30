@@ -50,11 +50,9 @@ namespace Confiscated.EditorTools
             var teacher=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(TeacherPath),root.transform);
             teacher.name="Mr Reed";teacher.transform.position=period.teacherHome.position;period.teacher=teacher.GetComponent<NavMeshAgent>();teacher.GetComponent<PeriodInteractable>().period=period;
             PrefabUtility.RecordPrefabInstancePropertyModifications(teacher.transform);PrefabUtility.RecordPrefabInstancePropertyModifications(teacher.GetComponent<PeriodInteractable>());
-            period.worksheetUI=root.AddComponent<PeriodWorksheetUI>();period.worksheetUI.period=period;period.worksheetUI.paper=gm.lockerUI.slotPaper;
             period.passItem=Item("HallPass","Hall pass",InventoryItemKind.HallPass,"Mr Reed's signed pass. Press F on the caretaker when he stops you.");
             period.papersItem=Item("Newsletters","Newsletters",InventoryItemKind.Newsletters,"Follow the OFFICE signs to the yellow NEWSLETTERS tray. Press F to deliver.");
-            var sheet=Box("Newsletter worksheet",new Vector3(-21.35f,.795f,29),new Vector3(.38f,.025f,.27f),"M_Chapter_Paper");
-            var work=sheet.AddComponent<PeriodInteractable>();work.period=period;work.role=PeriodInteractable.Role.Worksheet;
+            Box("Newsletter worksheet",new Vector3(-21.35f,.795f,29),new Vector3(.38f,.025f,.27f),"M_Chapter_Paper");
             var prop=new GameObject("Smith's phone");prop.transform.SetParent(root.transform,false);prop.transform.position=new Vector3(-21.35f,.821f,29.36f);period.phoneProp=prop;
             Part("Phone case",Vector3.zero,new Vector3(.085f,.014f,.155f),"M_Chapter_Ink");Part("Phone screen",new Vector3(0,.008f,0),new Vector3(.072f,.003f,.13f),"M_Chapter_Grey");
             var table=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Dining/P_Dining_Table.prefab"),root.transform);
@@ -76,8 +74,6 @@ namespace Confiscated.EditorTools
             EditorUtility.SetDirty(ai);PrefabUtility.RecordPrefabInstancePropertyModifications(ai);
             var check=ai.GetComponent<CaretakerPassCheck>();if(check==null)check=ai.gameObject.AddComponent<CaretakerPassCheck>();check.period=period;EditorUtility.SetDirty(check);
             var interactor=new SerializedObject(period.Player);interactor.FindProperty("hitMask").intValue|=1<<ai.gameObject.layer;interactor.ApplyModifiedProperties();PrefabUtility.RecordPrefabInstancePropertyModifications(period.Player);
-            var ringImporter=(AudioImporter)AssetImporter.GetAtPath("Assets/Audio/SFX/PhoneRingtone.mp3");ringImporter.forceToMono=true;var settings=ringImporter.defaultSampleSettings;settings.loadType=AudioClipLoadType.DecompressOnLoad;settings.compressionFormat=AudioCompressionFormat.PCM;ringImporter.defaultSampleSettings=settings;ringImporter.SaveAndReimport();
-            var ringer=Object.FindFirstObjectByType<PhoneRinger>();var so=new SerializedObject(ringer);so.FindProperty("ringClip").objectReferenceValue=AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/PhoneRingtone.mp3");so.ApplyModifiedProperties();PrefabUtility.RecordPrefabInstancePropertyModifications(ringer);
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Transform Point(string name,Vector3 p){var g=new GameObject(name);g.transform.SetParent(root.transform,false);g.transform.position=p;return g.transform;}
             GameObject Box(string name,Vector3 p,Vector3 size,string material){var g=GameObject.CreatePrimitive(PrimitiveType.Cube);g.name=name;g.transform.SetParent(root.transform,false);g.transform.position=p;g.transform.localScale=size;IllustratedArtSetup.Tiled(g.GetComponent<MeshRenderer>(),Mat(material),"trim",1);return g;}

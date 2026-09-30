@@ -148,7 +148,7 @@ namespace Confiscated.EditorTools
                         Check(CanSee<ClassroomSeat>(seat.transform.position+Vector3.up*.73f),"own desk reachable by interaction ray");
                         seat.Interact(Player);
                         Check(GM.Current==GameManager.State.Won&&Mission.ReadyToFinish,"sitting down completes office chapter");
-                        Check(Player.GetComponent<PhoneRinger>().SecondsToRing<0&&!Player.GetComponent<PhoneRinger>().IsRinging,"phone silenced on return to class");
+                        Check(!Player.GetComponent<PhoneRinger>().Emitter.isPlaying,"phone silenced on return to class");
                         Next(8);break;
                     case 8:
                         if(EditorApplication.timeSinceStartup-stepAt<.3)return;

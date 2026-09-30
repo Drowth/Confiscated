@@ -95,7 +95,6 @@ namespace Confiscated.EditorTools
                         Time.timeScale = 4; Next(1); break;
                     case 1:
                         if (!S.IsRoaming) return;
-                        Need(!S.worksheetUI.IsOpen, "automatic handoff releases the player into the corridor");
                         R.caretaker.ResumeAfterDetention(999); Warp(Classroom); Next(2); break;
                     case 2:
                         // Errand targets, all inside the west wing.

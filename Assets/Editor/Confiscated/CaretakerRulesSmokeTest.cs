@@ -47,10 +47,10 @@ namespace Confiscated.EditorTools
                 if(ComicDialogue.IsActive){ComicDialogue.Instance.Advance();return;}
                 switch(stage)
                 {
-                    case 0:Need(S.Current==SchoolPeriodController.Phase.Worksheet,"opening lesson is active");S.ChooseSentence(2);Next(1);break;
+                    case 0:Need(S.Current==SchoolPeriodController.Phase.PhoneRinging,"opening phone incident is active");Next(1);break;
                     case 1:
                         foreach(var agent in new[]{S.teacher,A.GetComponent<NavMeshAgent>()})if(agent.isOnNavMesh&&agent.hasPath&&!agent.isStopped&&!agent.pathPending)agent.Warp(agent.destination);
-                        if(S.Current!=SchoolPeriodController.Phase.Volunteer)return;
+                        if(S.Current!=SchoolPeriodController.Phase.Volunteer&&!S.IsRoaming)return;
                         S.Volunteer();Next(2);break;
                     case 2:
                         Need(S.IsRoaming,"player released for delivery");

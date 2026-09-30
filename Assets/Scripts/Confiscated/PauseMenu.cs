@@ -30,8 +30,7 @@ namespace Confiscated
         static bool ModalOpen()
         {
             var gm=GameManager.Instance;
-            return gm!=null&&((gm.lockerUI!=null&&gm.lockerUI.IsOpen)||(gm.schoolPeriod!=null&&gm.schoolPeriod.worksheetUI!=null&&gm.schoolPeriod.worksheetUI.IsOpen)||
-                (gm.detention!=null&&gm.detention.MinigameOpen));
+            return gm!=null&&((gm.lockerUI!=null&&gm.lockerUI.IsOpen)||(gm.detention!=null&&gm.detention.MinigameOpen));
         }
         static bool CanOpen()
         {
@@ -43,7 +42,7 @@ namespace Confiscated
             var kb=Keyboard.current;var pad=Gamepad.current;
             bool pressed=(kb!=null&&kb.escapeKey.wasPressedThisFrame)||(pad!=null&&pad.startButton.wasPressedThisFrame);
             if(IsOpen){if(pressed&&Time.unscaledTime>openedAt+.15f)Close();return;}
-            // Escape also closes the bag, the worksheet and the detention games. Whichever Update runs first, that press must not pause too.
+            // Escape also closes the bag and the detention games. Whichever Update runs first, that press must not pause too.
             bool modal=ModalOpen();
             if(pressed&&!modal&&!modalLastFrame&&CanOpen())Open();
             modalLastFrame=modal;

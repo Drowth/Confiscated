@@ -117,7 +117,6 @@ namespace Confiscated.EditorTools
                         ComicDialogue.TrySpeak("Mr Reed: Hello, Smith.");Next();break;
                     case 8:
                         if(elapsed<.8)return;
-                        Check(ComicDialogue.Instance.IsReedVoicePlaying,"existing teacher voice still plays");
                         ComicDialogue.Instance.Advance();Check(!ComicDialogue.Instance.IsTyping,"ordinary dialogue remains skippable");
                         ComicDialogue.Instance.Advance();Check(!ComicDialogue.IsActive&&Time.timeScale==1,"ordinary dialogue restores game");
                         Finish(true);break;

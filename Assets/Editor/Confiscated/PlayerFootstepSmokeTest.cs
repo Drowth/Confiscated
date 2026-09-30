@@ -58,9 +58,9 @@ namespace Confiscated.EditorTools
                         int foot = Steps.LastFoot; Simulate(2.4f, .5f, false); Need(Steps.LastFoot != foot, "feet alternate");
                         Need(Simulate(0, 2, false) == 0, "pushing against a wall covers no ground and makes no sound");
                         int beforeWarp = Steps.StepCount; Steps.Advance(30, 1 / 60f, false); Need(Steps.StepCount == beforeWarp, "a warp is not a stride");
-                        Time.timeScale = 4; S.ChooseSentence(2); Next(1); break;
+                        Time.timeScale = 4; Next(1); break;
                     case 1:
-                        if (S.Current != SchoolPeriodController.Phase.Volunteer) return;
+                        if (S.Current != SchoolPeriodController.Phase.Volunteer && !S.IsRoaming) return;
                         S.Volunteer(); R.caretaker.ResumeAfterDetention(999); Time.timeScale = 1;
                         F.Controller.enabled = false; F.transform.SetPositionAndRotation(new Vector3(-33.0f, 0, 36), Quaternion.identity); F.Controller.enabled = true; Physics.SyncTransforms();
                         Next(2); break;

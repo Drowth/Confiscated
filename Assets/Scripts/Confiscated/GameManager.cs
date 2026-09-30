@@ -99,7 +99,6 @@ namespace Confiscated
             HudController.Instance?.SetObjective("CONFISCATED!\nYou have your phone. Get back to the window\nbefore it rings...");
             HudController.Instance?.SetStatus("Got it. Now get out before it rings.", 3f);
             HudController.Instance?.SetPhoneState(HudController.PhoneState.Idle, 999f);
-            if (phoneRinger != null) phoneRinger.Activate();
             if (officeMission != null)
             {
                 officeMission.PhoneRecovered();
@@ -131,7 +130,6 @@ namespace Confiscated
                 retryAvailableAt = Time.unscaledTime + CaretakerCatchScare.Duration;
                 SchoolRunController.Instance?.PauseStaff();
                 schoolPeriod?.StopAllCoroutines();
-                schoolPeriod?.worksheetUI.Close();
                 EndRound();
                 CaretakerCatchScare.Play(captor);
                 PlayCaughtSound();
@@ -184,15 +182,14 @@ namespace Confiscated
         {
             bool wasCarried=PhoneCollected;
             PhoneCollected=carried;interactor.HasPhone=carried;
-            if(carried&&!wasCarried)phoneRinger?.Activate();
-            else if(!carried)phoneRinger?.Deactivate();
+            if(!carried)phoneRinger?.Deactivate();
             if(stored)officeMission?.PhoneStored();
             else if(carried)officeMission?.PhoneRecovered();
         }
 
         public void Win()
         {
-            if(schoolPeriod!=null){schoolPeriod.ReturnToClass();return;}
+            if(schoolPeriod!=null)return;
             if (Current != State.Playing) return;
             if (officeMission != null && !officeMission.ReadyToFinish) return;
             Current = State.Won;
@@ -252,21 +249,6 @@ namespace Confiscated
             if (hud != null && hud.overlay != null) SteamLeaderboardView.Show(hud.overlay.transform, hud.overlayBody);
             SteamLeaderboard.Submit(timing.Category, ms);
             ScheduleCredits();
-        }
-
-        public void CompleteSchoolPeriod(string report)
-        {
-            if(schoolPeriod==null||!schoolPeriod.IsComplete||Current!=State.Playing)return;
-            Current=State.Won;EndRound();
-            Object.FindFirstObjectByType<SchoolBellSystem>()?.Ring();
-            var hud=HudController.Instance;
-            if(hud!=null)
-            {
-                hud.SetStatus(null);hud.SetObjective("FIRST PERIOD COMPLETE");
-                if(hud.overlayTitle!=null)hud.overlayTitle.rectTransform.anchoredPosition=new Vector2(0,180);
-                if(hud.overlayBody!=null){hud.overlayBody.rectTransform.anchoredPosition=new Vector2(0,-60);hud.overlayBody.rectTransform.sizeDelta=new Vector2(1400,300);}
-            }
-            HudController.Instance?.ShowOverlay("END OF ENGLISH",report+"\n\nFirst period complete.\nPress R to replay this period.");
         }
 
         void EndRound()
