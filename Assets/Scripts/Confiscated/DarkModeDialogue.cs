@@ -44,7 +44,7 @@ namespace Confiscated
         public static readonly Line[] Chatterbox=
         {
             new("Chatterbox","Did you see his eyes? They're glowing red! Tell me that's just a reflection...", "ChatterboxEyes"),
-            new("Chatterbox","My yo-yo glows in the dark. It would be useful now, if he hadn't confiscated it!", "ChatterboxYoYo")
+            new("Chatterbox","Ooh, you've got a torch! Don't take it in the library switched on... my brother says that's how it finds you. Anyway... where are you going?", "ChatterboxTorch")
         };
         public static IEnumerable<Line> Lines
         {
