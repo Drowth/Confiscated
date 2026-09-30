@@ -25,8 +25,8 @@ namespace Confiscated
         readonly Queue<Line> queue=new();
         readonly List<Canvas> hiddenCanvases=new();
         Canvas canvas;
-        Text words,nameTag,advance,regularWords,phoneWords;
-        GameObject regularBalloon,phoneNotification;
+        Text words,nameTag,advance,regularWords,phoneWords,thoughtWords;
+        GameObject regularBalloon,phoneNotification,thoughtBalloon;
         PlayerInteractor player;
         FirstPersonController movement;
         Camera view;
@@ -138,8 +138,10 @@ namespace Confiscated
                 if(recording!=null){lineVoice.clip=recording;lineVoice.Play();hasRecording=true;}
             }
             bool isPhone=current.speaker=="PHONE";
-            regularBalloon.SetActive(!isPhone);phoneNotification.SetActive(isPhone);
-            words=isPhone?phoneWords:regularWords;words.text="";nameTag.text=current.speaker.ToUpperInvariant();
+            // Smith is the player: his lines are never said aloud, so they show as a thought cloud.
+            bool isThought=current.speaker=="Smith";
+            regularBalloon.SetActive(!isPhone&&!isThought);phoneNotification.SetActive(isPhone);thoughtBalloon.SetActive(isThought);
+            words=isPhone?phoneWords:isThought?thoughtWords:regularWords;words.text="";nameTag.text=current.speaker.ToUpperInvariant();
             started=Time.unscaledTime;startedFrame=Time.frameCount;fromRotation=view.transform.rotation;fromFov=view.fieldOfView;
             Transform actor=current.actor;var gm=GameManager.Instance;
             if(current.speaker=="Mr Reed")actor=gm?.schoolPeriod?.teacher?.transform;
@@ -251,6 +253,7 @@ namespace Confiscated
             nameTag=Label(tag,"Speaker",26,TextAnchor.MiddleCenter,new Vector2(10,2));nameTag.fontStyle=FontStyle.Bold;nameTag.resizeTextForBestFit=true;nameTag.resizeTextMinSize=18;nameTag.resizeTextMaxSize=26;
             regularWords=Label(bubble,"Spoken words",31,TextAnchor.MiddleLeft,new Vector2(34,18));regularWords.supportRichText=false;
             BuildPhoneNotification();
+            BuildThought();
             var control=Panel("Advance key",new Vector2(.72f,.01f),new Vector2(.94f,.075f),Color.clear);
             advance=Label(control,"Advance",19,TextAnchor.MiddleRight,Vector2.zero);advance.color=Color.white;
             var vg=new GameObject("Dialogue focus");vg.transform.SetParent(transform,false);volume=vg.AddComponent<Volume>();volume.isGlobal=true;volume.priority=10000;
@@ -280,6 +283,21 @@ namespace Confiscated
             phoneWords=Label(cr,"Phone message",35,TextAnchor.MiddleLeft,new Vector2(65,24));phoneWords.supportRichText=false;
             var buzz=Label(cr,"Buzz",24,TextAnchor.UpperRight,new Vector2(25,-12));buzz.text="BZZT!";buzz.fontStyle=FontStyle.Bold;buzz.color=new Color(.54f,.12f,.10f);buzz.rectTransform.localRotation=Quaternion.Euler(0,0,5);
             phoneNotification.SetActive(false);
+        }
+        void BuildThought()
+        {
+            thoughtBalloon=new GameObject("Thought cloud",typeof(RectTransform));thoughtBalloon.transform.SetParent(canvas.transform,false);
+            var group=thoughtBalloon.GetComponent<RectTransform>();group.anchorMin=Vector2.zero;group.anchorMax=Vector2.one;group.offsetMin=group.offsetMax=Vector2.zero;
+            var cloud=new GameObject("Cloud",typeof(RectTransform),typeof(ThoughtCloud));cloud.transform.SetParent(group,false);
+            var cr=cloud.GetComponent<RectTransform>();cr.anchorMin=new Vector2(.16f,.125f);cr.anchorMax=new Vector2(.84f,.34f);cr.offsetMin=cr.offsetMax=Vector2.zero;
+            cloud.GetComponent<ThoughtCloud>().raycastTarget=false;
+            // Bubbles trailing off the bottom of the screen, back to the player's own head.
+            var trail=new GameObject("Thought bubbles",typeof(RectTransform),typeof(ThoughtCloud));trail.transform.SetParent(group,false);
+            var tr=trail.GetComponent<RectTransform>();tr.anchorMin=new Vector2(.15f,.02f);tr.anchorMax=new Vector2(.29f,.15f);tr.offsetMin=tr.offsetMax=Vector2.zero;
+            var dots=trail.GetComponent<ThoughtCloud>();dots.trail=true;dots.raycastTarget=false;
+            thoughtWords=Label(cr,"Thought words",31,TextAnchor.MiddleCenter,new Vector2(70,30));thoughtWords.supportRichText=false;
+            thoughtWords.fontStyle=FontStyle.Italic;thoughtWords.color=new Color(.10f,.13f,.22f);
+            thoughtBalloon.SetActive(false);
         }
         RectTransform Panel(string name,Vector2 min,Vector2 max,Color colour,Transform parent=null)
         {
@@ -321,6 +339,61 @@ namespace Confiscated
                 vh.AddVert(a,edgeColor,Vector2.zero);vh.AddVert(b,edgeColor,Vector2.zero);vh.AddVert(bi,edgeColor,Vector2.zero);vh.AddVert(ai,edgeColor,Vector2.zero);
                 vh.AddTriangle(v,v+1,v+2);vh.AddTriangle(v,v+2,v+3);
             }
+        }
+    }
+
+    /// <summary>A scalloped, inked thought cloud (or, with trail set, the shrinking bubbles that lead to the thinker).
+    /// Drawn as overlapping discs: ink discs first, paper discs slightly smaller on top, so the outline dips into each cusp.</summary>
+    [RequireComponent(typeof(CanvasRenderer))]
+    public sealed class ThoughtCloud:MaskableGraphic
+    {
+        public bool trail;
+        static readonly Color Ink=new(.07f,.10f,.16f),Paper=new(.99f,.985f,.96f);
+        const float Edge=5;
+        protected override void OnPopulateMesh(VertexHelper vh)
+        {
+            vh.Clear();var r=rectTransform.rect;
+            if(trail)
+            {
+                // Three bubbles, largest nearest the cloud (top right), smallest off towards the player (bottom left).
+                float unit=Mathf.Min(r.width,r.height);
+                var bubbles=new[]{(new Vector2(.74f,.74f),.26f),(new Vector2(.42f,.40f),.17f),(new Vector2(.16f,.14f),.10f)};
+                foreach(var (at,size) in bubbles){var c=new Vector2(Mathf.Lerp(r.xMin,r.xMax,at.x),Mathf.Lerp(r.yMin,r.yMax,at.y));Disc(vh,c,unit*size,unit*size*.85f,Ink);}
+                foreach(var (at,size) in bubbles){var c=new Vector2(Mathf.Lerp(r.xMin,r.xMax,at.x),Mathf.Lerp(r.yMin,r.yMax,at.y));Disc(vh,c,unit*size-Edge,unit*size*.85f-Edge,Paper);}
+                return;
+            }
+            float bump=Mathf.Min(r.height*.36f,72);
+            var inner=new Rect(r.xMin+bump,r.yMin+bump,r.width-2*bump,r.height-2*bump);
+            var centres=new System.Collections.Generic.List<Vector2>();
+            float perimeter=2*(inner.width+inner.height);int count=Mathf.Max(8,Mathf.RoundToInt(perimeter/(bump*1.2f)));
+            for(int i=0;i<count;i++)
+            {
+                float d=perimeter*i/count;Vector2 p;
+                if(d<inner.width)p=new(inner.xMin+d,inner.yMin);
+                else if((d-=inner.width)<inner.height)p=new(inner.xMax,inner.yMin+d);
+                else if((d-=inner.height)<inner.width)p=new(inner.xMax-d,inner.yMax);
+                else p=new(inner.xMin,inner.yMax-(d-inner.width));
+                centres.Add(p);
+            }
+            // Uneven bump sizes, so it reads as drawn rather than stamped.
+            float Size(int i)=>bump*(i%3==1?.8f:i%3==2?.93f:1);
+            for(int i=0;i<centres.Count;i++)Disc(vh,centres[i],Size(i),Size(i),Ink);
+            Quad(vh,inner,Ink);
+            for(int i=0;i<centres.Count;i++)Disc(vh,centres[i],Size(i)-Edge,Size(i)-Edge,Paper);
+            Quad(vh,inner,Paper);
+        }
+        static void Disc(VertexHelper vh,Vector2 c,float rx,float ry,Color tint)
+        {
+            const int Segments=28;int start=vh.currentVertCount;vh.AddVert(c,tint,Vector2.zero);
+            for(int i=0;i<Segments;i++){float a=i*Mathf.PI*2/Segments;vh.AddVert(c+new Vector2(Mathf.Cos(a)*rx,Mathf.Sin(a)*ry),tint,Vector2.zero);}
+            for(int i=0;i<Segments;i++)vh.AddTriangle(start,start+1+i,start+1+(i+1)%Segments);
+        }
+        static void Quad(VertexHelper vh,Rect q,Color tint)
+        {
+            int n=vh.currentVertCount;
+            vh.AddVert(new Vector2(q.xMin,q.yMin),tint,Vector2.zero);vh.AddVert(new Vector2(q.xMax,q.yMin),tint,Vector2.zero);
+            vh.AddVert(new Vector2(q.xMax,q.yMax),tint,Vector2.zero);vh.AddVert(new Vector2(q.xMin,q.yMax),tint,Vector2.zero);
+            vh.AddTriangle(n,n+1,n+2);vh.AddTriangle(n,n+2,n+3);
         }
     }
 
