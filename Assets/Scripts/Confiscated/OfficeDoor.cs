@@ -77,6 +77,7 @@ namespace Confiscated
             swing = transform.InverseTransformPoint(from).z <= 0 ? 1 : -1;
             requestedOpen = true; slamAge = 0; openAmount = 1;
             doorSounds.PlaySlam();
+            SchoolRunController.Instance?.PlayerOpenedDoor(this);
         }
         /// <summary>0 shut, 1 fully open. Accelerates into the wall, then rebounds in shrinking bounces.</summary>
         static float SlamCurve(float t) => t < SlamHit ? Mathf.Pow(t / SlamHit, 1.6f) :
@@ -113,7 +114,11 @@ namespace Confiscated
                 HudController.Instance?.SetStatus(runRequiredLevel > 0 ? "Unlocked. This door stays available." : "Unlocked. Find your phone before he comes back.", 3f);
             }
             else requestedOpen = !requestedOpen;
-            if (requestedOpen) SwingAwayFrom(player.transform.position);
+            if (requestedOpen)
+            {
+                SwingAwayFrom(player.transform.position);
+                SchoolRunController.Instance?.PlayerOpenedDoor(this);
+            }
         }
         /// <summary>Only while shut: a door already swinging finishes its arc rather than snapping through the frame.</summary>
         public void SwingAwayFrom(Vector3 opener)

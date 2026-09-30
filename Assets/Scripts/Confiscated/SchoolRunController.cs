@@ -60,7 +60,7 @@ namespace Confiscated
         /// retry scene reload; cleared when a new school day starts (GameManager.BeginSchoolDay).</summary>
         public static bool KeyEarned { get; set; }
         public const float KeyWindowSeconds = 15f;
-        bool keyWindowOffered;
+        bool keyWindowOffered,retryKeyWindowPending;
         /// <summary>The caretaker is at the serving hatch with his back to his parked trolley.</summary>
         public bool KeyWindowOpen => keyWindowOffered && caretaker != null && caretaker.ChatArrived;
         void Start()
@@ -91,7 +91,9 @@ namespace Confiscated
             var keyPickup = Object.FindFirstObjectByType<OfficeKeyPickup>(FindObjectsInactive.Include);
             bool keyGranted = KeyEarned && keyPickup != null && keyPickup.CanInteract(period.Player);
             if (keyGranted) keyPickup.Interact(period.Player);
-            HudController.Instance?.SetStatus(keyGranted ? "You already have the office key. Recover five belongings and escape." : "Recover five belongings and escape. The caretaker is on patrol.",6);
+            retryKeyWindowPending=!period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey);
+            if(retryKeyWindowPending){keyWindowOffered=false;caretaker.Freeze();}
+            HudController.Instance?.SetStatus(keyGranted ? "You already have the office key. Recover five belongings and escape." : "Open the DINING HALL door. Wait for the dinner lady to distract the caretaker.",6);
         }
         public void BeginRound(float firstPulseDelay = 12)
         {
@@ -176,24 +178,49 @@ namespace Confiscated
                     foreach (var c in cartColliders) c.enabled = true;
                 }
             }
-            // Once the newsletters are in and his trolley is parked, the dinner lady calls him over to the serving hatch: he
-            // stands with his back to the trolley for a short while - the window to lift the office key.
-            if (!RoundStarted && !keyWindowOffered && TrolleyParked && period.PapersDelivered && !period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey))
-            {
-                keyWindowOffered = true;
-                Vector3 dock = trolleyDock.position, spot = dock + new Vector3(5f, 0, -3.6f);
-                if (NavMesh.SamplePosition(spot, out var hatch, 1.5f, NavMesh.AllAreas)) spot = hatch.position;
-                Vector3 away = spot - dock; away.y = 0;
-                caretaker.Chat(spot, away.normalized, KeyWindowSeconds);
-                HudController.Instance?.SetBark("Dinner lady: Have you got a minute, love? The freezer's making that noise again.", 5f);
-            }
-            if (RoundStarted && Time.time >= pursuitPulse)
+            bool hasOfficeKey=period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey);
+            if(retryKeyWindowPending&&hasOfficeKey)
+            {retryKeyWindowPending=false;caretaker.ResumeAfterDetention(5);}
+            if (RoundStarted && !retryKeyWindowPending && Time.time >= pursuitPulse)
             {
                 pursuitPulse = Time.time + Mathf.Lerp(28, 12, Count / 5f);
                 // Investigate an approximate area, never supply a hidden player's exact position.
                 Vector3 p = period.Player.transform.position;
                 Vector3 approximate = new Vector3(Mathf.Round(p.x / 14) * 14, 0, Mathf.Round(p.z / 14) * 14);
                 caretaker.InvestigateArea(approximate);
+            }
+        }
+        /// <summary>Only a player opening a dining entrance starts the key distraction, once per attempt.</summary>
+        public void PlayerOpenedDoor(OfficeDoor door)
+        {
+            // The hand-authored dining entrances share this scene naming convention.
+            if(door==null||!door.name.StartsWith("Dining ",System.StringComparison.Ordinal))return;
+            if(GameManager.Instance==null||!GameManager.Instance.IsPlaying)return;
+            bool hasOfficeKey=period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey);
+            if (((!RoundStarted&&period.PapersDelivered)||retryKeyWindowPending) && !keyWindowOffered && TrolleyParked && !hasOfficeKey)
+            {
+                var lady=Object.FindFirstObjectByType<DinnerTrolleyPatrol>();
+                Vector3 dock=trolleyDock.position,spot=dock+new Vector3(5f,0,-3.6f);
+                if(lady!=null)
+                {
+                    Vector3 towardDock=dock-lady.transform.position;towardDock.y=0;
+                    spot=lady.transform.position+towardDock.normalized*1.8f;
+                }
+                if(NavMesh.SamplePosition(spot,out var hatch,1.5f,NavMesh.AllAreas))spot=hatch.position;
+                float conversation=KeyWindowSeconds+Vector3.Distance(caretaker.transform.position,spot)/1.7f+10;
+                if(retryKeyWindowPending)
+                {
+                    retryKeyWindowPending=false;
+                    // Allow his walk to the hatch plus the full fifteen seconds facing away.
+                    caretaker.ResumeAfterDetention(conversation);
+                    pursuitPulse=Time.time+conversation;
+                }
+                keyWindowOffered = true;
+                Vector3 away= lady!=null?lady.transform.position-spot:spot-dock;away.y=0;
+                caretaker.Chat(spot, away.normalized, KeyWindowSeconds);
+                lady?.RequestFreezerRepair(conversation);
+                var request=Resources.Load<AudioClip>("Audio/DinnerLadyFreezerRequest");
+                HudController.Instance?.SetBark("Dinner lady: Caretaker, have you got a minute, love? The freezer's making that noise again.",request!=null?request.length:5f);
             }
         }
         void LateUpdate()

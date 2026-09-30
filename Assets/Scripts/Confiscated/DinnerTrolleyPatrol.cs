@@ -14,6 +14,21 @@ namespace Confiscated
         public int Tellings {get;private set;}
         public int Collisions {get;private set;}
         Vector3 start;bool outbound=true;float waitUntil;bool announced,told;float tellReadyAt,warnedAt;AudioSource voice;
+        AudioSource freezerRequest;
+        public void RequestFreezerRepair(float conversationSeconds)
+        {
+            waitUntil=Mathf.Max(waitUntil,Time.time+conversationSeconds);
+            tellReadyAt=Mathf.Max(tellReadyAt,Time.time+conversationSeconds);
+            var clip=Resources.Load<AudioClip>("Audio/DinnerLadyFreezerRequest");if(clip==null)return;
+            if(freezerRequest==null)
+            {
+                freezerRequest=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);
+                freezerRequest.spatialBlend=1;freezerRequest.rolloffMode=AudioRolloffMode.Linear;freezerRequest.minDistance=8;freezerRequest.maxDistance=65;freezerRequest.dopplerLevel=0;
+                TalkingMouth.Register(freezerRequest);
+            }
+            if(voice!=null)voice.Stop();freezerRequest.clip=clip;freezerRequest.Play();
+            waitUntil=Mathf.Max(waitUntil,Time.time+clip.length);
+        }
         void Start(){start=transform.position;waitUntil=Time.time+3;if(visual!=null)visual.localRotation=Quaternion.Euler(0,180,0);}
         void Shout()
         {
@@ -29,6 +44,7 @@ namespace Confiscated
         /// <summary>She tells the caretaker as you pass her, even while she waits at either end of her round.</summary>
         void TellTale(Transform player)
         {
+            if(freezerRequest!=null&&freezerRequest.isPlaying)return;
             Vector3 d=player.position-transform.position;d.y=0;
             float dist=d.magnitude;
             if(dist>tellDistance+2){told=false;return;}
