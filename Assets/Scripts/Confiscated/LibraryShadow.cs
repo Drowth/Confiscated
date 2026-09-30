@@ -53,7 +53,7 @@ namespace Confiscated
         Vector3 goal;
         // Eyes are HDR to burn through the library darkness; from outside it they are toned down to match.
         const float EyeLift=4.2f;MaterialPropertyBlock eyeBlock;Color[] eyeColours;
-        /// <summary>The library shushes you the first time you walk in (once per session).</summary>
+        /// <summary>Tracks the first library entry; the former long entry shush is silent.</summary>
         public static bool Shushed {get;private set;}
         public static void ResetSession()=>Shushed=false;
         Vector3 lastPlayer;bool havePlayer;float alpha;AudioClip catchClip;
@@ -93,7 +93,7 @@ namespace Confiscated
             // A torch has to stay on it for a moment before it counts -- a quick sweep of the beam past it is forgiven.
             bool lit=inside&&Flat(at-transform.position)<=lightSense&&TorchLightsMe(player)&&Sight(player,at);
             litSeconds=lit?litSeconds+Time.deltaTime:0;
-            if(inside&&!Shushed){Shushed=true;var shush=Resources.Load<AudioClip>("Audio/LibraryShush");if(shush!=null)sting.PlayOneShot(shush,.9f);}
+            if(inside&&!Shushed)Shushed=true;
             // Out of the library: it forgets the player and goes back to drifting.
             if(!inside&&(Current==Phase.Notice||Current==Phase.Hunt))Wander();
             switch(Current)

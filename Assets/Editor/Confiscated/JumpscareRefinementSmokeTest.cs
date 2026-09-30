@@ -106,7 +106,17 @@ namespace Confiscated.EditorTools
                 }
                 if(stage==6)
                 {
-                    if(age<.6)return;
+                    var active=GameObject.Find("Caretaker caught close-up");
+                    var playing=active!=null?active.GetComponent<AudioSource>():null;
+                    if(!sampled&&playing!=null&&playing.isPlaying&&playing.time>playing.clip.length-1)
+                    {
+                        var scare=GameObject.Find("Caretaker caught close-up");Need(scare!=null,"caretaker remains through sound tail");
+                        var sound=scare.GetComponent<AudioSource>();Need(sound.isPlaying&&sound.time>sound.clip.length-1,"full sound tail still playing");
+                        Need(scare.GetComponentInChildren<RawImage>().enabled,"face stays visible through sound tail");
+                        Need(Mathf.Approximately(sound.volume,.8f),"sound tail is not faded early");sampled=true;
+                    }
+                    if(age<CaretakerCatchScare.Duration)return;
+                    Need(sampled,"observed full caretaker sound tail");
                     Need(GameObject.Find("Caretaker caught close-up")==null&&GameObject.Find("Caretaker lunge stage")==null,"caretaker stage and overlay cleaned up");
                     variant++;if(variant<4){Next(4);return;}
                     Need(GameManager.Instance.Current==GameManager.State.Caught,"real caretaker catch still ends run");

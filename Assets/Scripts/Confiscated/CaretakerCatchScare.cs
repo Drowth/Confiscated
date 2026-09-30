@@ -6,8 +6,10 @@ namespace Confiscated
     public sealed class CaretakerCatchScare : MonoBehaviour
     {
         public const float BreathBeat=.1f,LungeBeat=.32f,HitBeat=.28f,BlackBeat=.18f;
-        public const float ImpactAt=BreathBeat+LungeBeat,Duration=ImpactAt+HitBeat+BlackBeat;
+        public const float ImpactAt=BreathBeat+LungeBeat;
         const float SoundPeak=.23246f;
+        static float FaceEnds(AudioClip clip)=>Mathf.Max(ImpactAt+HitBeat,ImpactAt-SoundPeak+(clip!=null?clip.length:0));
+        public static float Duration=>FaceEnds(Resources.Load<AudioClip>("Audio/PlayerCaught"))+BlackBeat;
         /// <summary>Player preference: 1 (default) lunges the modelled head at the camera; 0 is the legacy drawing.</summary>
         public const string ModelledHeadKey="Caught3DHead";
         const string ModelledHeadResource="Art/CaretakerLungeHead3D";
@@ -64,7 +66,9 @@ namespace Confiscated
             var feel=FindFirstObjectByType<ChaseCamera>();float motion=feel!=null?feel.intensity:PlayerPrefs.GetFloat("Confiscated.CameraIntensity",1);
             var sound=SchoolAudio.Create(gameObject);sound.playOnAwake=false;sound.spatialBlend=0;sound.volume=.8f;
             sound.clip=Resources.Load<AudioClip>("Audio/PlayerCaught");
-            if(sound.clip!=null)sound.PlayScheduled(AudioSettings.dspTime+ImpactAt-SoundPeak);
+            float faceEnds=FaceEnds(sound.clip),duration=faceEnds+BlackBeat;
+            double started=AudioSettings.dspTime;
+            if(sound.clip!=null)sound.PlayScheduled(started+ImpactAt-SoundPeak);
             var canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=32000;
             var scaler=gameObject.AddComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,1000);scaler.matchWidthOrHeight=.5f;
             var bg=new GameObject("Dark backdrop",typeof(RectTransform),typeof(Image));bg.transform.SetParent(transform,false);
@@ -77,10 +81,9 @@ namespace Confiscated
                 var target=new RenderTexture(Mathf.Max(16,Screen.width),Mathf.Max(16,Screen.height),24);
                 var camera=BuildLungeRig(out var head);camera.targetTexture=target;
                 rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.offsetMin=rect.offsetMax=Vector2.zero;image.texture=target;
-                for(float elapsed=0;elapsed<Duration;elapsed+=Time.unscaledDeltaTime)
+                for(float elapsed=0;elapsed<duration;elapsed=(float)(AudioSettings.dspTime-started))
                 {
-                    image.enabled=elapsed>=BreathBeat&&elapsed<ImpactAt+HitBeat;
-                    sound.volume=.8f*(1-Mathf.Clamp01((elapsed-ImpactAt-HitBeat)/.08f));
+                    image.enabled=elapsed>=BreathBeat&&elapsed<faceEnds;
                     PoseLungeRig(camera,head,elapsed,motion);yield return null;
                 }
                 camera.targetTexture=null;Destroy(camera.transform.parent.gameObject);target.Release();Destroy(target);
@@ -89,11 +92,10 @@ namespace Confiscated
             rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(.5f,.5f);rect.anchoredPosition=new Vector2(0,-40);
             image.texture=texture;image.uvRect=new Rect(0,0,1,1);
             rect.sizeDelta=new Vector2(1000f*texture.width/texture.height,1000);
-            for(float elapsed=0;elapsed<Duration;elapsed+=Time.unscaledDeltaTime)
+            for(float elapsed=0;elapsed<duration;elapsed=(float)(AudioSettings.dspTime-started))
             {
                 float scale=LungeScale(elapsed);
-                image.enabled=elapsed>=BreathBeat&&elapsed<ImpactAt+HitBeat;
-                sound.volume=.8f*(1-Mathf.Clamp01((elapsed-ImpactAt-HitBeat)/.08f));
+                image.enabled=elapsed>=BreathBeat&&elapsed<faceEnds;
                 rect.localScale=Vector3.one*scale;
                 rect.anchoredPosition=new Vector2(0,Mathf.InverseLerp(.16f,MaxFaceScale,scale)*130);
                 rect.localRotation=Quaternion.Euler(0,0,Mathf.Lerp(-6,0,Mathf.Clamp01((elapsed-BreathBeat)/LungeBeat))*motion);
