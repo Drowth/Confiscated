@@ -12,7 +12,9 @@ namespace Confiscated
             public string Caption=>speaker+": "+text;
         }
         public static bool Active=>SchoolGameMode.Dark&&GameManager.Instance!=null&&GameManager.Instance.GetComponent<DarkModeController>()?.BlackedOut==true;
-        public static readonly Line PowerOut=new("Mr Reed","The power's gone. Keep calm. Smith, do you still have that torch I confiscated last week?","ReedPowerOut");
+        public static readonly Line PowerOut=new("Mr Reed","Keep calm, everyone. It's just a power cut.","ReedPowerOut");
+        // Smith's own thought straight after Reed's line (text only): Reed can't know where the torch is, Smith does.
+        public const string TorchThought="Smith: Perfect. I can get my stuff back in the dark! But first… my torch. It's still in my locker.";
         static readonly Dictionary<string,Line> replacements=new()
         {
             ["Caretaker: Smith, why aren't you in class? Show me your hall pass."]=new("Caretaker","Smith? What are you doing out here, the lights are out? go back to class!","CaretakerHallPass"),

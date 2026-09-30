@@ -77,8 +77,10 @@ namespace Confiscated
             }
             SetPower(0);FlickerTransitions++;BlackedOut=true;
             HudController.Instance?.SetStatus(LockerHint,12);
-            DarkModeDialogue.PlayWorldVoice(DarkModeDialogue.PowerOut);
-            HudController.Instance?.SetBark(DarkModeDialogue.PowerOut.Caption,12);
+            float said=DarkModeDialogue.PlayWorldVoice(DarkModeDialogue.PowerOut);
+            HudController.Instance?.SetBark(DarkModeDialogue.PowerOut.Caption,said+1);
+            yield return new WaitForSeconds(Mathf.Max(said,2.5f)+.4f);
+            HudController.Instance?.SetBark(DarkModeDialogue.TorchThought,8);
         }
         void CaptureLighting()
         {
