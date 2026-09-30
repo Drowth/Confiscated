@@ -32,6 +32,8 @@ namespace Confiscated
         bool requestedOpen, staffUsedDoor;
         float staffClearAt;
         bool closingBlocked;
+        bool playerClosing;
+        float staffReopenAt;
         float openAmount;
         // Seconds since a sprinting player barged the door open (DoorSlam), or -1. Drives a fast swing that bangs off the wall.
         float slamAge = -1;
@@ -80,6 +82,7 @@ namespace Confiscated
         {
             swing = transform.InverseTransformPoint(from).z <= 0 ? 1 : -1;
             requestedOpen = true; slamAge = 0; openAmount = 1;
+            playerClosing=false;staffReopenAt=0;
             doorSounds.PlaySlam();
             SchoolRunController.Instance?.PlayerOpenedDoor(this);
         }
@@ -118,7 +121,9 @@ namespace Confiscated
                 HudController.Instance?.SetStatus(runRequiredLevel > 0 ? "Unlocked. This door stays available." : "Unlocked. Find your phone before he comes back.", 3f);
             }
             else requestedOpen = !requestedOpen;
-            if(!requestedOpen)slamAge=-1;
+            playerClosing=!requestedOpen;
+            staffReopenAt=0;
+            if(playerClosing){slamAge=-1;staffUsedDoor=false;closingBlocked=false;}
             if (requestedOpen)
             {
                 SwingAwayFrom(player.transform.position);
@@ -147,6 +152,8 @@ namespace Confiscated
             if (LessonLocked) { staffPassing = false; requestedOpen = false; }
             // Nobody leaves by the main entrance until the escape itself swings it open.
             if (ExitGated && !escaped) { staffPassing = false; requestedOpen = false; }
+            // A deliberate player close wins over proximity: it can buy a moment during a chase.
+            if(playerClosing||Time.time<staffReopenAt){staffPassing=false;staffUsedDoor=false;}
             if(DetentionLocked||LessonLocked||ExitGated||run!=null&&(closedForRun||runRequiredLevel>0&&!IsUnlocked))staffUsedDoor=false;
             // Staff openings are temporary; requestedOpen records the player's persistent choice.
             // A short clearance delay avoids reversing the swing as staff leave the opening.
@@ -159,7 +166,7 @@ namespace Confiscated
             closingBlocked=!requestedOpen&&(staffPassing||staffUsedDoor);
             // Hold only while the player's body overlaps the doorway, not anywhere within interaction range.
             var player=run!=null&&run.period!=null?run.period.Player:null;
-            if (!DetentionLocked && !shouldOpen && openAmount > .1f && player != null)
+            if (!playerClosing && !DetentionLocked && !shouldOpen && openAmount > .1f && player != null)
             {
                 var body=player.GetComponent<CharacterController>();
                 float radius=body!=null?body.radius*Mathf.Max(player.transform.lossyScale.x,player.transform.lossyScale.z):.3f;
@@ -172,6 +179,7 @@ namespace Confiscated
             float previousAmount=openAmount;
             if (slamAge >= 0) { slamAge += Time.deltaTime; if (slamAge > SlamSeconds) slamAge = -1; }
             else openAmount = Mathf.MoveTowards(openAmount, shouldOpen ? 1f : 0f, Time.deltaTime * 3f);
+            if(playerClosing&&openAmount<=0){playerClosing=false;staffReopenAt=Time.time+1f;}
             doorSounds.Movement(previousAmount,openAmount);
             float fold = slamAge >= 0 ? SlamCurve(slamAge) : Mathf.SmoothStep(0, 1, openAmount);
             hinge.localRotation = closedRotation * Quaternion.Euler(0, swing * openAngle * fold, 0);
