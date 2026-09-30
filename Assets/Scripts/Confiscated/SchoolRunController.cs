@@ -60,7 +60,7 @@ namespace Confiscated
         /// retry scene reload; cleared when a new school day starts (GameManager.BeginSchoolDay).</summary>
         public static bool KeyEarned { get; set; }
         public const float KeyWindowSeconds = 15f;
-        bool keyWindowOffered,retryKeyWindowPending;
+        bool keyWindowOffered,retryKeyWindowPending,diningDoorOpened;
         /// <summary>The caretaker is at the serving hatch with his back to his parked trolley.</summary>
         public bool KeyWindowOpen => keyWindowOffered && caretaker != null && caretaker.ChatArrived;
         void Start()
@@ -181,6 +181,7 @@ namespace Confiscated
             bool hasOfficeKey=period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey);
             if(retryKeyWindowPending&&hasOfficeKey)
             {retryKeyWindowPending=false;caretaker.ResumeAfterDetention(5);}
+            if(diningDoorOpened)TryStartKeyDistraction();
             if (RoundStarted && !retryKeyWindowPending && Time.time >= pursuitPulse)
             {
                 pursuitPulse = Time.time + Mathf.Lerp(28, 12, Count / 5f);
@@ -196,6 +197,13 @@ namespace Confiscated
             // The hand-authored dining entrances share this scene naming convention.
             if(door==null||!door.name.StartsWith("Dining ",System.StringComparison.Ordinal))return;
             if(GameManager.Instance==null||!GameManager.Instance.IsPlaying)return;
+            diningDoorOpened=true;
+            TryStartKeyDistraction();
+        }
+        // Opening the door can precede the newsletter delivery or trolley parking on a fresh day.
+        // Keep the request until those prerequisites are ready instead of losing the one-shot interaction.
+        void TryStartKeyDistraction()
+        {
             bool hasOfficeKey=period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey);
             if (((!RoundStarted&&period.PapersDelivered)||retryKeyWindowPending) && !keyWindowOffered && TrolleyParked && !hasOfficeKey)
             {
@@ -208,13 +216,10 @@ namespace Confiscated
                 }
                 if(NavMesh.SamplePosition(spot,out var hatch,1.5f,NavMesh.AllAreas))spot=hatch.position;
                 float conversation=KeyWindowSeconds+Vector3.Distance(caretaker.transform.position,spot)/1.7f+10;
-                if(retryKeyWindowPending)
-                {
-                    retryKeyWindowPending=false;
-                    // Allow his walk to the hatch plus the full fifteen seconds facing away.
-                    caretaker.ResumeAfterDetention(conversation);
-                    pursuitPulse=Time.time+conversation;
-                }
+                retryKeyWindowPending=false;
+                // Protect the conversation on fresh days as well as retries.
+                caretaker.ResumeAfterDetention(conversation);
+                pursuitPulse=Time.time+conversation;
                 keyWindowOffered = true;
                 Vector3 away= lady!=null?lady.transform.position-spot:spot-dock;away.y=0;
                 caretaker.Chat(spot, away.normalized, KeyWindowSeconds);

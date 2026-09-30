@@ -29,7 +29,8 @@ namespace Confiscated
         readonly Queue<string> pending=new();
         float until;bool wasInLibrary;
         GameObject panel;Text text;
-        PlayerInteractor player;PlayerTorch torch;ChatterboxStudent chatterbox;
+        PlayerInteractor player;ChatterboxStudent chatterbox;
+        bool HasTorch=>player!=null&&player.GetComponent<PlayerInventory>()!=null&&player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.Torch);
 
         void Awake()=>Instance=this;
         void OnDestroy(){if(Instance==this)Instance=null;if(panel!=null)Destroy(panel.transform.root.gameObject);}
@@ -42,18 +43,23 @@ namespace Confiscated
             bool live=game!=null&&game.IsPlaying&&run!=null&&!ComicDialogue.IsActive&&!PauseMenu.IsOpen&&!SchoolTitleMenu.IsActive;
             if(live)
             {
-                if(player==null){player=run.period.Player;torch=player.GetComponentInChildren<PlayerTorch>();if(torch==null)torch=Object.FindFirstObjectByType<PlayerTorch>();chatterbox=Object.FindFirstObjectByType<ChatterboxStudent>();}
+                if(player==null){player=run.period.Player;chatterbox=Object.FindFirstObjectByType<ChatterboxStudent>();}
                 bool inLibrary=LibraryWindow.InLibrary(player.transform.position);
                 if(inLibrary&&!wasInLibrary)
                 {
-                    if(torch==null||!torch.HasTorch)Think(NoTorch);
+                    if(!HasTorch)Think(NoTorch);
                     if(!legendRecalled&&chatterbox!=null&&chatterbox.ToldRumour){legendRecalled=true;Think(Legend);}
                 }
                 wasInLibrary=inLibrary;
             }
             bool showing=panel!=null&&panel.activeSelf;
-            if(showing&&(Time.time>=until||!live)){panel.SetActive(false);showing=false;}
-            if(!showing&&live&&pending.Count>0)Show(pending.Dequeue());
+            if(showing&&(Time.time>=until||!live||Showing==NoTorch&&HasTorch)){panel.SetActive(false);showing=false;}
+            while(!showing&&live&&pending.Count>0)
+            {
+                var thought=pending.Dequeue();
+                if(thought==NoTorch&&HasTorch)continue;
+                Show(thought);showing=true;
+            }
         }
 
         void Show(string thought)
