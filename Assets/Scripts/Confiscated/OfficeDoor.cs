@@ -29,7 +29,8 @@ namespace Confiscated
         public bool IsUnlocked { get; private set; }
         public bool IsOpen => openAmount > .9f;
         DoorSounds doorSounds;
-        bool requestedOpen, openedForRound;
+        bool requestedOpen, staffUsedDoor;
+        float staffClearAt;
         float openAmount;
         // Seconds since a sprinting player barged the door open (DoorSlam), or -1. Drives a fast swing that bangs off the wall.
         float slamAge = -1;
@@ -129,22 +130,28 @@ namespace Confiscated
 
         void Update()
         {
-            bool staffPassing = caretaker != null && Vector3.Distance(caretaker.transform.position, transform.position) < 2.2f;
+            bool staffPassing = caretaker != null && caretaker.isActiveAndEnabled && Vector3.Distance(caretaker.transform.position, transform.position) < 2.2f;
             var run = SchoolRunController.Instance;
             if (run != null && run.secondStaff != null && run.secondStaff.enabled && Vector3.Distance(run.secondStaff.transform.position, transform.position) < 2.2f) staffPassing = true;
             if (staffPassing && !requestedOpen)
             {
-                var nearest = caretaker != null && Vector3.Distance(caretaker.transform.position, transform.position) < 2.2f ? caretaker.transform : run?.secondStaff?.transform;
+                var nearest = caretaker != null && caretaker.isActiveAndEnabled && Vector3.Distance(caretaker.transform.position, transform.position) < 2.2f ? caretaker.transform : run?.secondStaff?.transform;
                 if (nearest != null) SwingAwayFrom(nearest.position);
             }
             if (run != null && (closedForRun || runRequiredLevel > 0 && !IsUnlocked)) staffPassing = false;
             if (run != null && closedForRun) requestedOpen = false;
             if (LessonLocked) { staffPassing = false; requestedOpen = false; }
-            // Lesson doors swing open once when the round starts: stopping to open them mid-chase was where most bot runs died.
-            else if (closedDuringLessons && !openedForRound && run != null && run.RoundStarted) { openedForRound = true; requestedOpen = true; }
             // Nobody leaves by the main entrance until the escape itself swings it open.
             if (ExitGated && !escaped) { staffPassing = false; requestedOpen = false; }
-            bool shouldOpen = !DetentionLocked && (requestedOpen || staffPassing);
+            if(DetentionLocked||LessonLocked||ExitGated||run!=null&&(closedForRun||runRequiredLevel>0&&!IsUnlocked))staffUsedDoor=false;
+            // Staff openings are temporary; requestedOpen records the player's persistent choice.
+            // A short clearance delay avoids reversing the swing as staff leave the opening.
+            if(staffPassing&&!DetentionLocked&&!ExitGated){staffUsedDoor=true;staffClearAt=Time.time+.35f;}
+            if(staffUsedDoor&&!staffPassing&&Time.time>=staffClearAt)
+            {
+                staffUsedDoor=false;
+            }
+            bool shouldOpen = !DetentionLocked && (requestedOpen || staffPassing || staffUsedDoor);
             // Never close a moving leaf onto a player in the doorway.
             if (!DetentionLocked && !shouldOpen && openAmount > .1f && Camera.main != null)
             {
