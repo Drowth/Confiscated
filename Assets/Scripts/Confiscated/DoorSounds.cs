@@ -5,6 +5,7 @@ namespace Confiscated
     {
         public enum Kind { Generic,Office,Heavy,Main,Locker }
         public Kind kind;
+        public AudioClip openingOverride;
         public AudioSource Source {get;private set;}
         AudioSource unlockSource,slamSource;
         int openVariant,closeVariant;bool opening;
@@ -60,7 +61,7 @@ namespace Confiscated
                 case Kind.Locker:name="LockerDoor";break;
                 default:name=openVariant++%2==0?"GenericDoor":"GenericDoorOpen2";break;
             }
-            var clip=Resources.Load<AudioClip>("Audio/Doors/"+name);
+            var clip=open&&openingOverride!=null?openingOverride:Resources.Load<AudioClip>("Audio/Doors/"+name);
             if(clip!=null){Source.Stop();Source.clip=clip;Source.Play();}
         }
         void OnDestroy(){if(Source!=null)Destroy(Source);if(unlockSource!=null)Destroy(unlockSource);if(slamSource!=null)Destroy(slamSource);}

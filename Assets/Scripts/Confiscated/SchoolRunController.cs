@@ -22,6 +22,8 @@ namespace Confiscated
         public bool HasBoltCutters {get;private set;}
         public bool HasStoreKey {get;private set;}
         public bool CageOpen {get;set;}
+        public bool CorridorDoorsReleased {get;private set;}
+        public void ReleaseCorridorDoors()=>CorridorDoorsReleased=true;
         public bool CanOpenStorage(int level)=>RoundStarted&&(level<4||HasStoreKey);
         /// <summary>True during the classroom errand. Only the west wing is open until the run begins.</summary>
         public static bool LessonsInProgress => Instance != null && !Instance.RoundStarted;
@@ -47,6 +49,7 @@ namespace Confiscated
             if (secondStaff != null && secondStaff.GetComponent<StaffFootsteps>() == null)
                 secondStaff.gameObject.AddComponent<StaffFootsteps>();
             CopycatStudent.Install(this);
+            OfficeDoorRelease.Install();
             cartColliders = trolley != null ? trolley.GetComponentsInChildren<Collider>() : new Collider[0];
         }
         void OnDestroy() { if (Instance == this) Instance = null; }
@@ -200,7 +203,8 @@ namespace Confiscated
             string next;
             if (Count == 5) next = period.Player.HasPhone ? "Escape through the MAIN ENTRANCE." : "Retrieve your phone from your locker.";
             else if (!Has(0)) next = period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey)?"Use the OFFICE KEY. Recover your phone from the office box.":"Take the OFFICE KEY from the trolley in DINING HALL.";
-            else if (!HasBoltCutters&&!Has(1)) next = "Take bolt cutters from the caretaker workbench.";
+            else if (!CorridorDoorsReleased) next = "Press the BLUE DOORS button on the caretaker's workbench.";
+            else if (!HasBoltCutters&&!Has(1)) next = "Take bolt cutters from the checkout desk in EQUIPMENT.";
             else if (!Has(1)) next = CageOpen?"Find the CONFISCATED box in DINING HALL.":"Hold F on the dining cage chain.";
             else if (!Has(2)) next = "Find the CONFISCATED box in the LIBRARY.";
             else if (!Has(3)) next = "Find the CONFISCATED box in EQUIPMENT.";

@@ -16,7 +16,7 @@ namespace Confiscated
             if (kind == Kind.Exit) return run.ReadyToEscape ? "Hold F: escape with all five items" : "MAIN EXIT - Recover all five items and bring your phone.";
             if (Cleared) return null;
             if (kind == Kind.Shortcut) return "Hold F: push trolley aside (noisy)";
-            return run.HasBoltCutters && run.RoundStarted ? "Hold F: cut the property cage chain (noisy)" : "CHAINED - Bolt cutters needed. Check the caretaker workbench.";
+            return run.HasBoltCutters && run.RoundStarted ? "Hold F: cut the property cage chain (noisy)" : "CHAINED - Bolt cutters needed. Check EQUIPMENT.";
         }
         public override bool CanInteract(PlayerInteractor p)
         {
