@@ -123,7 +123,7 @@ namespace Confiscated
                 yield return null;
             }
             teacher.transform.rotation=towardPlayer;teacher.updateRotation=wasUpdatingRotation;
-            HudController.Instance?.SetStatus("Mr Reed: Master Smith. That had better not be a phone.",8);
+            HudController.Instance?.SetStatus("Mr Reed: Master Smith. Is that… a phone?",8);
             yield return new WaitUntil(() => !ComicDialogue.IsActive);
             yield return Travel(teacher,teacherAtDesk.position);
             ringer.Deactivate();Current=Phase.Confiscation;Objective();

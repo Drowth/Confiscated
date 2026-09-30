@@ -53,7 +53,7 @@ namespace Confiscated.EditorTools
                             var recorded=Resources.Load<AudioClip>("Audio/"+line.clip);
                             Check(recorded!=null&&recorded.channels==1&&recorded.length>0&&DarkModeDialogue.Voice(line)==recorded,"supplied mono recording selected: "+line.clip);
                         }
-                        Check(DarkModeDialogue.Resolve("Mr Reed: Master Smith. That had better not be a phone.")=="Mr Reed: Master Smith. That had better not be a phone.","unrelated recorded introduction preserved");
+                        Check(DarkModeDialogue.Resolve("Mr Reed: Master Smith. Is that… a phone?")=="Mr Reed: Master Smith. Is that… a phone?","unrelated recorded introduction preserved");
                         ComicDialogue.TrySpeak(Pass);Next();break;
                     case 2:
                         if(dt<.5)return;

@@ -66,7 +66,7 @@ namespace Confiscated
         // the text must match the string the game speaks exactly, so change both together.
         static readonly Dictionary<string,string> recordedLines=new()
         {
-            ["Master Smith. That had better not be a phone."]="ReedPhone",
+            ["Master Smith. Is that… a phone?"]="ReedPhone",
             ["No phones in my lesson. This is going to the caretaker's office."]="ReedNoPhones",
             ["Smith, since you seem so preoccupied, make yourself useful. Take these newsletters, put them in the tray outside the caretaker's office and be quick!"]="ReedNewsletters",
             ["Smith, why aren't you in class? Show me your hall pass."]="CaretakerHallPass",
