@@ -142,7 +142,7 @@ namespace Confiscated
                 yield return null;
             }
             phone.SetParent(teacher.transform,false);phone.localPosition=new Vector3(.25f,1.05f,-.15f);phone.localRotation=Quaternion.Euler(80,0,0);
-            HudController.Instance?.SetStatus("Mr Reed: No phones in my lesson. This is going to the caretaker's office.",6);
+            HudController.Instance?.SetStatus("Mr Reed: You know the rules, and this isn't the first time. It will be with the caretaker until the end of term.",6);
             var agent=caretaker.GetComponent<NavMeshAgent>();caretaker.GetComponentInChildren<CutoutMotion>()?.SetFrozen(false);
             var approach=StartCoroutine(Travel(agent,caretakerHandoff.position));
             yield return Travel(teacher,teacherHandoff.position);yield return approach;

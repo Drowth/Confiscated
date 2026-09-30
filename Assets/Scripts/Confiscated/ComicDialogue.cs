@@ -67,7 +67,7 @@ namespace Confiscated
         static readonly Dictionary<string,string> recordedLines=new()
         {
             ["Master Smith. Is that… a phone?"]="ReedPhone",
-            ["No phones in my lesson. This is going to the caretaker's office."]="ReedNoPhones",
+            ["You know the rules, and this isn't the first time. It will be with the caretaker until the end of term."]="ReedNoPhones",
             ["Smith, since you seem so preoccupied, make yourself useful. Take these newsletters, put them in the tray outside the caretaker's office and be quick!"]="ReedNewsletters",
             ["Smith, why aren't you in class? Show me your hall pass."]="CaretakerHallPass",
             ["Mr Reed's delivery? Straight to the tray and back. No other rooms, Smith."]="CaretakerDelivery",
