@@ -28,6 +28,16 @@ namespace Confiscated
             }
             if(voice!=null)voice.Stop();freezerRequest.clip=clip;freezerRequest.Play();
             waitUntil=Mathf.Max(waitUntil,Time.time+clip.length);
+            StartCoroutine(FreezerReply(clip.length+.25f));
+        }
+        System.Collections.IEnumerator FreezerReply(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            var run=SchoolRunController.Instance;
+            if(run==null||run.caretaker==null||!run.caretaker.Chatting||GameManager.Instance==null||!GameManager.Instance.IsPlaying)yield break;
+            var clip=Resources.Load<AudioClip>("Audio/CaretakerFreezerReply");
+            if(clip!=null&&run.caretaker.Say("CaretakerFreezerReply",true))
+                HudController.Instance?.SetBark("Caretaker: Just give it a swift kick, that's all I did last time. Fine, let me take a look.",clip.length);
         }
         void Start(){start=transform.position;waitUntil=Time.time+3;if(visual!=null)visual.localRotation=Quaternion.Euler(0,180,0);}
         void Shout()
