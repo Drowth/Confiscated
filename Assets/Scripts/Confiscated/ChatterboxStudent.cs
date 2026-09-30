@@ -165,7 +165,8 @@ namespace Confiscated
             if(ToldRumour&&player.GetComponent<Sweets>()?.Spend()==true)
             {
                 SweetsEaten++;distractedUntil=Time.time+munchSeconds;needsSpace=true;movePending=true;
-                HudController.Instance?.SetBark("Chatterbox: Ooh, sweets! Mmf... fanks!",2.5f);
+                var thanks=Resources.Load<AudioClip>("Audio/ChatterboxSweets");if(thanks!=null)speech.PlayOneShot(thanks);
+                HudController.Instance?.SetBark("Chatterbox: Ooh, sweets! Mmf... fanks!",thanks!=null?Mathf.Max(2.5f,thanks.length):2.5f);
                 return;
             }
             AudioClip clip;string words;
@@ -179,7 +180,8 @@ namespace Confiscated
         }
         void Talk(float distance)
         {
-            // Rooted until he's done. A short rolling hold, not the shared MovementLocked, so it can never outlive the chat.
+            // Rooted until he's done: that's his whole cost, and a sweet is the way past him.
+            // A short rolling hold, not the shared MovementLocked, so it can never outlive the chat.
             movement?.GlueFeet(.2f);
             int letters=Mathf.Min(Words.Length,Mathf.FloorToInt((Time.time-talkStart)*lettersPerSecond));
             Shown=Words.Substring(0,letters);
@@ -187,8 +189,10 @@ namespace Confiscated
             if(SchoolRunController.Instance.RoundStarted&&Time.time>=nextNoise){nextNoise=Time.time+noiseEvery;NoiseEvents.Emit(transform.position,noiseRadius,"chatterbox");}
             if(distance>cutOffDistance)
             {
-                // Walked off mid-sentence. A rumour cut short is told again next time.
-                CutOffs++;Hush();HudController.Instance?.SetBark("Chatterbox: Hey! I wasn't finished!",2f);
+                // Dragged off mid-sentence (a chat teleport, the coach's drill). A rumour cut short is told again next time.
+                CutOffs++;Hush();
+                var shout=Resources.Load<AudioClip>("Audio/ChatterboxNotFinished");if(shout!=null)speech.PlayOneShot(shout);
+                HudController.Instance?.SetBark("Chatterbox: Hey! I wasn't finished!",shout!=null?Mathf.Max(2f,shout.length):2f);
                 availableAt=Time.time+cooldownSeconds;needsSpace=true;return;
             }
             if(Time.time<talkEnds)return;
