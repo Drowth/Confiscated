@@ -9,6 +9,8 @@ namespace Confiscated
     {
         [Range(0,1)] public float chase=.28f;
         public float Level {get;private set;}
+        /// <summary>A one-off slam of the picture (the library shadow's jumpscare): takes hold at once, then fades on its own.</summary>
+        public static float Burst;
         public float ExitRed {get;private set;}
         public float ExitDistance {get;private set;}=float.PositiveInfinity;
         static readonly int Intensity=Shader.PropertyToID("_VhsIntensity"),Clock=Shader.PropertyToID("_VhsTime"),Red=Shader.PropertyToID("_VhsExitRed");
@@ -44,6 +46,7 @@ namespace Confiscated
             ExitRed=Mathf.MoveTowards(ExitRed,redTarget,Time.unscaledDeltaTime*.7f);
             // Snaps in when he turns on you, drains away as he gives up.
             Level=Mathf.MoveTowards(Level,target,Time.unscaledDeltaTime*(target>Level?4f:1.2f));
+            if(Burst>0){Level=Mathf.Max(Level,Burst);Burst=Mathf.MoveTowards(Burst,0,Time.unscaledDeltaTime*2.5f);}
             if(feel==null&&run!=null&&run.period!=null&&run.period.Player!=null)feel=run.period.Player.GetComponent<ChaseCamera>();
             // Honours the player's existing camera-motion setting (F8): reduced halves it, off removes it.
             Shader.SetGlobalFloat(Intensity,live?Level*(feel!=null?feel.intensity:1):0);

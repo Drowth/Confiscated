@@ -39,8 +39,11 @@ namespace Confiscated
         float phaseEnds,repath;int corner,target;NavMeshPath path;Material skin;AudioSource voice,breath,sting;bool wasRound,catching;
         // Sounds: its breathing (3D loop), "I see you" when it notices you, a wire-scrape sting when it comes into view,
         // and a scream for the catch jumpscare.
-        AudioClip seeYou,spotted,scream;float spottedReady,outOfViewSince;bool inView;
-        public const float JumpscareSeconds=.9f,SpottedCooldown=20,SpottedRange=14;
+        AudioClip seeYou,spotted,scream;float outOfViewSince=-999;bool inView;
+        // Out of sight at least this long before it counts as a fresh sighting -- so a flicker at a shelf edge doesn't
+        // re-trigger the sting, but every genuine new sighting does.
+        public const float JumpscareSeconds=2.05f,NewSightingSeconds=1,SpottedRange=14,TorchGraceSeconds=.75f;
+        float litSeconds,calmSince=-1;
         public int Spotted {get;private set;}
         public bool Catching=>catching;
         [Tooltip("Chance each wander goes to a window's pool of light instead of an alcove, so it can be glimpsed from the corridor.")]
@@ -77,13 +80,17 @@ namespace Confiscated
             // A new round (or a retry) starts it over in a random alcove.
             if(round&&!wasRound){Place(Random.Range(0,alcoves.Length));Wander();}wasRound=round;
             bool live=round&&GameManager.Instance!=null&&GameManager.Instance.IsPlaying&&!Paused&&!ComicDialogue.IsActive&&Time.timeScale>0;
-            if(!live){havePlayer=false;Visual(false);Breathe(false);return;}
-            if(catching){Visual(false);return;}
+            if(!live){havePlayer=false;litSeconds=0;LostSight();Visual(false);Breathe(false);return;}
+            if(catching){LostSight();return;}
             var player=run.period.Player;Vector3 at=player.transform.position;
             // Walking speed from the player's own movement; warps (a throw-out, a retry) are not movement.
             Vector3 step=at-lastPlayer;step.y=0;float speed=havePlayer&&Time.deltaTime>0?step.magnitude/Time.deltaTime:0;
-            PlayerSpeed=speed>12?0:Mathf.Lerp(PlayerSpeed,speed,Mathf.Clamp01(Time.deltaTime*12));lastPlayer=at;havePlayer=true;
+            // A released movement key must count as still immediately; smoothing used to carry a run into the shush.
+            PlayerSpeed=speed>12||speed<.08f?0:Mathf.Lerp(PlayerSpeed,speed,Mathf.Clamp01(Time.deltaTime*12));lastPlayer=at;havePlayer=true;
             bool inside=Inside(at);
+            // A torch has to stay on it for a moment before it counts -- a quick sweep of the beam past it is forgiven.
+            bool lit=inside&&Flat(at-transform.position)<=lightSense&&TorchLightsMe(player)&&Sight(player,at);
+            litSeconds=lit?litSeconds+Time.deltaTime:0;
             if(inside&&!Shushed){Shushed=true;var shush=Resources.Load<AudioClip>("Audio/LibraryShush");if(shush!=null)sting.PlayOneShot(shush,.9f);}
             // Out of the library: it forgets the player and goes back to drifting.
             if(!inside&&(Current==Phase.Notice||Current==Phase.Hunt))Wander();
@@ -100,33 +107,53 @@ namespace Confiscated
                 case Phase.Notice:
                     Face(at-transform.position);
                     // A moment to react, then any movement or light gives the player away.
-                    if(Time.time>=phaseEnds-noticeSeconds+reactionSeconds&&Gives(player,at)){Hunt();break;}
+                    if(Time.time>=phaseEnds-noticeSeconds+Mathf.Max(.65f,reactionSeconds)&&Gives(player,at)){Hunt();break;}
                     if(Time.time>=phaseEnds){PassedBy++;Current=Phase.Wander;repath=0;}
                     break;
                 case Phase.Hunt:
+                    // Freezing and dousing the torch still works after the shush: it hesitates, then loses interest.
+                    if(PlayerSpeed<=movingSpeed&&!Lit)
+                    {
+                        if(calmSince<0)calmSince=Time.time;
+                        if(Time.time-calmSince>=.65f){PassedBy++;Wander();break;}
+                        Face(at-transform.position);break;
+                    }
+                    calmSince=-1;
                     Follow(at,huntSpeed);
                     break;
                 case Phase.Gone:
                     if(Time.time>=phaseEnds)Wander();
                     break;
             }
-            if(Current==Phase.Hunt){Vector3 gap=at-transform.position;gap.y=0;if(gap.magnitude<catchRadius){StartCoroutine(Catch(player));return;}}
-            if(inside)Sighting(player);
+            if(Current==Phase.Hunt&&calmSince<0){Vector3 gap=at-transform.position;gap.y=0;if(gap.magnitude<catchRadius){StartCoroutine(Catch(player));return;}}
+            // From anywhere, not just inside: seen through a library window from the corridor counts too (the glass is
+            // on Ignore Raycast, so it doesn't block the sight line).
+            Sighting(player);
             Breathe(Current!=Phase.Gone);
             Visual(false);
         }
 
         public bool Inside(Vector3 p)=>room.Contains(new Vector3(p.x,room.center.y,p.z));
-        bool TorchOn(PlayerInteractor player){var torch=player.GetComponent<PlayerTorch>();return torch!=null&&torch.IsOn;}
+        bool TorchLightsMe(PlayerInteractor player)
+        {
+            var torch=player.GetComponent<PlayerTorch>();var beam=torch!=null?torch.Beam:null;
+            if(beam==null||!torch.IsOn)return false;
+            Vector3 from=beam.transform.position,to=transform.position+Vector3.up*1.45f;
+            Vector3 ray=to-from;
+            if(ray.sqrMagnitude>beam.range*beam.range||Vector3.Angle(beam.transform.forward,ray)>beam.spotAngle*.5f)return false;
+            return !Physics.Linecast(from,to,out var hit,~(1<<2),QueryTriggerInteraction.Ignore)||
+                hit.transform.IsChildOf(transform)||hit.transform.IsChildOf(player.transform);
+        }
         /// <summary>It can see the player, and the player is moving close by or showing a light.</summary>
         public bool Senses(PlayerInteractor player,Vector3 at)
         {
             float d=Flat(at-transform.position);
             if(d>Mathf.Max(moveSense,lightSense)||!Sight(player,at))return false;
-            return TorchOn(player)&&d<=lightSense||PlayerSpeed>movingSpeed&&d<=moveSense;
+            return Lit||PlayerSpeed>movingSpeed&&d<=moveSense;
         }
-        /// <summary>While it is shushing: any movement at all, or a light.</summary>
-        bool Gives(PlayerInteractor player,Vector3 at)=>(PlayerSpeed>movingSpeed||TorchOn(player))&&Sight(player,at);
+        /// <summary>While it is shushing: any movement at all, or a light held on it.</summary>
+        bool Gives(PlayerInteractor player,Vector3 at)=>(PlayerSpeed>movingSpeed||Lit)&&Sight(player,at);
+        bool Lit=>litSeconds>=TorchGraceSeconds;
         bool Sight(PlayerInteractor player,Vector3 at)
         {
             Vector3 eye=transform.position+Vector3.up*1.6f,head=at+Vector3.up*1.5f;
@@ -141,27 +168,77 @@ namespace Confiscated
             var windows=LibraryWindow.All;
             if(windows.Count>0&&Random.value<windowChance&&NavMesh.SamplePosition(windows[Random.Range(0,windows.Count)].pool,out var hit,1.5f,areaMask))
             {goal=hit.position;GoingToWindow=true;WindowVisits++;}
-            Current=Phase.Wander;repath=0;path?.ClearCorners();
+            Current=Phase.Wander;calmSince=-1;repath=0;path?.ClearCorners();
         }
         void Notice(Vector3 at)
         {
             Notices++;Current=Phase.Notice;phaseEnds=Time.time+noticeSeconds;Face(at-transform.position);
             if(seeYou!=null){voice.pitch=1;voice.PlayOneShot(seeYou,1);}else Whisper(1,1);
         }
-        void Hunt(){Current=Phase.Hunt;repath=0;phaseEnds=Time.time+1.6f;}
-        /// <summary>The jumpscare: it is suddenly right in your face, screaming; then you are out of the nearest door.</summary>
+        void Hunt(){Current=Phase.Hunt;calmSince=-1;repath=0;phaseEnds=Time.time+1.6f;}
+        /// <summary>
+        /// The jumpscare, in four beats, the shape every good one shares: a held breath, a rush, the hit, a hard cut.
+        /// 1. It is gone, its breathing stops, and a whisper comes from nowhere. 2. It appears dead ahead and rushes the
+        /// face in a third of a second, screaming, the lens punching wide. 3. The face fills the view: the picture shakes,
+        /// strobes and tears. 4. Black. Then you are out of the nearest door. Camera motion honours the F8 setting.
+        /// </summary>
+        const float WhisperBeat=.85f,LungeBeat=.32f,HoldBeat=.55f,BlackBeat=.33f,FaceDistance=.32f;
         System.Collections.IEnumerator Catch(PlayerInteractor player)
         {
             catching=true;Current=Phase.Hunt;
-            var body=player.GetComponent<CharacterController>();var legs=player.GetComponent<FirstPersonController>();
+            var body=player.GetComponent<CharacterController>();var legs=player.GetComponent<FirstPersonController>();var feel=player.GetComponent<ChaseCamera>();
             if(legs!=null){legs.MovementLocked=true;legs.LookLocked=true;}
-            var eye=player.ViewCamera.transform;Vector3 look=eye.forward;look.y=0;if(look.sqrMagnitude<.01f)look=transform.forward;look.Normalize();
-            // Eyes level with the player's, a hand's breadth from the face.
-            transform.SetPositionAndRotation(eye.position+look*.75f+Vector3.down*1.95f,Quaternion.LookRotation(-look));
-            alpha=.95f;Breathe(false);
-            if(scream!=null)sting.PlayOneShot(scream,1);else if(catchClip!=null)voice.PlayOneShot(catchClip,1);else TempAudio.PlayAt(TempAudio.Caught,eye.position,.8f);
-            HudController.Instance?.SetBark(CatchLine,2.5f);
-            yield return new WaitForSeconds(JumpscareSeconds);
+            var cam=player.ViewCamera;var eye=cam.transform;
+            Vector3 eyePos=eye.localPosition;Quaternion eyeRot=eye.localRotation;float near=cam.nearClipPlane,fov=cam.fieldOfView;
+            float motion=feel!=null?feel.intensity:1;
+            Vector3 look=eye.forward;look.y=0;if(look.sqrMagnitude<.01f)look=transform.forward;look.Normalize();
+            // 1. Nothing. The scare is the contrast, so the library goes quiet first.
+            Breathe(false);Show(0,1);if(animator!=null&&animator.runtimeAnimatorController!=null)animator.SetBool("Hunting",true);
+            var you=Resources.Load<AudioClip>("Audio/LibraryShadowYou");if(you!=null)sting.PlayOneShot(you,1);
+            yield return new WaitForSecondsRealtime(WhisperBeat);
+            // 2. The rush. The scream's attack sits .42 s into the recording: start there so its peak lands with the face.
+            if(scream!=null){sting.clip=scream;sting.time=.42f;sting.Play();}else if(catchClip!=null)voice.PlayOneShot(catchClip,1);else TempAudio.PlayAt(TempAudio.Caught,eye.position,.8f);
+            // The drawn face (Resources/Art/LibraryShadowScareFace) rushes the lens over the world, the way the caretaker's
+            // lunge head does; the rigged figure rushes underneath it. The figure alone is a black shape in a black room.
+            var face=ScareFaceOverride!=null?ScareFaceOverride:Resources.Load<Texture2D>(ScareFaceResource);
+            var overlay=BuildScareOverlay(face,out var backdrop,out var art,out var flash);
+            cam.nearClipPlane=.02f;
+            Quaternion level=Quaternion.Inverse(eye.parent.rotation)*Quaternion.LookRotation(look);
+            for(float t=0;t<LungeBeat;t+=Time.unscaledDeltaTime)
+            {
+                float k=Mathf.Pow(Mathf.Clamp01(t/LungeBeat),2.4f);
+                Pose(eye,look,Mathf.Lerp(3.5f,FaceDistance,k));Show(1,1+3*k);
+                eye.localRotation=Quaternion.Slerp(eyeRot,level,Mathf.Clamp01(t/.12f));
+                cam.fieldOfView=fov+motion*Mathf.Sin(k*Mathf.PI)*14;
+                if(art!=null){art.rectTransform.localScale=Vector3.one*Mathf.Lerp(.1f,1.25f,k);art.color=new Color(1,1,1,Mathf.Clamp01(t/.08f));}
+                yield return null;
+            }
+            // 3. The hit. Face filling the view, eyes burning, the picture rattling and strobing, the tape tearing.
+            HudController.Instance?.SetBark(CatchLine,2.5f);feel?.Kick(1);
+            if(backdrop!=null)backdrop.enabled=art!=null;
+            Vector3 rest=eye.localPosition;Quaternion faceRot=eye.localRotation;int frame=0;
+            for(float t=0;t<HoldBeat;t+=Time.unscaledDeltaTime,frame++)
+            {
+                float s=motion*(1-t/HoldBeat*.5f);
+                Pose(eye,look,FaceDistance+Mathf.Sin(t*90)*.02f*s);Show(1,4);HuntVhsEffect.Burst=1;
+                eye.localPosition=rest+new Vector3(Mathf.Sin(t*173)*.035f,Mathf.Sin(t*211)*.03f,0)*s;
+                eye.localRotation=faceRot*Quaternion.Euler(Mathf.Sin(t*151)*2.5f*s,Mathf.Sin(t*137)*2f*s,Mathf.Sin(t*191)*5f*s);
+                cam.fieldOfView=fov-6*s;
+                if(art!=null)
+                {
+                    // Still creeping closer, and rattling with the camera.
+                    art.rectTransform.localScale=Vector3.one*(1.25f+t/HoldBeat*.35f)*(1+Mathf.Sin(t*160)*.02f*s);
+                    art.rectTransform.anchoredPosition=new Vector2(Mathf.Sin(t*173)*22,-30+Mathf.Sin(t*211)*16)*s;
+                    art.rectTransform.localRotation=Quaternion.Euler(0,0,Mathf.Sin(t*191)*3*s);
+                }
+                flash.enabled=motion>0&&t<.28f&&frame%5==0;
+                yield return null;
+            }
+            // 4. Cut.
+            flash.enabled=true;Show(0,1);
+            yield return new WaitForSecondsRealtime(BlackBeat);
+            eye.localPosition=eyePos;eye.localRotation=eyeRot;cam.nearClipPlane=near;cam.fieldOfView=feel!=null?feel.BaseFov:fov;
+            Destroy(overlay);
             Vector3 at=player.transform.position;int door=0;float best=float.MaxValue;
             for(int i=0;i<exits.Length;i++){float d=Flat(entrances[i].position-at);if(d<best){best=d;door=i;}}
             if(SchoolRunController.Instance!=null&&SchoolRunController.Instance.ReturnToBox(LibraryItem)){ReturnedItems++;HudController.Instance?.SetStatus("The handheld game is back in its CONFISCATED box on the returns desk.",4);}
@@ -174,17 +251,58 @@ namespace Confiscated
             int far=0;best=-1;for(int i=0;i<alcoves.Length;i++){float d=Flat(alcoves[i].position-exits[door].position);if(d>best){best=d;far=i;}}
             Place(far);Current=Phase.Gone;phaseEnds=Time.time+goneSeconds;Catches++;catching=false;
         }
-        /// <summary>A scrape of wire the moment it comes into view (on screen, unobstructed, near); then not again for a while.</summary>
+        /// <summary>Root placed so its eyes (2 m up the rig) sit level with the player's, a given distance dead ahead.</summary>
+        void Pose(Transform eye,Vector3 look,float distance)=>transform.SetPositionAndRotation(eye.position+look*distance-Vector3.up*2f,Quaternion.LookRotation(-look));
+        /// <summary>Direct control of how much of it shows during the scare (Visual is skipped while catching).</summary>
+        void Show(float a,float eyeBoost)
+        {
+            alpha=a;if(skin!=null){var c=skin.GetColor("_BaseColor");c.a=a;skin.SetColor("_BaseColor",c);}
+            foreach(var r in silhouette)if(r!=null)r.enabled=a>.01f;
+            if(smoke!=null){var e=smoke.emission;e.enabled=a>.01f;e.rateOverTimeMultiplier=160;}
+            Eyes(a>.01f,eyeBoost);
+        }
+        public const string ScareFaceResource="Art/LibraryShadowScareFace";
+        /// <summary>Tests can stand in a face without adding the asset.</summary>
+        public static Texture ScareFaceOverride;
+        /// <summary>Above everything: a black backdrop (on from the hit), the face drawing, and a black flash for the strobe and the cut.</summary>
+        static GameObject BuildScareOverlay(Texture face,out UnityEngine.UI.Image backdrop,out UnityEngine.UI.RawImage art,out UnityEngine.UI.Image flash)
+        {
+            var g=new GameObject("Library shadow jumpscare",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler));
+            var c=g.GetComponent<Canvas>();c.renderMode=RenderMode.ScreenSpaceOverlay;c.sortingOrder=32000;
+            var scaler=g.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,1000);scaler.matchWidthOrHeight=.5f;
+            backdrop=Sheet("Backdrop");art=null;
+            if(face!=null)
+            {
+                var a=new GameObject("Face",typeof(RectTransform),typeof(UnityEngine.UI.RawImage));a.transform.SetParent(g.transform,false);
+                art=a.GetComponent<UnityEngine.UI.RawImage>();art.texture=face;art.raycastTarget=false;art.color=new Color(1,1,1,0);
+                var r=art.rectTransform;r.anchorMin=r.anchorMax=r.pivot=new Vector2(.5f,.5f);r.anchoredPosition=new Vector2(0,-30);
+                r.sizeDelta=new Vector2(1000f*face.width/face.height,1000);r.localScale=Vector3.one*.1f;
+            }
+            flash=Sheet("Flash");
+            return g;
+            UnityEngine.UI.Image Sheet(string name)
+            {
+                var s=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));s.transform.SetParent(g.transform,false);
+                var r=s.GetComponent<RectTransform>();r.anchorMin=Vector2.zero;r.anchorMax=Vector2.one;r.offsetMin=r.offsetMax=Vector2.zero;
+                var image=s.GetComponent<UnityEngine.UI.Image>();image.color=Color.black;image.raycastTarget=false;image.enabled=false;return image;
+            }
+        }
+        /// <summary>A scrape of wire, once, each time it comes into view (on screen, unobstructed, near) -- not looped
+        /// while you keep looking, but every separate sighting gets it.</summary>
         void Sighting(PlayerInteractor player)
         {
-            if(Current==Phase.Gone||spotted==null)return;
+            if(spotted==null)return;
+            if(Current==Phase.Gone){LostSight();return;}
             var cam=player.ViewCamera;Vector3 chest=transform.position+Vector3.up*1.4f;Vector3 v=cam.WorldToViewportPoint(chest);
             bool seen=v.z>0&&v.z<SpottedRange&&v.x>.1f&&v.x<.9f&&v.y>.05f&&v.y<.95f&&
                 (!Physics.Linecast(cam.transform.position,chest,out var hit,~(1<<2),QueryTriggerInteraction.Ignore)||hit.transform.IsChildOf(transform)||hit.transform.IsChildOf(player.transform));
-            if(seen&&!inView&&Time.time>=spottedReady&&Time.time-outOfViewSince>6){Spotted++;spottedReady=Time.time+SpottedCooldown;sting.PlayOneShot(spotted,.8f);}
+            if(seen&&!inView&&Time.time-outOfViewSince>=NewSightingSeconds){Spotted++;sting.PlayOneShot(spotted,.8f);}
             if(!seen&&inView)outOfViewSince=Time.time;
             inView=seen;
         }
+        /// <summary>Whenever the sighting check isn't running (you left the library, a dialogue, a catch), it's out of
+        /// sight -- otherwise the next time you see it would count as the same old sighting and stay silent.</summary>
+        void LostSight(){if(inView){inView=false;outOfViewSince=Time.time;}}
         void Breathe(bool on)
         {
             if(breath==null||breath.clip==null)return;
@@ -228,9 +346,13 @@ namespace Confiscated
             }
             // Eyes stay lit (so it can be spotted in the dark) and blink now and then.
             bool blink=Current!=Phase.Hunt&&Mathf.PerlinNoise(Time.time*1.3f,transform.position.x)>.8f;
-            foreach(var e in eyes)if(e!=null)e.enabled=Current!=Phase.Gone&&!blink;
+            Eyes(Current!=Phase.Gone&&!blink,1);
+        }
+        void Eyes(bool on,float boost)
+        {
+            foreach(var e in eyes)if(e!=null)e.enabled=on;
             if(eyeColours==null){eyeColours=new Color[eyes.Length];for(int i=0;i<eyes.Length;i++)eyeColours[i]=eyes[i]!=null?eyes[i].sharedMaterial.GetColor("_BaseColor"):Color.white;eyeBlock=new MaterialPropertyBlock();}
-            float tone=Mathf.Pow(2f,(LibraryDarkness.Weight-1)*EyeLift);
+            float tone=Mathf.Pow(2f,(LibraryDarkness.Weight-1)*EyeLift)*boost;
             for(int i=0;i<eyes.Length;i++)if(eyes[i]!=null){eyes[i].GetPropertyBlock(eyeBlock);var c=eyeColours[i]*tone;c.a=eyeColours[i].a;eyeBlock.SetColor("_BaseColor",c);eyes[i].SetPropertyBlock(eyeBlock);}
         }
         static float Flat(Vector3 v){v.y=0;return v.magnitude;}
