@@ -14,8 +14,10 @@ namespace Confiscated
         static readonly List<AudioSource> warnings=new();
         static readonly float[] levels={1,1,1};
         static SchoolAudio instance;
-        float duck=1;
+        float duck=1,scareUntil=-1;
         public static float MusicDuck=>instance!=null?instance.duck:1;
+        public static void DuckForScare(float seconds)
+        {if(instance!=null)instance.scareUntil=Mathf.Max(instance.scareUntil,Time.unscaledTime+seconds);}
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset(){mixer=null;instance=null;warnings.Clear();for(int i=0;i<3;i++){groups[i]=null;levels[i]=Mathf.Clamp01(PlayerPrefs.GetFloat("Confiscated.Audio."+(Channel)i,1));}}
@@ -75,6 +77,7 @@ namespace Confiscated
                     if(AudibleWarning(warnings[i],player.transform.position))target=Mathf.Min(target,.3f);
                 }
             }
+            if(Time.unscaledTime<scareUntil)target=Mathf.Min(target,.08f);
             // Quick enough to expose a warning's onset; recover slowly to avoid pumping between footsteps.
             float next=Mathf.MoveTowards(duck,target,Time.unscaledDeltaTime*(target<duck?6: .65f));
             if(!Mathf.Approximately(next,duck)){duck=next;Apply(Channel.Music);}

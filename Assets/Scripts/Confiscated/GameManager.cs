@@ -131,8 +131,7 @@ namespace Confiscated
                 SchoolRunController.Instance?.PauseStaff();
                 schoolPeriod?.StopAllCoroutines();
                 EndRound();
-                CaretakerCatchScare.Play(captor);
-                PlayCaughtSound();
+                if(!CaretakerCatchScare.Play(captor))PlayCaughtSound();
                 HudController.Instance?.SetStatus(null);
                 HudController.Instance?.SetObjective("RUN ENDED");
                 int count = SchoolRunController.Instance != null ? SchoolRunController.Instance.Count : 0;

@@ -186,6 +186,7 @@ namespace Confiscated
         System.Collections.IEnumerator Catch(PlayerInteractor player)
         {
             catching=true;Current=Phase.Hunt;
+            SchoolAudio.DuckForScare(JumpscareSeconds);
             var body=player.GetComponent<CharacterController>();var legs=player.GetComponent<FirstPersonController>();var feel=player.GetComponent<ChaseCamera>();
             if(legs!=null){legs.MovementLocked=true;legs.LookLocked=true;}
             var cam=player.ViewCamera;var eye=cam.transform;
@@ -193,15 +194,18 @@ namespace Confiscated
             float motion=feel!=null?feel.intensity:1;
             Vector3 look=eye.forward;look.y=0;if(look.sqrMagnitude<.01f)look=transform.forward;look.Normalize();
             // 1. Nothing. The scare is the contrast, so the library goes quiet first.
-            Breathe(false);Show(0,1);if(animator!=null&&animator.runtimeAnimatorController!=null)animator.SetBool("Hunting",true);
+            if(breath!=null){breath.Stop();breath.volume=0;}voice.Stop();sting.Stop();sting.volume=1;
+            Show(0,1);if(animator!=null&&animator.runtimeAnimatorController!=null)animator.SetBool("Hunting",true);
             var you=Resources.Load<AudioClip>("Audio/LibraryShadowYou");if(you!=null)sting.PlayOneShot(you,1);
-            yield return new WaitForSecondsRealtime(WhisperBeat);
-            // 2. The rush. The scream's attack sits .42 s into the recording: start there so its peak lands with the face.
-            if(scream!=null){sting.clip=scream;sting.time=.42f;sting.Play();}else if(catchClip!=null)voice.PlayOneShot(catchClip,1);else TempAudio.PlayAt(TempAudio.Caught,eye.position,.8f);
-            // The drawn face (Resources/Art/LibraryShadowScareFace) rushes the lens over the world, the way the caretaker's
-            // lunge head does; the rigged figure rushes underneath it. The figure alone is a black shape in a black room.
-            var face=ScareFaceOverride!=null?ScareFaceOverride:Resources.Load<Texture2D>(ScareFaceResource);
+            for(float t=0;t<WhisperBeat;t+=Time.unscaledDeltaTime)
+            {sting.volume=1-Mathf.Clamp01((t-WhisperBeat+.08f)/.08f);yield return null;}
+            // 2. Measured peak at .731 s: start .32 s before it, so the strongest hit lands at face arrival.
+            sting.Stop();sting.volume=1;
+            if(scream!=null){sting.clip=scream;sting.time=Mathf.Clamp(.731375f-LungeBeat,0,Mathf.Max(0,scream.length-.01f));sting.Play();}else if(catchClip!=null)voice.PlayOneShot(catchClip,1);else TempAudio.PlayAt(TempAudio.Caught,eye.position,.8f);
+            // The generated head moves in depth on a private 3D stage. No flat face is used for the catch.
+            var face=ScareFaceOverride;
             var overlay=BuildScareOverlay(face,out var backdrop,out var art,out var flash);
+            var model=overlay.GetComponent<LibraryShadowScareHead>();
             cam.nearClipPlane=.02f;
             Quaternion level=Quaternion.Inverse(eye.parent.rotation)*Quaternion.LookRotation(look);
             for(float t=0;t<LungeBeat;t+=Time.unscaledDeltaTime)
@@ -210,33 +214,40 @@ namespace Confiscated
                 Pose(eye,look,Mathf.Lerp(3.5f,FaceDistance,k));Show(1,1+3*k);
                 eye.localRotation=Quaternion.Slerp(eyeRot,level,Mathf.Clamp01(t/.12f));
                 cam.fieldOfView=fov+motion*Mathf.Sin(k*Mathf.PI)*14;
-                if(art!=null){art.rectTransform.localScale=Vector3.one*Mathf.Lerp(.1f,1.25f,k);art.color=new Color(1,1,1,Mathf.Clamp01(t/.08f));}
+                if(model!=null)model.Pose(k,0,motion);
+                else if(art!=null){art.rectTransform.localScale=Vector3.one*Mathf.Lerp(.1f,1.25f,k);art.color=new Color(1,1,1,Mathf.Clamp01(t/.08f));}
                 yield return null;
             }
             // 3. The hit. Face filling the view, eyes burning, the picture rattling and strobing, the tape tearing.
             HudController.Instance?.SetBark(CatchLine,2.5f);feel?.Kick(1);
             if(backdrop!=null)backdrop.enabled=art!=null;
-            Vector3 rest=eye.localPosition;Quaternion faceRot=eye.localRotation;int frame=0;
-            for(float t=0;t<HoldBeat;t+=Time.unscaledDeltaTime,frame++)
+            Vector3 rest=eye.localPosition;Quaternion faceRot=eye.localRotation;
+            for(float t=0;t<HoldBeat;t+=Time.unscaledDeltaTime)
             {
                 float s=motion*(1-t/HoldBeat*.5f);
                 Pose(eye,look,FaceDistance+Mathf.Sin(t*90)*.02f*s);Show(1,4);HuntVhsEffect.Burst=1;
                 eye.localPosition=rest+new Vector3(Mathf.Sin(t*173)*.035f,Mathf.Sin(t*211)*.03f,0)*s;
                 eye.localRotation=faceRot*Quaternion.Euler(Mathf.Sin(t*151)*2.5f*s,Mathf.Sin(t*137)*2f*s,Mathf.Sin(t*191)*5f*s);
                 cam.fieldOfView=fov-6*s;
-                if(art!=null)
+                if(model!=null)model.Pose(1,t,motion);
+                else if(art!=null)
                 {
                     // Still creeping closer, and rattling with the camera.
                     art.rectTransform.localScale=Vector3.one*(1.25f+t/HoldBeat*.35f)*(1+Mathf.Sin(t*160)*.02f*s);
-                    art.rectTransform.anchoredPosition=new Vector2(Mathf.Sin(t*173)*22,-30+Mathf.Sin(t*211)*16)*s;
+                    art.rectTransform.anchoredPosition=new Vector2(Mathf.Sin(t*173)*22*s,-30+Mathf.Sin(t*211)*16*s);
                     art.rectTransform.localRotation=Quaternion.Euler(0,0,Mathf.Sin(t*191)*3*s);
                 }
-                flash.enabled=motion>0&&t<.28f&&frame%5==0;
+                // One brief interruption after the face has registered; independent of refresh rate.
+                flash.enabled=motion>.75f&&t>=.16f&&t<.20f;
                 yield return null;
             }
             // 4. Cut.
             flash.enabled=true;Show(0,1);
-            yield return new WaitForSecondsRealtime(BlackBeat);
+            for(float t=0;t<BlackBeat;t+=Time.unscaledDeltaTime)
+            {
+                sting.volume=1-Mathf.Clamp01(t/.08f);yield return null;
+            }
+            sting.Stop();sting.volume=1;voice.Stop();HuntVhsEffect.Burst=0;
             eye.localPosition=eyePos;eye.localRotation=eyeRot;cam.nearClipPlane=near;cam.fieldOfView=feel!=null?feel.BaseFov:fov;
             Destroy(overlay);
             Vector3 at=player.transform.position;int door=0;float best=float.MaxValue;
@@ -271,12 +282,14 @@ namespace Confiscated
             var c=g.GetComponent<Canvas>();c.renderMode=RenderMode.ScreenSpaceOverlay;c.sortingOrder=32000;
             var scaler=g.GetComponent<UnityEngine.UI.CanvasScaler>();scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,1000);scaler.matchWidthOrHeight=.5f;
             backdrop=Sheet("Backdrop");art=null;
-            if(face!=null)
+            bool modelled=LibraryShadowScareHead.Available;
+            if(modelled||face!=null)
             {
                 var a=new GameObject("Face",typeof(RectTransform),typeof(UnityEngine.UI.RawImage));a.transform.SetParent(g.transform,false);
                 art=a.GetComponent<UnityEngine.UI.RawImage>();art.texture=face;art.raycastTarget=false;art.color=new Color(1,1,1,0);
                 var r=art.rectTransform;r.anchorMin=r.anchorMax=r.pivot=new Vector2(.5f,.5f);r.anchoredPosition=new Vector2(0,-30);
-                r.sizeDelta=new Vector2(1000f*face.width/face.height,1000);r.localScale=Vector3.one*.1f;
+                if(modelled)g.AddComponent<LibraryShadowScareHead>().Build(art);
+                else {r.sizeDelta=new Vector2(1000f*face.width/face.height,1000);r.localScale=Vector3.one*.1f;}
             }
             flash=Sheet("Flash");
             return g;

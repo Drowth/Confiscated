@@ -179,9 +179,9 @@ namespace Confiscated.EditorTools
         }
 
         [MenuItem(Toggle)]
-        public static void Switch() { PlayerPrefs.SetInt(CaretakerCatchScare.ModelledHeadKey, PlayerPrefs.GetInt(CaretakerCatchScare.ModelledHeadKey, 0) == 1 ? 0 : 1); PlayerPrefs.Save(); }
+        public static void Switch() { PlayerPrefs.SetInt(CaretakerCatchScare.ModelledHeadKey, PlayerPrefs.GetInt(CaretakerCatchScare.ModelledHeadKey, 1) == 1 ? 0 : 1); PlayerPrefs.Save(); }
         [MenuItem(Toggle, true)]
-        public static bool SwitchState() { Menu.SetChecked(Toggle, PlayerPrefs.GetInt(CaretakerCatchScare.ModelledHeadKey, 0) == 1); return true; }
+        public static bool SwitchState() { Menu.SetChecked(Toggle, PlayerPrefs.GetInt(CaretakerCatchScare.ModelledHeadKey, 1) == 1); return true; }
 
         /// <summary>Dead-on orthographic view, one head-height tall, for measuring where the eyes are.</summary>
         [MenuItem("Confiscated/Caught Sequence/Capture Head Front Orthographic")]
