@@ -49,7 +49,6 @@ namespace Confiscated
             if (secondStaff != null && secondStaff.GetComponent<StaffFootsteps>() == null)
                 secondStaff.gameObject.AddComponent<StaffFootsteps>();
             CopycatStudent.Install(this);
-            OfficeDoorRelease.Install();
             cartColliders = trolley != null ? trolley.GetComponentsInChildren<Collider>() : new Collider[0];
         }
         void OnDestroy() { if (Instance == this) Instance = null; }
