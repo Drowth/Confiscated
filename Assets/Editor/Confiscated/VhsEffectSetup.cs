@@ -101,8 +101,8 @@ namespace Confiscated.EditorTools
                     case 0:
                         if (now - at < 1.5) return;
                         Need(Effect != null, "effect driver is attached to the run");
-                        Need(HuntVhsEffect.TargetFor(CaretakerAI.State.Patrol, 1, .75f, 0) == 0 && HuntVhsEffect.TargetFor(CaretakerAI.State.Frozen, 1, .75f, 0) == 0 && HuntVhsEffect.TargetFor(CaretakerAI.State.Investigate, 1, .75f, 0) == 0, "patrolling, frozen and checking a noise leave the picture clean");
-                        Need(Effect.chase==.28f&&Effect.search==.1f,"chase distortion is restrained and search is lighter");
+                        Need(!HuntVhsEffect.ActivelyChased(R), "nobody is chasing during the lesson");
+                        Need(Effect.chase==.28f,"chase distortion is restrained");
                         Need(Effect.Level == 0 && Global == 0, "picture is clean during the lesson");
                         ScreenCapture.CaptureScreenshot(Shots + "clean.png");
                         // The run must be live for him to hunt; start it the way a chase retry does.
@@ -120,7 +120,7 @@ namespace Confiscated.EditorTools
                     case 4:
                         if (R.caretaker.Current != CaretakerAI.State.Search) Force("EnterSearch");
                         if (now - at < 1.2) return;
-                        Need(Mathf.Abs(Effect.Level-.1f)<.02f, "search: effect eases to its searching strength (" + Effect.Level.ToString("F2") + ")");
+                        Need(Effect.Level<.02f, "search: the picture clears once he stops chasing (" + Effect.Level.ToString("F2") + ")");
                         ScreenCapture.CaptureScreenshot(Shots + "search.png"); R.caretaker.Freeze(); Next(5); break;
                     case 5:
                         if (now - at < 1.6) return;

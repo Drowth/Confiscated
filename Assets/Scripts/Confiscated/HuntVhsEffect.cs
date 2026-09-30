@@ -3,14 +3,13 @@ using UnityEngine.AI;
 namespace Confiscated
 {
     /// <summary>
-    /// Pursuit distortion becomes persistent after the fourth recovery. The last walk to the exit washes the tape red.
+    /// Pursuit distortion, only while the caretaker or Mr Reed is actively chasing. The last walk to the exit washes the tape red.
     /// </summary>
     public sealed class HuntVhsEffect : MonoBehaviour
     {
-        [Range(0,1)] public float chase=.28f,search=.1f,investigate=0f;
+        [Range(0,1)] public float chase=.28f;
         public float Level {get;private set;}
         public float ExitRed {get;private set;}
-        public bool FinaleStarted {get;private set;}
         public float ExitDistance {get;private set;}=float.PositiveInfinity;
         static readonly int Intensity=Shader.PropertyToID("_VhsIntensity"),Clock=Shader.PropertyToID("_VhsTime"),Red=Shader.PropertyToID("_VhsExitRed");
         ChaseCamera feel;
@@ -19,15 +18,13 @@ namespace Confiscated
         float nextPath;
         void Awake(){exitPath=new NavMeshPath();}
         public static float RedForDistance(float distance)=>Mathf.SmoothStep(0,1,Mathf.InverseLerp(65,3,distance));
-        public static float TargetFor(CaretakerAI.State state,float chase,float search,float investigate)=>
-            state==CaretakerAI.State.Chase?chase:state==CaretakerAI.State.Search?search:state==CaretakerAI.State.Investigate?investigate:0;
+        static bool Chasing(CaretakerAI staff)=>staff!=null&&staff.enabled&&staff.Current==CaretakerAI.State.Chase;
+        public static bool ActivelyChased(SchoolRunController run)=>run!=null&&(Chasing(run.caretaker)||Chasing(run.secondStaff));
         void Update()
         {
             var run=SchoolRunController.Instance;var game=GameManager.Instance;
             bool live=run!=null&&run.caretaker!=null&&run.caretaker.enabled&&game!=null&&game.IsPlaying&&!ComicDialogue.IsActive;
-            float target=live?TargetFor(run.caretaker.Current,chase,search,investigate):0;
-            if(run!=null&&run.RoundStarted&&run.Count>=4)FinaleStarted=true;
-            if(live&&FinaleStarted)target=Mathf.Max(target,.22f);
+            float target=live&&ActivelyChased(run)?chase:0;
             if(live&&run.ReadyToEscape&&Time.unscaledTime>=nextPath)
             {
                 nextPath=Time.unscaledTime+.25f;

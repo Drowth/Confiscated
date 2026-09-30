@@ -101,14 +101,14 @@ namespace Confiscated.EditorTools
                         foreach(var storageDoor in Object.FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None))if(storageDoor.runRequiredLevel>0)storageDoor.Interact(P);
                         Take(1);Take(2);Take(3);Need(R.Count==4,"four distinct room boxes recovered");Next(4);break;
                     case 4:
-                        Need(V.FinaleStarted&&V.Level>=.21f,"VHS persists at 4/5 while caretaker is not chasing");
+                        Need(V.Level<.01f,"no VHS at 4/5 while nobody is chasing");
                         Need(V.ExitRed<.01f,"red exit effect waits for 5/5");
                         ScreenCapture.CaptureScreenshot(Folder+"four-of-five-vhs.png");
                         Next(41);break;
                     case 41:
                         R.PenalizeCatch();Need(Item(3).visual.activeSelf,"lost belonging returns to its box");Next(5);break;
                     case 5:
-                        Need(V.FinaleStarted&&V.Level>=.21f,"fourth-item VHS stays latched after a lost belonging");
+                        Need(V.Level<.01f,"still no VHS after a lost belonging while nobody is chasing");
                         Take(3);Take(4);Need(R.ReadyToEscape,"all five belongings enable escape");
                         Warp(new Vector3(-33.8f,0,78),new Vector3(-33.8f,1.5f,72));Next(6);break;
                     case 6:

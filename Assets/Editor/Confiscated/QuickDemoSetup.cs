@@ -23,7 +23,7 @@ namespace Confiscated.EditorTools
             var title=UnityEngine.Object.FindFirstObjectByType<SchoolTitleMenu>();
             if(title!=null){title.entranceSeconds=4;EditorUtility.SetDirty(title);}
             foreach(var vhs in UnityEngine.Object.FindObjectsByType<HuntVhsEffect>(FindObjectsInactive.Include,FindObjectsSortMode.None))
-            {vhs.chase=.28f;vhs.search=.1f;EditorUtility.SetDirty(vhs);}
+            {vhs.chase=.28f;EditorUtility.SetDirty(vhs);}
             var pupil=run.GetComponentInChildren<ChatterboxStudent>(true);
             if(pupil==null)
             {
