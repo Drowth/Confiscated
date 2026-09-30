@@ -42,10 +42,14 @@ namespace Confiscated
         // and are only picked when no line has a clip at all.
         static readonly string[] lineTexts=
         {
-            "Have you seen my yo-yo? It glows in the dark! Anyway... where are you going?",
+            "Psst, Smith! The caretaker's left a spare key on his trolley. I saw it this morning! Anyway... shouldn't you be in class?",
             "Did you see Mr Reed today? He looks funny, doesn't he? Anyway... where are you going?"
         };
-        static readonly string[] lineClips={"ChatterboxYoYo","ChatterboxMrReed"};
+        static readonly string[] lineClips={"ChatterboxSpareKey","ChatterboxMrReed"};
+        const int SpareKeyLine=0;
+        // The trolley-key tip only makes sense while the office key is still on the trolley.
+        static bool KeyStillOnTrolley{get{var run=SchoolRunController.Instance;var office=GameManager.Instance!=null?GameManager.Instance.officeMission:null;
+            return run!=null&&!run.RoundStarted&&office!=null&&!office.HasKey&&!office.OfficeUnlocked;}}
         // His first chat (once; a chase retry already knows): the only place the library shadow's rules are given (Docs/LibraryMaze.md).
         public const string RumourLine="My brother says something lives in the library. Stand still with your torch off and it walks right past you. Move, and... GONE! Anyway... where are you going?";
         const string RumourClip="ChatterboxLibraryRumour";
@@ -68,7 +72,11 @@ namespace Confiscated
                 lastLine=lastLine==0?1:0;clip=DarkModeDialogue.Voice(DarkModeDialogue.Chatterbox[lastLine]);return lastLine;
             }
             var recorded=new List<int>();var all=new List<int>();
-            for(int i=0;i<lineTexts.Length;i++){all.Add(i);if(Resources.Load<AudioClip>("Audio/"+lineClips[i])!=null)recorded.Add(i);}
+            for(int i=0;i<lineTexts.Length;i++)
+            {
+                if(i==SpareKeyLine&&!KeyStillOnTrolley)continue;
+                all.Add(i);if(Resources.Load<AudioClip>("Audio/"+lineClips[i])!=null)recorded.Add(i);
+            }
             var pool=recorded.Count>0?recorded:all;
             if(pool.Count>1)pool.Remove(lastLine);
             lastLine=pool[Random.Range(0,pool.Count)];
