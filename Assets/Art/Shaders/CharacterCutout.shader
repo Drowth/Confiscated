@@ -145,9 +145,9 @@ Shader "Confiscated/Character Cutout"
                     float2(uv.x, eye.y - eye.w * 1.7)).rgb * _BaseColor.rgb;
                 art = lerp(art, skin, patch * lid * _CopycatBlink);
                 float crease = abs(d.y - (-.08 + .16 * d.x * d.x));
-                float line = (1 - smoothstep(.045, .105, crease))
+                float eyelidLine = (1 - smoothstep(.045, .105, crease))
                     * (1 - smoothstep(.76, .94, abs(d.x))) * patch * smoothstep(.72, .94, _CopycatBlink);
-                return lerp(art, half3(.008,.011,.025), line);
+                return lerp(art, half3(.008,.011,.025), eyelidLine);
             }
             half4 Frag(Varyings input) : SV_Target
             {
