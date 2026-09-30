@@ -29,6 +29,7 @@ namespace Confiscated
         public void Begin()
         {
             movement=Player.GetComponent<FirstPersonController>();inventory=Player.GetComponent<PlayerInventory>();ringer=Player.GetComponent<PhoneRinger>();
+            PhoneModelVisuals.InstallDesk(phoneProp);PhoneModelVisuals.InstallPickup(phonePickup.phoneVisual);
             standingHeight=Player.ViewCamera.transform.localPosition.y;
             // Keep spoken lines below the scene, clear of the objective at the top left.
             var status=HudController.Instance?.statusText;

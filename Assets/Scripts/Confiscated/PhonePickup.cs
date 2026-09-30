@@ -8,7 +8,7 @@ namespace Confiscated
         [Tooltip("Visual of the phone inside the box; hidden once collected.")]
         public GameObject phoneVisual;
 
-        void Start(){CollectibleMotion.Attach(phoneVisual);}
+        void Start(){PhoneModelVisuals.InstallPickup(phoneVisual);CollectibleMotion.Attach(phoneVisual);}
         bool collected;
         public void ReturnToOffice()
         {
