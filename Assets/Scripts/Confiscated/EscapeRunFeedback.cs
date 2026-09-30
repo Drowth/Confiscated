@@ -75,7 +75,7 @@ namespace Confiscated
             if(ambience!=null)
             {
                 bool inSchool=GameManager.Instance.IsPlaying||GameManager.Instance.Current==GameManager.State.Detention;
-                float target=inSchool?(ComicDialogue.IsActive?.035f:.12f):0;
+                float target=inSchool?(ComicDialogue.IsActive?.0385f:.132f):0;
                 ambience.volume=Mathf.MoveTowards(ambience.volume,target,Time.unscaledDeltaTime*.15f);
             }
             float dim=active?Mathf.Lerp(.9f,.68f,run.Count/5f):1;

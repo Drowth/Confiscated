@@ -110,7 +110,7 @@ namespace Confiscated
             FaceBlackboard();
             yield return new WaitForSeconds(1.1f);
             ringer.PlayScriptedAt(phoneProp.transform);
-            // Give the ringtone a clear lead before Reed reacts.
+            // Give the text tone a clear lead before Reed reacts.
             yield return new WaitForSeconds(2f);
             Quaternion from=teacher.transform.rotation;
             Vector3 direction=Player.transform.position-teacher.transform.position;direction.y=0;
