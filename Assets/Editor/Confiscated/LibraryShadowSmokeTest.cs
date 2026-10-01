@@ -144,11 +144,12 @@ namespace Confiscated.EditorTools
                         Check(Shade.Catches==1&&Shade.Current!=LibraryShadow.Phase.Hunt,"freezing through the shush: it passes you by");
                         Aisle(0);Warp(stand);PlaceShadow();Next();break;
                     case 5:
-                        // Still, but with the torch on: the light gives you away.
+                        // Still, but deliberately holding the beam on the shadow: the light gives you away.
+                        F.LookLocked=true;P.ViewCamera.transform.LookAt(Shade.transform.position+Vector3.up*1.45f);
                         if(elapsed<.3)return;
                         if(!T.IsOn){Check(T.Toggle()&&true,"T lights the torch by day");return;}
                         if(Shade.Catches<2){if(elapsed>12)throw new Exception("a lit torch never got caught: "+Shade.Current);return;}
-                        Check(Shade.Catches==2,"standing still with the torch on: noticed, hunted, caught");
+                        Check(Shade.Catches==2,"standing still with the torch aimed at it: noticed, hunted, caught");
                         Next();break;
                     case 6:
                         // Battery: drains while on, dies, cannot relight until 25 %, then can.
