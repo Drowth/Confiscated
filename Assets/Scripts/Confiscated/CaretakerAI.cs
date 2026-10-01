@@ -298,7 +298,7 @@ namespace Confiscated
             bool reed=SchoolRunController.Instance!=null&&SchoolRunController.Instance.secondStaff==this;
             if(reed)clipName=clipName.Replace("Caretaker","Reed");
             bool dark=DarkModeDialogue.TryBark(clipName,out var line);
-            string normal=!reed?"Audio/"+clipName:clipName=="ReedHeardThat"||clipName=="ReedWhosThere"?"Audio/DarkMode/"+clipName:null;
+            string normal=!reed?"Audio/"+clipName:clipName=="ReedHeardThat"||clipName=="ReedWhosThere"?"Audio/DarkMode/"+clipName:clipName=="ReedMyEyes"?"Audio/"+clipName:null;
             var clip=dark?DarkModeDialogue.Voice(line):normal!=null?Resources.Load<AudioClip>(normal):null;if(clip==null)return false;
             voice.clip=clip;voice.Play();nextVoiceAt=Time.time+clip.length+5f;
             if(dark)HudController.Instance?.SetBark(line.Caption,Mathf.Max(4,clip.length));

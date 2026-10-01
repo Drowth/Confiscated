@@ -60,6 +60,16 @@ namespace Confiscated
 
         public void Pause() { Paused = true; if (Coaching || Approaching) FinishDrill(); }
         public void Resume() { Paused = false; nextLook = Time.time + 1f; }
+        /// <summary>The photographer's flash: any drill is abandoned, and he stands rubbing his eyes for a few seconds.</summary>
+        public void Dazzle(float seconds)
+        {
+            if (Coaching || Approaching) FinishDrill();
+            cooldownUntil = Mathf.Max(cooldownUntil, Time.time + seconds);
+            patrolPhase = PatrolPhase.Stop; phaseEndsAt = Time.time + seconds; chargeHasTarget = false;
+            if (agent != null && agent.isOnNavMesh) { agent.isStopped = true; agent.ResetPath(); }
+            var clip = Resources.Load<AudioClip>("Audio/CoachMyEyes"); if (clip != null && voice != null) { voice.Stop(); voice.PlayOneShot(clip); }
+            HudController.Instance?.SetBark("Coach: Argh! My eyes!", clip != null ? clip.length : 2.5f);
+        }
 
         void Awake()
         {

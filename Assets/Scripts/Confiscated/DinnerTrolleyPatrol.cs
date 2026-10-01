@@ -61,6 +61,15 @@ namespace Confiscated
             if(cutout!=null){frontArt=cutout.sharedMaterial.GetTexture("_BaseMap");rearArt=Resources.Load<Texture2D>("Art/DinnerLadyRear");huntArt=Resources.Load<Texture2D>("Art/Hunt/T_DinnerLady_Hunt");artBlock=new MaterialPropertyBlock();}
             if(visual!=null)visual.localRotation=Quaternion.Euler(0,180,0);
         }
+        /// <summary>The photographer's flash in her face: she stops where she is, trolley and all, for a few seconds.</summary>
+        public void Dazzle(float seconds)
+        {
+            Pursuing=false;waitUntil=Mathf.Max(waitUntil,Time.time+seconds);pushReadyAt=Mathf.Max(pushReadyAt,Time.time+seconds);
+            var clip=Resources.Load<AudioClip>("Audio/DinnerLadyMyEyes");
+            if(voice==null){voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.spatialBlend=1;voice.minDistance=4;voice.maxDistance=22;TalkingMouth.Register(voice);}
+            voice.Stop();if(clip!=null)voice.PlayOneShot(clip);
+            HudController.Instance?.SetBark("Dinner lady: Argh! My eyes!",clip!=null?clip.length:2.5f);
+        }
         Vector3 ClearPoint(Vector3 from,Vector3 direction,float distance)
         {
             var run=SchoolRunController.Instance;

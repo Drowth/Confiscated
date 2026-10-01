@@ -168,10 +168,13 @@ namespace Confiscated
             if(flashLight!=null)flashLight.intensity=60;
             sfx.pitch=1;sfx.PlayOneShot(shutterFlash!=null?shutterFlash:TempAudio.Pickup,.9f);
             NoiseEvents.Emit(transform.position,flashNoiseRadius,"camera flash");
-            // Staff in the frame: dazzled, rooted to the spot.
+            // Anyone in the frame gets it in the eyes: the hunters rooted like glue, the rest stopped in their tracks.
             foreach(var staff in new[]{run.caretaker,run.secondStaff})
                 if(staff!=null&&staff.isActiveAndEnabled&&InFrame(staff.transform,1.7f)&&staff.TryStickInGlue(flashStallSeconds))
-                {StaffDazzled++;HudController.Instance?.SetBark((staff==run.caretaker?"Caretaker":"Mr Reed")+": Argh! My eyes!",2.5f);}
+                {StaffDazzled++;staff.Say("CaretakerMyEyes",true);HudController.Instance?.SetBark((staff==run.caretaker?"Caretaker":"Mr Reed")+": Argh! My eyes!",2.5f);}
+            var lady=FindAnyObjectByType<DinnerTrolleyPatrol>();if(lady!=null&&lady.isActiveAndEnabled&&InFrame(lady.transform,1.7f)){StaffDazzled++;lady.Dazzle(flashStallSeconds);}
+            var coach=FindAnyObjectByType<PeCoach>();if(coach!=null&&coach.isActiveAndEnabled&&!coach.Paused&&InFrame(coach.transform,1.7f)){StaffDazzled++;coach.Dazzle(flashStallSeconds);}
+            var chatter=FindAnyObjectByType<ChatterboxStudent>();if(chatter!=null&&chatter.isActiveAndEnabled&&InFrame(chatter.transform,1.4f)){StaffDazzled++;chatter.Dazzle(flashStallSeconds);}
             // The pupil still in front of him is in the photo; only eyes that were on the camera get the white-out.
             if(!InFrame(player.transform,head)){Say(whereDidHeGo);HudController.Instance?.SetBark("Photographer: Oh. Where did he go?",2f);return;}
             PlayerPhotos++;

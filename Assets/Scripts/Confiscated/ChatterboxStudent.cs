@@ -199,6 +199,13 @@ namespace Confiscated
             if(Words==RumourLine)ToldRumour=true;
             Hush();availableAt=Time.time+cooldownSeconds;needsSpace=true;
         }
+        /// <summary>The photographer's flash: hushed, blinking, and no calling anyone over for a few seconds.</summary>
+        public void Dazzle(float seconds)
+        {
+            Hush();availableAt=Mathf.Max(availableAt,Time.time+seconds);
+            var clip=Resources.Load<AudioClip>("Audio/ChatterboxMyEyes");if(clip!=null&&speech!=null)speech.PlayOneShot(clip);
+            HudController.Instance?.SetBark("Chatterbox: Argh! My eyes!",clip!=null?clip.length:2.5f);
+        }
         void Hush()
         {
             talking=false;SetMouth(false);
