@@ -28,7 +28,7 @@ namespace Confiscated
         public Texture2D photoPose,walkLeft,walkRight;
         [Min(.1f)] public float strideLength=.9f;
         MaterialPropertyBlock poseProperties;Vector3 previousPosition;float strideDistance;Texture currentPose;
-        AudioClip shutterFlash;
+        AudioClip shutterFlash;AudioClip[] calls;AudioClip lovely,whereDidHeGo;
         public int Flashes {get;private set;}
         public int PlayerPhotos {get;private set;}
         public int StaffDazzled {get;private set;}
@@ -46,6 +46,9 @@ namespace Confiscated
         {
             previousPosition=transform.position;
             shutterFlash=Resources.Load<AudioClip>("Audio/PhotographerShutterFlash");
+            calls=new AudioClip[4];var names=new[]{"PhotographerClassPhoto","PhotographerBigSmile","PhotographerEyesToMe","PhotographerHoldIt"};
+            for(int i=0;i<calls.Length;i++)calls[i]=Resources.Load<AudioClip>("Audio/"+names[i]);
+            lovely=Resources.Load<AudioClip>("Audio/PhotographerLovely");whereDidHeGo=Resources.Load<AudioClip>("Audio/PhotographerWhereDidHeGo");
             sfx=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Effects,true);sfx.spatialBlend=1;sfx.minDistance=3;sfx.maxDistance=30;sfx.dopplerLevel=0;sfx.playOnAwake=false;
             voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.spatialBlend=1;voice.minDistance=3;voice.maxDistance=24;voice.dopplerLevel=0;voice.playOnAwake=false;TalkingMouth.Register(voice);
             if(corridors==null||corridors.Length==0){var coach=FindAnyObjectByType<PeCoach>();if(coach!=null&&coach.corridors!=null)corridors=System.Array.ConvertAll(coach.corridors,c=>Rect.MinMaxRect(c.min.x,c.min.y,c.max.x,c.max.y));}
@@ -107,9 +110,11 @@ namespace Confiscated
             if(Time.time>=readyAt&&InFrame(player.transform,head)&&!(legs!=null&&legs.IsFallen))
             {
                 // Spotted: he stops and lines it up. The call is the warning; get out of his view or get your head down.
-                LiningUp=true;flashAt=Time.time+warningSeconds;
+                LiningUp=true;
                 sfx.pitch=1;sfx.PlayOneShot(TempAudio.Warn,.55f);
-                HudController.Instance?.SetBark("Photographer: "+Patter[patter++%Patter.Length],warningSeconds+1f);
+                int line=patter++%Patter.Length;Say(calls[line]);
+                float lead=Mathf.Max(warningSeconds,calls[line]!=null?calls[line].length+.12f:0f);flashAt=Time.time+lead;
+                HudController.Instance?.SetBark("Photographer: "+Patter[line],lead+.4f);
                 return;
             }
             Wander();
@@ -130,6 +135,7 @@ namespace Confiscated
             if(poseProperties==null)poseProperties=new MaterialPropertyBlock();
             cutout.GetPropertyBlock(poseProperties);poseProperties.SetTexture("_BaseMap",pose);cutout.SetPropertyBlock(poseProperties);currentPose=pose;
         }
+        void Say(AudioClip clip){if(clip!=null){voice.Stop();voice.clip=clip;voice.Play();}}
         void Wander()
         {
             if(!agent.isOnNavMesh)return;
@@ -163,10 +169,10 @@ namespace Confiscated
                 if(staff!=null&&staff.isActiveAndEnabled&&InFrame(staff.transform,1.7f)&&staff.TryStickInGlue(flashStallSeconds))
                 {StaffDazzled++;HudController.Instance?.SetBark((staff==run.caretaker?"Caretaker":"Mr Reed")+": Argh! My eyes!",2.5f);}
             // The pupil still in front of him is in the photo; only eyes that were on the camera get the white-out.
-            if(!InFrame(player.transform,head)){HudController.Instance?.SetBark("Photographer: Oh. Where did he go?",2f);return;}
+            if(!InFrame(player.transform,head)){Say(whereDidHeGo);HudController.Instance?.SetBark("Photographer: Oh. Where did he go?",2f);return;}
             PlayerPhotos++;
             if(LookingAtHim(player)){blindUntil=Time.time+blindSeconds;EnsureWhiteout();}
-            HudController.Instance?.SetBark("Photographer: Lovely! That one's going on the noticeboard.",3f);
+            Say(lovely);HudController.Instance?.SetBark("Photographer: Lovely! That one's going on the noticeboard.",3f);
             if(!run.RoundStarted)return;
             // Unmissable, and exact: a photo shows exactly where you were.
             run.caretaker?.HearSchoolWideAlarm(player.transform.position);
