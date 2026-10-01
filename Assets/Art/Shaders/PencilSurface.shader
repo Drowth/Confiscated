@@ -19,7 +19,7 @@ Shader "Confiscated/Pencil Surface"
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-        float _SchoolDarkness;
+        float _SchoolDarkness, _OutdoorNight;
         TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
         TEXTURE2D(_EdgeMap); SAMPLER(sampler_EdgeMap);
         CBUFFER_START(UnityPerMaterial)
@@ -94,10 +94,11 @@ Shader "Confiscated/Pencil Surface"
             LIGHT_LOOP_END
             }
             #endif
-            // Outdoors is daylight, whatever the dim indoor fill is doing; a power cut or Dark Mode still takes it away.
+            // Outdoors is daylight, whatever the dim indoor fill is doing; a power cut, Dark Mode or the final escape's
+            // nightfall still takes it away.
             // Things set in an outside wall (doors, window frames) only take it on faces that don't look back indoors.
             half facing = _OutdoorFacing.w > .5 ? saturate(1 + 2 * dot(n, _OutdoorFacing.xyz)) : 1;
-            diffuse = lerp(diffuse, max(diffuse, half3(1,.98,.94)), _Outdoor * facing * (1 - _SchoolDarkness));
+            diffuse = lerp(diffuse, max(diffuse, half3(1,.98,.94)), _Outdoor * facing * (1 - _SchoolDarkness) * (1 - _OutdoorNight));
             return half4(MixFog(albedo * diffuse,i.fog),1);
         }
         half4 DepthFrag(Varyings i) : SV_Target { return 0; }

@@ -6,6 +6,7 @@ Shader "Confiscated/Pencil Glass"
   _EdgeMap("Drawn edge strip",2D)="white"{}
   _Tint("Glass tint",Color)=(.60,.73,.78,1)
   _Opacity("Clear glass opacity",Range(0,.5))=.065
+  [HideInInspector]_Night("Night outside (set per pane by WindowWatchers)",Range(0,1))=0
  }
  SubShader
  {
@@ -22,7 +23,7 @@ Shader "Confiscated/Pencil Glass"
    TEXTURE2D(_BaseMap);SAMPLER(sampler_BaseMap);
    TEXTURE2D(_EdgeMap);SAMPLER(sampler_EdgeMap);
    CBUFFER_START(UnityPerMaterial)
-   float4 _BaseMap_ST;half4 _Tint;float _Opacity;
+   float4 _BaseMap_ST;half4 _Tint;float _Opacity,_Night;
    CBUFFER_END
    struct A{float4 p:POSITION;float2 uv:TEXCOORD0;};
    struct V{float4 p:SV_POSITION;float2 uv:TEXCOORD0;};
@@ -37,7 +38,8 @@ Shader "Confiscated/Pencil Glass"
     float ink=(1-smoothstep(.002,.012,edge))*pigment;
     float opacity=saturate(_Opacity+streak*(.14+(1-pencil.r)*.16)+ink*.6);
     half3 colour=lerp(lerp(_Tint.rgb,pencil,.7),half3(.10,.16,.25),ink);
-    return half4(colour,opacity);
+    // Against a night sky the pale strokes would glow: keep only a faint sheen.
+    return half4(colour*lerp(1,.3,_Night),opacity);
    }
    ENDHLSL
   }

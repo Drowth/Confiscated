@@ -13,13 +13,15 @@ Shader "Confiscated/Pencil Scenery"
    #pragma fragment frag
    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
    TEXTURE2D(_BaseMap);SAMPLER(sampler_BaseMap);
+   // Global, 0..1: the final escape turns the outdoors to night (WindowWatchers).
+   float _OutdoorNight;
    CBUFFER_START(UnityPerMaterial)
    float4 _BaseMap_ST;half4 _BaseColor;
    CBUFFER_END
    struct A{float4 p:POSITION;float2 uv:TEXCOORD0;};
    struct V{float4 p:SV_POSITION;float2 uv:TEXCOORD0;};
    V vert(A a){V o;o.p=TransformObjectToHClip(a.p.xyz);o.uv=TRANSFORM_TEX(a.uv,_BaseMap);return o;}
-   half4 frag(V i):SV_Target{half4 c=SAMPLE_TEXTURE2D(_BaseMap,sampler_BaseMap,i.uv)*_BaseColor;clip(c.a-.35);return half4(c.rgb,1);}
+   half4 frag(V i):SV_Target{half4 c=SAMPLE_TEXTURE2D(_BaseMap,sampler_BaseMap,i.uv)*_BaseColor;clip(c.a-.35);return half4(lerp(c.rgb,c.rgb*half3(.022,.033,.073),_OutdoorNight),1);}
    ENDHLSL
   }
  }
