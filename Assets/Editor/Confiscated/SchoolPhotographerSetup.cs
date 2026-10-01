@@ -68,6 +68,9 @@ namespace Confiscated
             him.photoPose=Texture();
             him.walkLeft=ImportPose("Assets/Art/Textures/T_PhotographerWalkLeft.png");
             him.walkRight=ImportPose("Assets/Art/Textures/T_PhotographerWalkRight.png");
+            him.backPhotoPose=ImportPose("Assets/Art/Textures/T_PhotographerBackPhoto.png");
+            him.backWalkLeft=ImportPose("Assets/Art/Textures/T_PhotographerBackWalkLeft.png");
+            him.backWalkRight=ImportPose("Assets/Art/Textures/T_PhotographerBackWalkRight.png");
             foreach(var r in him.GetComponentsInChildren<Renderer>())if(r.name=="Photographer cutout")him.cutout=r;
             if(him.cutout!=null){him.cutout.sharedMaterial.SetTexture("_BaseMap",him.photoPose);EditorUtility.SetDirty(him.cutout.sharedMaterial);}
             // The illustration includes the camera. Keep its flash light but hide the old box props.

@@ -26,8 +26,9 @@ namespace Confiscated
         public Light flashLight;
         public Renderer cutout;
         public Texture2D photoPose,walkLeft,walkRight;
+        public Texture2D backPhotoPose,backWalkLeft,backWalkRight;
         [Min(.1f)] public float strideLength=.9f;
-        MaterialPropertyBlock poseProperties;Vector3 previousPosition;float strideDistance;Texture currentPose;
+        MaterialPropertyBlock poseProperties;Vector3 previousPosition;float strideDistance;Texture currentPose;Transform viewer;
         AudioClip shutterFlash;AudioClip[] calls;AudioClip lovely,whereDidHeGo;
         public int Flashes {get;private set;}
         public int PlayerPhotos {get;private set;}
@@ -127,7 +128,10 @@ namespace Confiscated
             bool walking=!LiningUp&&agent!=null&&agent.isOnNavMesh&&!agent.isStopped&&speed>.06f&&speed<12f&&Time.deltaTime>0;
             if(walking)strideDistance=Mathf.Repeat(strideDistance+delta.magnitude,Mathf.Max(.1f,strideLength));
             else strideDistance=0;
-            SetPose(walking?(strideDistance<strideLength*.5f?walkLeft:walkRight):photoPose);
+            if(viewer==null){var run=SchoolRunController.Instance;viewer=run!=null&&run.period!=null&&run.period.Player!=null?run.period.Player.transform:Camera.main!=null?Camera.main.transform:null;}
+            Vector3 toViewer=viewer!=null?viewer.position-transform.position:Vector3.zero;toViewer.y=0;
+            bool back=toViewer.sqrMagnitude>.01f&&Vector3.Dot(transform.forward,toViewer.normalized)<-.2f&&backPhotoPose!=null;
+            SetPose(walking?(strideDistance<strideLength*.5f?(back?backWalkLeft:walkLeft):(back?backWalkRight:walkRight)):(back?backPhotoPose:photoPose));
         }
         void SetPose(Texture pose)
         {
