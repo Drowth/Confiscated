@@ -129,8 +129,9 @@ namespace Confiscated
                     DrillDirection = direction; DrillLength = length;
                     agent.isStopped = false; agent.speed = Mathf.Max(coachingSpeed, pupilSpeed + 2f); agent.stoppingDistance = .05f;
                     FollowPupil();
+                    // Within arm's reach is caught, whichever side of him you've stepped to.
                     Vector3 gap = pupil.transform.position - transform.position; gap.y = 0;
-                    if (gap.magnitude <= 1.15f && Vector3.Dot(gap, direction) > .25f)
+                    if (gap.magnitude <= 1.15f)
                         BeginDrill(direction, length);
                 }
             }
@@ -288,20 +289,26 @@ namespace Confiscated
             if (corridors == null) return false;
             foreach (var lane in corridors)
             {
-                if (pos.x < lane.min.x + .55f || pos.x > lane.max.x - .55f ||
-                    pos.z < lane.min.y + .55f || pos.z > lane.max.y - .55f) continue;
+                // Anywhere across the corridor counts, wall-huggers included: standing to the side is not a way out of PE.
+                if (pos.x < lane.min.x - .2f || pos.x > lane.max.x + .2f ||
+                    pos.z < lane.min.y - .2f || pos.z > lane.max.y + .2f) continue;
                 bool alongX = lane.max.x - lane.min.x > lane.max.y - lane.min.y;
                 float coordinate = alongX ? pos.x : pos.z;
                 float min = alongX ? lane.min.x : lane.min.y;
                 float max = alongX ? lane.max.x : lane.max.y;
                 float fromCoach = alongX ? pos.x - transform.position.x : pos.z - transform.position.z;
+                // Probe the run down the middle of the corridor, so a wall or radiator beside the pupil doesn't hide the lane.
+                Vector3 centred = pos;
+                if (alongX) centred.z = (lane.min.y + lane.max.y) * .5f; else centred.x = (lane.min.x + lane.max.x) * .5f;
+                if (!NavMesh.SamplePosition(centred, out var onMesh, 1f, NavMesh.AllAreas)) continue;
+                centred = onMesh.position;
                 foreach (int sign in new[] { fromCoach >= 0 ? 1 : -1, fromCoach >= 0 ? -1 : 1 })
                 {
                     float length = sign > 0 ? max - coordinate - .9f : coordinate - min - .9f;
                     if (length < 8f) continue;
                     Vector3 dir = alongX ? Vector3.right * sign : Vector3.forward * sign;
-                    var end = pos + dir * length;
-                    if (NavMesh.Raycast(pos, end, out _, NavMesh.AllAreas)) continue;
+                    var end = centred + dir * length;
+                    if (NavMesh.Raycast(centred, end, out _, NavMesh.AllAreas)) continue;
                     float score = length + (Mathf.Sign(fromCoach) == sign ? 3 : 0) -
                         (alongX ? lane.max.y - lane.min.y : lane.max.x - lane.min.x) * .15f;
                     if (score > best) { best = score; direction = dir; metres = length; }

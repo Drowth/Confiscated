@@ -11,6 +11,8 @@ namespace Confiscated
         public float tellDistance=2.8f,tellNoiseRadius=22,tellCooldownSeconds=14;
         public Transform visual;
         public float patrolExtension=8f,spotRange=12f,pushSpeed=2.7f,pushCooldown=10f;
+        [Tooltip("Player this close (metres) is noticed and aimed at whichever side of her they are on.")]
+        public float aimRange=3.5f;
         public bool Pursuing {get;private set;}
         public Vector3 PatrolStart=>start;
         public Vector3 PatrolEnd=>patrolEnd;
@@ -66,10 +68,12 @@ namespace Confiscated
                 if(!hit.transform.IsChildOf(transform)&&(run==null||!hit.transform.IsChildOf(run.period.Player.transform)))distance=Mathf.Min(distance,Mathf.Max(0,hit.distance-.15f));
             return from+direction*distance;
         }
+        /// <summary>Ahead of her within spotRange; anywhere round her within aimRange, so standing to the side as she passes is no escape.</summary>
         bool Sees(Transform player)
         {
             Vector3 delta=player.position-transform.position;delta.y=0;
-            if(delta.magnitude>spotRange||Vector3.Dot(heading,delta.normalized)<.2f)return false;
+            if(delta.magnitude>spotRange)return false;
+            if(delta.magnitude>aimRange&&Vector3.Dot(heading,delta.normalized)<.2f)return false;
             Vector3 eye=transform.position+Vector3.up*1.5f;
             Vector3 sight=player.position+Vector3.up*1.1f-eye;
             foreach(var hit in Physics.RaycastAll(eye,sight.normalized,sight.magnitude,~0,QueryTriggerInteraction.Ignore))
