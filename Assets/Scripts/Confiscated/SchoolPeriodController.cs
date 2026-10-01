@@ -111,7 +111,9 @@ namespace Confiscated
             var approach=StartCoroutine(Travel(agent,caretakerHandoff.position));
             yield return Travel(teacher,teacherHandoff.position);yield return approach;
             phoneProp.transform.SetParent(caretaker.transform,false);phoneProp.transform.localPosition=new Vector3(-.3f,1.08f,0);phoneProp.transform.localRotation=Quaternion.Euler(80,0,0);
-            carryingPhone=true;caretaker.StartSchoolRoutine();
+            carryingPhone=true;
+            if(SchoolRunController.Instance!=null)SchoolRunController.Instance.StartOpeningRoute();
+            else caretaker.StartSchoolRoutine();
             Current=Phase.Volunteer;
             HudController.Instance?.SetStatus("Smith: This is the last straw.",5);
             yield return new WaitUntil(() => !ComicDialogue.IsActive);
@@ -160,10 +162,15 @@ namespace Confiscated
         void Update()
         {
             if(Player==null||movement==null)return;
-            if(carryingPhone&&Vector3.Distance(caretaker.transform.position,officeDrop.position)<1.3f)
+            if(carryingPhone&&SchoolRunController.Instance==null&&Vector3.Distance(caretaker.transform.position,officeDrop.position)<1.3f)
             {
-                carryingPhone=false;PhoneDeposited=true;phoneProp.SetActive(false);phonePickup.enabled=true;phonePickup.ReturnToOffice();
+                DepositPhone();
             }
+        }
+        public void DepositPhone()
+        {
+            if(!carryingPhone)return;
+            carryingPhone=false;PhoneDeposited=true;phoneProp.SetActive(false);phonePickup.enabled=true;phonePickup.ReturnToOffice();
         }
         void LateUpdate(){if(movement!=null&&GameManager.Instance.IsPlaying&&!IsComplete)Objective();}
         void Objective()

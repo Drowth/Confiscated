@@ -39,6 +39,8 @@ namespace Confiscated
         string timingMode;
         Collider[] cartColliders;
         bool movingCart;
+        bool openingAtOffice;
+        float trolleyPickupAt;
         float pursuitPulse;
         void Awake()
         {
@@ -65,13 +67,32 @@ namespace Confiscated
         public bool KeyWindowOpen => keyWindowOffered && caretaker != null && caretaker.ChatArrived;
         void Start()
         {
-            // The errand: he takes the phone to his office and wheels the trolley to the dining hall at a pace the player can
-            // follow, with short stops, so there is no dead time. SetRunPressure restores the run's pace and dwells.
+            // Keep the opening delivery brisk enough to follow. SetRunPressure restores the chase pace and dwells.
             if (!RoundStarted && caretaker != null && caretaker.patrol.Count > 1)
             {
                 caretaker.SetErrandPace(2.3f);
                 caretaker.patrol[0].dwellSeconds = 2; caretaker.patrol[1].dwellSeconds = 2;
             }
+        }
+        /// <summary>The phone handoff starts a committed trip into the office, then to the cafeteria dock.</summary>
+        public void StartOpeningRoute()
+        {
+            openingAtOffice=false;movingCart=false;trolleyPickupAt=0;
+            caretaker.BeginOpeningTravel(period.officeDrop.position);
+        }
+        void TickOpeningRoute()
+        {
+            if(!caretaker.OpeningRouteActive||TrolleyParked||movingCart)return;
+            if(!openingAtOffice)
+            {
+                if(Vector3.Distance(caretaker.transform.position,period.officeDrop.position)>.6f)return;
+                period.DepositPhone();openingAtOffice=true;trolleyPickupAt=Time.time+1.5f;
+                caretaker.PauseForPass(true);
+            }
+            if(Time.time<trolleyPickupAt)return;
+            movingCart=true;
+            foreach(var c in cartColliders)c.enabled=false;
+            caretaker.BeginOpeningTravel(trolleyDock.position);
         }
         public void PrepareChaseRetry()
         {
@@ -97,7 +118,7 @@ namespace Confiscated
         }
         public void BeginRound(float firstPulseDelay = 12)
         {
-            if(RoundStarted)return; RoundStarted = true; Timing.Start(timingMode ?? (Has(0)?"Phone start":"Lesson start")); pursuitPulse=Time.time+firstPulseDelay;
+            if(RoundStarted)return; caretaker.CompleteOpeningRoute();RoundStarted = true; Timing.Start(timingMode ?? (Has(0)?"Phone start":"Lesson start")); pursuitPulse=Time.time+firstPulseDelay;
             ClockworkDecoy.ResetRunTally();
             period.Player.GetComponent<PlayerInventory>().RemoveCarried(InventoryItemKind.HallPass);
             caretaker.ResumeAfterDetention(5);
@@ -166,15 +187,17 @@ namespace Confiscated
         void Update()
         {
             if (GameManager.Instance == null || !GameManager.Instance.IsPlaying) return;
-            if (!TrolleyParked && trolley != null && period.PhoneDeposited)
+            if(ComicDialogue.IsActive)return;
+            TickOpeningRoute();
+            if (!TrolleyParked && trolley != null && movingCart)
             {
-                if (!movingCart) { movingCart = true; foreach (var c in cartColliders) c.enabled = false; }
                 trolley.position = caretaker.transform.position - caretaker.transform.forward * .85f;
                 trolley.rotation = caretaker.transform.rotation;
-                if (Vector3.Distance(caretaker.transform.position, trolleyDock.position) < 1.8f)
+                if (Vector3.Distance(caretaker.transform.position, trolleyDock.position) < .6f)
                 {
                     trolley.SetPositionAndRotation(trolleyDock.position, trolleyDock.rotation);
-                    TrolleyParked = true;
+                    TrolleyParked = true;movingCart=false;
+                    caretaker.PauseForPass(true);
                     foreach (var c in cartColliders) c.enabled = true;
                 }
             }
@@ -200,12 +223,12 @@ namespace Confiscated
             diningDoorOpened=true;
             TryStartKeyDistraction();
         }
-        // Opening the door can precede the newsletter delivery or trolley parking on a fresh day.
+        // Opening the door can precede trolley parking on a fresh day.
         // Keep the request until those prerequisites are ready instead of losing the one-shot interaction.
         void TryStartKeyDistraction()
         {
             bool hasOfficeKey=period.Player.GetComponent<PlayerInventory>().HasCarried(InventoryItemKind.OfficeKey);
-            if (((!RoundStarted&&period.PapersDelivered)||retryKeyWindowPending) && !keyWindowOffered && TrolleyParked && !hasOfficeKey)
+            if (((!RoundStarted&&period.IsRoaming)||retryKeyWindowPending) && !keyWindowOffered && TrolleyParked && !hasOfficeKey)
             {
                 var lady=Object.FindFirstObjectByType<DinnerTrolleyPatrol>();
                 Vector3 dock=trolleyDock.position,spot=dock+new Vector3(5f,0,-3.6f);
@@ -218,6 +241,7 @@ namespace Confiscated
                 float conversation=KeyWindowSeconds+Vector3.Distance(caretaker.transform.position,spot)/1.7f+10;
                 retryKeyWindowPending=false;
                 // Protect the conversation on fresh days as well as retries.
+                caretaker.CompleteOpeningRoute();
                 caretaker.ResumeAfterDetention(conversation);
                 pursuitPulse=Time.time+conversation;
                 keyWindowOffered = true;

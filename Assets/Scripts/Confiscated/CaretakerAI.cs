@@ -77,6 +77,7 @@ namespace Confiscated
         public bool IsGlued=>glueHeld&&Time.time<glueUntil;
         static readonly RaycastHit[] catchHits = new RaycastHit[12];
 
+        public bool OpeningRouteActive { get; private set; }
         public State Current => state;
         public bool Investigating(Vector3 position)=>state==State.Investigate&&(pointOfInterest-position).sqrMagnitude<4;
         public float Suspicion => suspicion;
@@ -107,6 +108,7 @@ namespace Confiscated
 
         public void Freeze()
         {
+            OpeningRouteActive=false;
             state = State.Frozen;chatting = false;toyHunt = false;smashing = false;toyTarget = null;
             if(voice!=null)voice.Stop();
             cutoutMotion?.SetFrozen(true);
@@ -148,6 +150,8 @@ namespace Confiscated
             if (ComicDialogue.IsActive || state == State.Frozen || player == null) return;
             var gm = GameManager.Instance;
             if (gm != null && !gm.IsPlaying) { Freeze(); return; }
+            // The opening delivery owns his destination until the cafeteria door cue.
+            if(OpeningRouteActive){TickRotation();return;}
             // A quacking toy comes first, before the player, even mid-chase.
             if (toyHunt) { TickToy(); TickRotation(); return; }
 
@@ -340,6 +344,13 @@ namespace Confiscated
             ResumePatrol();
         }
         public void StartSchoolRoutine(){patrolIndex=0;ResumeAfterDetention(0);}
+        public void BeginOpeningTravel(Vector3 destination)
+        {
+            passCheck?.CancelCheck();OpeningRouteActive=true;
+            state=State.Patrol;chatting=false;toyHunt=false;dwelling=false;suspicion=0;
+            cutoutMotion?.SetFrozen(false);GoTo(destination,patrolSpeed);
+        }
+        public void CompleteOpeningRoute(){OpeningRouteActive=false;}
         public void SetRunPressure(int recovered)
         {
             sightRange = 24f; sightConeDegrees = 95f;
@@ -391,7 +402,7 @@ namespace Confiscated
         public void EndPassApproach(){PauseForPass(false);if(state!=State.Frozen)ResumePatrol();}
         public void PursuePlayerForOffence()
         {
-            if(player==null||state==State.Frozen||GameManager.Instance==null||!GameManager.Instance.IsPlaying)return;
+            if(OpeningRouteActive||player==null||state==State.Frozen||GameManager.Instance==null||!GameManager.Instance.IsPlaying)return;
             lastSeenTime=Time.time;lastSeenPos=player.position;suspicion=1f;EnterChase();
         }
 
@@ -405,6 +416,7 @@ namespace Confiscated
         public int ToysSmashed {get;private set;}
         public void HearToy(GameObject toy,Vector3 at)
         {
+            if(OpeningRouteActive)return;
             if(toyHunt||toy==null||IsGlued||state==State.Frozen||player==null)return;
             if(GameManager.Instance!=null&&!GameManager.Instance.IsPlaying)return;
             if(Vector3.Distance(transform.position,at)>ToyHearingRange)return;
@@ -438,6 +450,7 @@ namespace Confiscated
         public bool WouldHear(Vector3 pos, float radius) => isActiveAndEnabled && !IsGlued && state != State.Chase && state != State.Frozen && Time.time >= ignorePlayerUntil && Vector3.Distance(transform.position, pos) <= radius;
         void OnNoise(Vector3 pos, float radius, string source)
         {
+            if(OpeningRouteActive)return;
             // The toy is handled by HearToy (it needs the toy itself, to destroy it).
             if (source == "clockwork toy") return;
             if (IsGlued || state == State.Chase || state == State.Frozen || Time.time < ignorePlayerUntil) return;
