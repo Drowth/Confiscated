@@ -28,6 +28,7 @@ namespace Confiscated
         public Texture2D photoPose,walkLeft,walkRight;
         [Min(.1f)] public float strideLength=.9f;
         MaterialPropertyBlock poseProperties;Vector3 previousPosition;float strideDistance;Texture currentPose;
+        AudioClip shutterFlash;
         public int Flashes {get;private set;}
         public int PlayerPhotos {get;private set;}
         public int StaffDazzled {get;private set;}
@@ -44,6 +45,7 @@ namespace Confiscated
         void Start()
         {
             previousPosition=transform.position;
+            shutterFlash=Resources.Load<AudioClip>("Audio/PhotographerShutterFlash");
             sfx=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Effects,true);sfx.spatialBlend=1;sfx.minDistance=3;sfx.maxDistance=30;sfx.dopplerLevel=0;sfx.playOnAwake=false;
             voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.spatialBlend=1;voice.minDistance=3;voice.maxDistance=24;voice.dopplerLevel=0;voice.playOnAwake=false;TalkingMouth.Register(voice);
             if(corridors==null||corridors.Length==0){var coach=FindAnyObjectByType<PeCoach>();if(coach!=null&&coach.corridors!=null)corridors=System.Array.ConvertAll(coach.corridors,c=>Rect.MinMaxRect(c.min.x,c.min.y,c.max.x,c.max.y));}
@@ -154,7 +156,7 @@ namespace Confiscated
         {
             Flashes++;
             if(flashLight!=null)flashLight.intensity=60;
-            sfx.pitch=1.7f;sfx.PlayOneShot(TempAudio.Pickup,.9f);sfx.pitch=1;
+            sfx.pitch=1;sfx.PlayOneShot(shutterFlash!=null?shutterFlash:TempAudio.Pickup,.9f);
             NoiseEvents.Emit(transform.position,flashNoiseRadius,"camera flash");
             // Staff in the frame: dazzled, rooted to the spot.
             foreach(var staff in new[]{run.caretaker,run.secondStaff})
