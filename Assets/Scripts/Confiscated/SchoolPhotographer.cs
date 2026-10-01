@@ -24,6 +24,10 @@ namespace Confiscated
         [Tooltip("The flash only blinds a pupil whose view is within this many degrees of him: look away and it misses your eyes.")]
         public float blindHalfAngle=70f;
         public Light flashLight;
+        public Renderer cutout;
+        public Texture2D photoPose,walkLeft,walkRight;
+        [Min(.1f)] public float strideLength=.9f;
+        MaterialPropertyBlock poseProperties;Vector3 previousPosition;float strideDistance;Texture currentPose;
         public int Flashes {get;private set;}
         public int PlayerPhotos {get;private set;}
         public int StaffDazzled {get;private set;}
@@ -39,6 +43,7 @@ namespace Confiscated
         void Awake(){agent=GetComponent<NavMeshAgent>();agent.speed=walkSpeed;agent.angularSpeed=240;agent.acceleration=6;agent.stoppingDistance=.3f;agent.autoBraking=true;}
         void Start()
         {
+            previousPosition=transform.position;
             sfx=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Effects,true);sfx.spatialBlend=1;sfx.minDistance=3;sfx.maxDistance=30;sfx.dopplerLevel=0;sfx.playOnAwake=false;
             voice=SchoolAudio.Create(gameObject,SchoolAudio.Channel.Voice,true);voice.spatialBlend=1;voice.minDistance=3;voice.maxDistance=24;voice.dopplerLevel=0;voice.playOnAwake=false;TalkingMouth.Register(voice);
             if(corridors==null||corridors.Length==0){var coach=FindAnyObjectByType<PeCoach>();if(coach!=null&&coach.corridors!=null)corridors=System.Array.ConvertAll(coach.corridors,c=>Rect.MinMaxRect(c.min.x,c.min.y,c.max.x,c.max.y));}
@@ -108,6 +113,21 @@ namespace Confiscated
             Wander();
         }
         void Face(Vector3 at){Vector3 d=at-transform.position;d.y=0;if(d.sqrMagnitude>.001f)transform.rotation=Quaternion.RotateTowards(transform.rotation,Quaternion.LookRotation(d),Time.deltaTime*360);}
+        void LateUpdate()
+        {
+            var delta=transform.position-previousPosition;previousPosition=transform.position;delta.y=0;
+            float speed=Time.deltaTime>0?delta.magnitude/Time.deltaTime:0;
+            bool walking=!LiningUp&&agent!=null&&agent.isOnNavMesh&&!agent.isStopped&&speed>.06f&&speed<12f&&Time.deltaTime>0;
+            if(walking)strideDistance=Mathf.Repeat(strideDistance+delta.magnitude,Mathf.Max(.1f,strideLength));
+            else strideDistance=0;
+            SetPose(walking?(strideDistance<strideLength*.5f?walkLeft:walkRight):photoPose);
+        }
+        void SetPose(Texture pose)
+        {
+            if(cutout==null||pose==null||currentPose==pose)return;
+            if(poseProperties==null)poseProperties=new MaterialPropertyBlock();
+            cutout.GetPropertyBlock(poseProperties);poseProperties.SetTexture("_BaseMap",pose);cutout.SetPropertyBlock(poseProperties);currentPose=pose;
+        }
         void Wander()
         {
             if(!agent.isOnNavMesh)return;

@@ -48,9 +48,39 @@ namespace Confiscated
             Object.DestroyImmediate(flashBox.GetComponent<Collider>());flashBox.GetComponent<Renderer>().sharedMaterial=Mat("M_Chapter_Paper");
             var light=new GameObject("Flash light").AddComponent<Light>();light.transform.SetParent(cam.transform,false);light.transform.localPosition=new Vector3(0,1.2f,1);
             light.type=LightType.Point;light.range=9;light.intensity=0;light.color=new Color(1,.97f,.9f);light.shadows=LightShadows.None;him.flashLight=light;
+            ApplyArt(him);
 
             EditorSceneManager.MarkSceneDirty(root.scene);
             Debug.Log("School photographer installed at "+start.position+(tex.name.StartsWith("Placeholder")?" with a placeholder cutout (add "+TexturePath+" and re-run)":""));
+        }
+
+        [MenuItem("Confiscated/Chase Feedback/Apply Photographer Animation")]
+        public static void ApplyAnimation()
+        {
+            if(EditorApplication.isPlaying)throw new System.InvalidOperationException("Stop Play first.");
+            var him=Object.FindAnyObjectByType<SchoolPhotographer>();
+            if(him==null)throw new System.InvalidOperationException("No school photographer in the scene.");
+            Undo.RecordObject(him,"Apply photographer animation");ApplyArt(him);
+            EditorUtility.SetDirty(him);EditorSceneManager.MarkSceneDirty(him.gameObject.scene);AssetDatabase.SaveAssets();
+        }
+        static void ApplyArt(SchoolPhotographer him)
+        {
+            him.photoPose=Texture();
+            him.walkLeft=ImportPose("Assets/Art/Textures/T_PhotographerWalkLeft.png");
+            him.walkRight=ImportPose("Assets/Art/Textures/T_PhotographerWalkRight.png");
+            foreach(var r in him.GetComponentsInChildren<Renderer>())if(r.name=="Photographer cutout")him.cutout=r;
+            if(him.cutout!=null){him.cutout.sharedMaterial.SetTexture("_BaseMap",him.photoPose);EditorUtility.SetDirty(him.cutout.sharedMaterial);}
+            // The illustration includes the camera. Keep its flash light but hide the old box props.
+            if(him.walkLeft!=null&&him.walkRight!=null)
+                foreach(var r in him.GetComponentsInChildren<Renderer>())if(r.name=="Camera"||r.name=="Lens"||r.name=="Flash")
+                {Undo.RecordObject(r,"Hide placeholder camera");r.enabled=false;EditorUtility.SetDirty(r);}
+        }
+        static Texture2D ImportPose(string path)
+        {
+            var importer=AssetImporter.GetAtPath(path) as TextureImporter;if(importer==null)return null;
+            importer.alphaIsTransparency=true;importer.npotScale=TextureImporterNPOTScale.None;importer.wrapMode=TextureWrapMode.Clamp;
+            importer.textureCompression=TextureImporterCompression.Uncompressed;importer.maxTextureSize=2048;importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         /// <summary>The real art if it exists; otherwise a drawn placeholder, written once to Art/Textures so it imports like the real thing.</summary>
