@@ -30,7 +30,8 @@ namespace Confiscated.EditorTools
         static float CellW=>(X1-X0)/Cols;
         static float CellH=>(Z1-Z0)/Rows;
         public static Vector3 Cell(int c,int r,float y=0)=>new Vector3(X0+(c+.5f)*CellW,y,Z0+(r+.5f)*CellH);
-        const float ShelfDepth=.4f,ShelfHeight=2.1f;
+        // Shelves reach the 3 m ceiling (a 5 cm gap keeps the tops out of it): nothing to see over, so the maze is a maze.
+        const float ShelfDepth=.4f,ShelfHeight=2.95f;
         // Centre clearing (returns desk) and where each door comes in.
         static readonly RectInt Clearing=new RectInt(7,3,2,3);
 
