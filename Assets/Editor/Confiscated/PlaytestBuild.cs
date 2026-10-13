@@ -21,7 +21,7 @@ namespace Confiscated.EditorTools
             string folder=Path.GetFullPath("../Builds/Playtest_"+DateTime.Now.ToString("yyyy-MM-dd_HHmm"));
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{
                 scenes=scenes,locationPathName=Path.Combine(folder,"Confiscated.exe"),
-                target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
+                target=BuildTarget.StandaloneWindows64,options=BuildOptions.CompressWithLz4HC});
             var s=report.summary;
             File.WriteAllText(ResultFile,$"{s.result}\n{folder}\nscenes: {string.Join(", ",scenes)}\nsize: {s.totalSize/1048576f:F0} MB\ntime: {s.totalTime}\nerrors: {s.totalErrors} warnings: {s.totalWarnings}\n");
             Debug.Log("[PlaytestBuild] "+s.result+" -> "+folder);

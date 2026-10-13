@@ -106,7 +106,10 @@ namespace Confiscated.EditorTools
                         var movement=P.GetComponent<FirstPersonController>();movement.Controller.enabled=false;P.transform.SetPositionAndRotation(new Vector3(-33,0,36),Quaternion.identity);movement.Controller.enabled=true;Physics.SyncTransforms();
                         keyboard=InputSystem.AddDevice<Keyboard>();InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.W,Key.LeftShift));Next(41);break;
                     case 41:
-                        if(age<.7)return;
+                        // Focus changes can reset the synthetic device. Hold the keys until
+                        // gameplay observes the sprint, with a bounded failure deadline.
+                        InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.W,Key.LeftShift));
+                        if(!ContextualControlHints.Learned(ContextualControlHints.Action.Run)&&age<5)return;
                         Need(ContextualControlHints.Learned(ContextualControlHints.Action.Run),"actual player sprint input learns the run hint");
                         InputSystem.RemoveDevice(keyboard);keyboard=null;
                         ContextualControlHints.AlwaysShow=true;Next(5);break;
