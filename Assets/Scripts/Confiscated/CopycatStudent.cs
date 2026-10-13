@@ -20,14 +20,14 @@ namespace Confiscated
         AudioSource voice,song,giggle;
         float nextGiggle,nextBlink,blinkAt,torchExposure;
         Vector3 lastPosition,fleeTarget;
-        float travelled,fleeAt,fleeDeadline;
+        float travelled,fleeAt,fleeDeadline,rearmAt;
         bool triggered,speaking,fleeing,completed,watched,hiding,wasSeen;
 
         public bool Triggered=>triggered;
         public bool Speaking=>speaking;
         public bool Fleeing=>fleeing;
         public bool Completed=>completed;
-        public bool FrozenByGaze=>watched&&triggered&&!fleeing;
+        public bool FrozenByGaze=>watched&&(triggered||fleeing);
         public int RevealCount{get;private set;}
         /// <summary>Waiting in a library alcove until the player sees her.</summary>
         public bool Hiding=>hiding&&!triggered;
@@ -141,7 +141,8 @@ namespace Confiscated
             if(!triggered)
             {
                 StopAgent();
-                if(hiding?delta.magnitude<=SpotDistance&&LibraryWindow.InLibrary(player.position)&&PlayerCanSeeMe():
+                if(Time.time<rearmAt){Animate();return;}
+                if(hiding?delta.magnitude<=SpotDistance&&PlayerCanSeeMe():
                     delta.magnitude<=TriggerDistance&&Vector3.Dot(transform.forward,delta.normalized)>.25f&&ClearView(player))
                 {
                     triggered=true;
@@ -185,9 +186,8 @@ namespace Confiscated
 
         void LightAndBlink(PlayerInteractor player)
         {
-            bool maze=LibraryWindow.InLibrary(transform.position);
-            torchExposure=maze?TorchExposure(player):1;
-            if(artwork!=null)artwork.enabled=!maze||torchExposure>.08f;
+            torchExposure=1;
+            if(artwork!=null)artwork.enabled=true;
             bool seen=PlayerCanSeeMe();
             if(seen&&!wasSeen)nextBlink=Mathf.Min(nextBlink,Time.time+Random.Range(.45f,1.1f));
             wasSeen=seen;
@@ -228,6 +228,30 @@ namespace Confiscated
             Vector3 away=transform.position-playerPosition;away.y=0;if(away.sqrMagnitude<.1f)away=transform.forward;away.Normalize();
             fleeTarget=transform.position;
             float best=-1;
+            // Stage the next encounter near the next unrecovered belonging.
+            Vector3 objective=playerPosition;
+            if(run.pickups!=null)
+                for(int id=1;id<5;id++)
+                {
+                    if(run.Has(id))continue;
+                    foreach(var pickup in run.pickups)if(pickup!=null&&pickup.itemId==id){objective=pickup.transform.position;break;}
+                    break;
+                }
+            if(!run.Has(1)&&!run.HasBoltCutters)
+            {
+                foreach(var tool in FindObjectsByType<AccessToolPickup>(FindObjectsSortMode.None))
+                    if(tool.tool==AccessToolPickup.Tool.BoltCutters){objective=tool.transform.position;break;}
+            }
+            if(run.Count==5)
+                foreach(var door in FindObjectsByType<OfficeDoor>(FindObjectsSortMode.None))
+                    if(door.mainExit){objective=door.transform.position;break;}
+            foreach(Vector3 offset in new[]{Vector3.left,Vector3.right,Vector3.forward,Vector3.back})
+            {
+                if(!NavMesh.SamplePosition(objective+offset*4,out var spot,3,NavMesh.AllAreas)||Vector3.Distance(spot.position,playerPosition)<7)continue;
+                var route=new NavMeshPath();
+                if(!NavMesh.CalculatePath(transform.position,spot.position,NavMesh.AllAreas,route)||route.status!=NavMeshPathStatus.PathComplete)continue;
+                fleeTarget=spot.position;best=1000;break;
+            }
             foreach(Vector3 direction in new[]{away,Quaternion.Euler(0,55,0)*away,Quaternion.Euler(0,-55,0)*away,-away})
             {
                 if(!NavMesh.SamplePosition(transform.position+direction*24,out var hit,8,NavMesh.AllAreas))continue;
@@ -239,10 +263,13 @@ namespace Confiscated
 
         void Flee()
         {
+            watched=PlayerCanSeeMe();
+            if(watched){StopAgent();fleeDeadline=Time.time+14;return;}
+            if(agent.isOnNavMesh){agent.isStopped=false;agent.SetDestination(fleeTarget);}
             if(!agent.isOnNavMesh||Time.time>=fleeDeadline||!agent.pathPending&&agent.remainingDistance<=.45f)
             {
-                completed=true;fleeing=false;StopAgent();if(artwork!=null)artwork.enabled=false;
-                foreach(var collider in GetComponents<Collider>())collider.enabled=false;
+                completed=false;fleeing=false;triggered=false;speaking=false;hiding=true;watched=false;
+                rearmAt=Time.time+8;nextGiggle=0;StopAgent();
             }
         }
 
@@ -282,7 +309,7 @@ namespace Confiscated
             if(Time.time>=nextBlink){blinkAt=Time.time;nextBlink=Time.time+Random.Range(wasSeen?2.5f:4f,wasSeen?4.5f:7f);}
             float blinkTime=(Time.time-blinkAt)/.2f;
             float blink=blinkTime>=0&&blinkTime<1?Mathf.Sin(Mathf.PI*blinkTime):0;
-            float visibility=LibraryWindow.InLibrary(transform.position)?Mathf.Lerp(.025f,1,torchExposure):1;
+            float visibility=1;
             artwork.GetPropertyBlock(appearance);
             appearance.SetVector("_BaseMap_ST",new Vector4(.5f,1,step*.5f,0));
             appearance.SetFloat("_CopycatBlink",blink);

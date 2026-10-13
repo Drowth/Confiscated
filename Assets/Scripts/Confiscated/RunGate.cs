@@ -10,6 +10,26 @@ namespace Confiscated
         public Vector3 clearedLocalPosition;
         public Vector3 clearedLocalEuler;
         public bool Cleared { get; private set; }
+        Transform hinge;float opening;
+        void Start()
+        {
+            if(kind!=Kind.Chain||obstacle==null)return;
+            // The notice belongs to the moving leaf, not the stationary interaction root.
+            foreach(var child in GetComponentsInChildren<Transform>(true))
+                if(child!=obstacle&&!child.IsChildOf(obstacle)&&(child.name=="Gate notice"||child.GetComponent<TextMesh>()!=null))
+                child.SetParent(obstacle,true);
+            var bounds=obstacle.GetComponent<Collider>();
+            float width=bounds!=null?bounds.bounds.size.x:1.35f;
+            hinge=new GameObject("Gate hinge").transform;hinge.SetParent(transform,false);
+            hinge.position=obstacle.position-transform.right*(width*.5f);
+            obstacle.SetParent(hinge,true);
+        }
+        void Update()
+        {
+            if(hinge==null||!Cleared)return;
+            opening=Mathf.MoveTowards(opening,105,Time.deltaTime*85);
+            hinge.localRotation=Quaternion.Euler(0,opening,0);
+        }
         public override string GetPrompt(PlayerInteractor p)
         {
             var run = SchoolRunController.Instance;
@@ -28,7 +48,13 @@ namespace Confiscated
             if (!CanInteract(p)) return;
             if (kind == Kind.Exit) { DoorSounds.For(gameObject,DoorSounds.Kind.Main).Play(true); SchoolRunController.Instance.Escape(); return; }
             Cleared = true;if(kind==Kind.Chain)SchoolRunController.Instance.CageOpen=true;
-            if (obstacle != null) { obstacle.localPosition = clearedLocalPosition; obstacle.localRotation = Quaternion.Euler(clearedLocalEuler); }
+            if (obstacle != null&&kind!=Kind.Chain) { obstacle.localPosition = clearedLocalPosition; obstacle.localRotation = Quaternion.Euler(clearedLocalEuler); }
+            if(kind==Kind.Chain)
+            {
+                var sound=SchoolAudio.Create(gameObject);sound.clip=Resources.Load<AudioClip>("Audio/CageChainCut");
+                sound.spatialBlend=1;sound.minDistance=2;sound.maxDistance=30;sound.dopplerLevel=0;sound.volume=1;
+                if(sound.clip!=null){sound.Play();Destroy(sound,sound.clip.length+.1f);}else Destroy(sound);
+            }
             if(kind==Kind.Shortcut)
             {
                 var sound=SchoolAudio.Create(obstacle!=null?obstacle.gameObject:gameObject);
