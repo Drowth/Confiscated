@@ -69,10 +69,24 @@ namespace Confiscated
             if(Suppress||Application.isEditor||string.IsNullOrEmpty(id))return;
             if(instance==null){var g=new GameObject("Steam leaderboard");DontDestroyOnLoad(g);instance=g.AddComponent<SteamLeaderboard>();}
             if(!instance.Init())return;
-            try{SteamUserStats.SetAchievement(id);SteamUserStats.StoreStats();}
-            catch(Exception e){Debug.LogWarning("Steam achievement skipped: "+e.Message);}
+            instance.achievements.Add(id);instance.achieveTries=0;instance.achieveAt=0;
 #endif
         }
+#if !DISABLESTEAMWORKS
+        readonly HashSet<string> achievements=new();
+        float achieveAt;int achieveTries;
+        // Steam refuses SetAchievement until this player's stats have loaded, which takes a moment after Init, so retry
+        // every 2 s for a minute. A name still refused is missing from Steamworks; reaching that ending again retries it.
+        void FlushAchievements()
+        {
+            if(achievements.Count==0||Time.unscaledTime<achieveAt)return;
+            achieveAt=Time.unscaledTime+2;
+            bool stored=false;
+            try{achievements.RemoveWhere(id=>{bool ok=SteamUserStats.SetAchievement(id);stored|=ok;return ok;});if(stored)SteamUserStats.StoreStats();}
+            catch(Exception e){Debug.LogWarning("Steam achievement skipped: "+e.Message);achievements.Clear();}
+            if(++achieveTries>=30)achievements.Clear();
+        }
+#endif
 
 #if !DISABLESTEAMWORKS
         bool ready,busy;
@@ -161,7 +175,7 @@ namespace Confiscated
             Set(You.HasValue?"YOUR BEST  "+RunTiming.Format(You.Value.ms)+"   RANK #"+You.Value.rank:"");
         }
         // Unscaled: Steam answers must arrive while the results screen has the game paused.
-        void Update(){if(ready)SteamAPI.RunCallbacks();}
+        void Update(){if(!ready)return;SteamAPI.RunCallbacks();FlushAchievements();}
         void OnDestroy(){if(instance!=this)return;instance=null;if(ready){ready=false;SteamAPI.Shutdown();}}
 #endif
     }
