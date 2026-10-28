@@ -62,6 +62,18 @@ namespace Confiscated
 #endif
         }
 
+        /// <summary>Unlocks a Steam achievement. Editor runs and armed tests never touch the player's Steam account.</summary>
+        public static void Achieve(string id)
+        {
+#if !DISABLESTEAMWORKS
+            if(Suppress||Application.isEditor||string.IsNullOrEmpty(id))return;
+            if(instance==null){var g=new GameObject("Steam leaderboard");DontDestroyOnLoad(g);instance=g.AddComponent<SteamLeaderboard>();}
+            if(!instance.Init())return;
+            try{SteamUserStats.SetAchievement(id);SteamUserStats.StoreStats();}
+            catch(Exception e){Debug.LogWarning("Steam achievement skipped: "+e.Message);}
+#endif
+        }
+
 #if !DISABLESTEAMWORKS
         bool ready,busy;
         string queuedBoard;int queuedMs;
