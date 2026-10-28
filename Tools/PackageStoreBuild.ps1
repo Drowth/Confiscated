@@ -9,7 +9,7 @@ foreach ($required in @('Confiscated.exe', 'UnityPlayer.dll', 'Confiscated_Data'
     if (-not (Test-Path -LiteralPath (Join-Path $playerFolder $required))) { throw "Missing $required" }
 }
 $files = @(Get-ChildItem -LiteralPath $playerFolder -File -Recurse -Force)
-$unwanted = @($files | Where-Object { $_.FullName -match '(?i)(DoNotShip|[\\/]\.git[\\/]|[\\/]steam_appid\.txt$|\.pdb$)' })
+$unwanted = @($files | Where-Object { $_.FullName -match '(?i)(DoNotShip|DontShip|[\\/]\.git[\\/]|[\\/]steam_appid\.txt$|\.pdb$)' })
 if ($unwanted.Count) { throw "Development files found in upload folder: $($unwanted.FullName -join ', ')" }
 $leftovers = @($files | Where-Object { $_.Name -match '(?i)(claude|codex|agents\.md|skill\.md|prompt|\.log$|\.cs$|^\.env)' })
 if ($leftovers.Count) { throw "Development leftovers found in player: $($leftovers.Name -join ', ')" }

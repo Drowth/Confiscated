@@ -54,7 +54,8 @@ namespace Confiscated.EditorTools
                 .Where(m=>m.type==LogType.Warning||m.type==LogType.Error||m.type==LogType.Exception)
                 .Select(m=>m.type+": "+m.content).Distinct());
             if(s.result!=BuildResult.Succeeded)throw new InvalidOperationException("Store build failed; see "+ResultFile);
-            foreach(string dir in Directory.GetDirectories(player,"*DoNotShip*"))
+            // Burst writes *_DoNotShip; Unity 6.6 also writes *_BackUpThisFolder_ButDontShipItWithYourGame for Mono builds.
+            foreach(string dir in Directory.GetDirectories(player,"*DoNotShip*").Concat(Directory.GetDirectories(player,"*DontShip*")))
                 Directory.Move(dir,Path.Combine(root,Path.GetFileName(dir)));
             if(File.Exists(Path.Combine(player,"steam_appid.txt")))throw new InvalidOperationException("Do not ship steam_appid.txt in a store depot.");
             File.WriteAllText(Path.Combine(player,"README.txt"),
