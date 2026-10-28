@@ -31,6 +31,18 @@ namespace Confiscated
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics(){Suppress=false;Status="";Category="";Top.Clear();You=null;}
 
+        public const uint AppId=5521710;
+        #if !DISABLESTEAMWORKS && !UNITY_EDITOR
+        // A player build started outside Steam relaunches through the client, so overlay, ownership and boards all work.
+        // Ship builds without steam_appid.txt beside the exe, or Steam skips this check.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void RelaunchThroughSteam()
+        {
+            try{if(SteamAPI.RestartAppIfNecessary(new AppId_t(AppId)))Application.Quit();}
+            catch(Exception e){Debug.LogWarning("Steam check skipped: "+e.Message);}
+        }
+        #endif
+
         static string BoardId(string category)=>category=="Phone start"?"phone":category=="Lesson start"?"lesson":category=="Classroom start"?"classroom":null;
         static void Set(string status){Status=status;Changed?.Invoke();}
 
