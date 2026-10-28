@@ -242,6 +242,7 @@ namespace Confiscated
                 flavour = "You got your phone back and escaped.";
                 EndingUnlocks.Unlock(EndingUnlocks.Ending.Completed);
             }
+            if (SchoolGameMode.Dark) EndingUnlocks.Unlock(EndingUnlocks.Ending.DarkEscape);
             HudController.Instance?.ShowOverlay(title, flavour + "\n" + report + ChatReport() + "\n\nR: retry   M: title / game modes\n"+(SchoolGameMode.Dark?"DARK MODE COMPLETE":"DARK MODE UNLOCKED - select it on the title screen."));
             // After the time is frozen and the escape validated: exactly one upload per win. Caught runs never reach here.
             var hud = HudController.Instance;
