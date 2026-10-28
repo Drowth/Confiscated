@@ -51,6 +51,7 @@ namespace Confiscated.EditorTools
         }
         static void Log(string message,string trace,LogType type){if(type==LogType.Error||type==LogType.Exception){errors++;File.AppendAllText(Report,"ERROR "+message+"\n");}}
         static void Check(bool ok,string text){if(!ok)throw new Exception(text);File.AppendAllText(Report,"ok "+text+"\n");}
+        static string LightPath(Transform t)=>t.parent==null?t.name:LightPath(t.parent)+"/"+t.name;
         static void Next(){stage++;at=EditorApplication.timeSinceStartup;keyQueued=false;}
         static void Warp(Vector3 p,Vector3 look)
         {
@@ -92,7 +93,9 @@ namespace Confiscated.EditorTools
                         Check(D.WindowLights.Count==8&&D.WindowLights.All(l=>l.enabled&&l.shadows!=LightShadows.None),"window light sources remain active with shadows");
                         Check(D.LockerLight!=null&&D.LockerLight.gameObject.activeInHierarchy&&D.LockerLight.shadows!=LightShadows.None,"battery light marks and illuminates the torch locker during blackout");
                         Check(D.TorchHint.Contains("AHEAD")&&D.TorchHint.Contains("amber-lit"),"classroom exit shows direction and distance to the lit locker");
-                        Check(Object.FindObjectsByType<Light>(FindObjectsSortMode.None).Where(l=>l.enabled&&l.intensity>0).All(l=>D.WindowLights.Contains(l)||l==D.LockerLight),"all mains lights are off; windows and locker battery light remain");
+                        // The secret isolation room keeps its own bulb burning through the outage by design (DarkModeController).
+                        var stillOn=Object.FindObjectsByType<Light>(FindObjectsSortMode.None).Where(l=>l.enabled&&l.intensity>0&&!D.WindowLights.Contains(l)&&l!=D.LockerLight&&l.GetComponentInParent<IsolationRoom>()==null).ToArray();
+                        Check(stillOn.Length==0,"all mains lights are off; windows, locker battery light and the isolation room's own bulb remain"+(stillOn.Length==0?"":" (still on: "+string.Join(", ",stillOn.Select(l=>LightPath(l.transform)))+")"));
                         Check(Shader.GetGlobalFloat("_SchoolDarkness")==1,"illustrated shaders follow blackout");
                         InputSystem.QueueStateEvent(keys,new KeyboardState(Key.T));Shot("02-torch-off");Next();break;
                     case 4:
