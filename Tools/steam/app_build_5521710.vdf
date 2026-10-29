@@ -1,8 +1,8 @@
 "AppBuild"
 {
 	"AppID" "5521710"
-	"Desc" "School props fix 2026-10-29 (Release_2026-10-29_125453, main 9f4a0b2)"
-	"ContentRoot" "D:\Creative Stuff\Games\Confiscated\Builds\Release_2026-10-29_125453\Windows\"
+	"Desc" "School props fix + game icon 2026-10-29 (Release_2026-10-29_133638, main 2c0b9ed)"
+	"ContentRoot" "D:\Creative Stuff\Games\Confiscated\Builds\Release_2026-10-29_133638\Windows\"
 	"BuildOutput" "D:\Creative Stuff\Games\Confiscated\Builds\SteamPipeOutput\"
 	"Preview" "0"
 	"Depots"
