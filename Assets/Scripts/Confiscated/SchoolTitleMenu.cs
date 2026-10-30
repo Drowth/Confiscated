@@ -222,7 +222,7 @@ namespace Confiscated
             startButton=MakeButton("Start game",content,new Vector2(.07f,.32f),new Vector2(.28f,.405f),StartGame);
             var dark=MakeButton("Dark mode",content,new Vector2(.30f,.32f),new Vector2(.51f,.405f),StartDarkGame);
             dark.interactable=SchoolGameMode.DarkUnlocked;
-            Label(SchoolGameMode.DarkUnlocked?(SchoolGameMode.DevUnlock?"DEV UNLOCK ON. LIGHTS OUT.":"LIGHTS OUT. FIND YOUR TORCH."):"ESCAPE ONCE TO UNLOCK DARK MODE",content,new Vector2(.30f,.27f),new Vector2(.52f,.315f),17,Cream);
+            Label(SchoolGameMode.DarkUnlocked?(SchoolGameMode.DevUnlock?"DEV UNLOCK ON. LIGHTS OUT.":"LIGHTS OUT. FIND YOUR TORCH."):DemoBuild.On?"DARK MODE IS IN THE FULL GAME":"ESCAPE ONCE TO UNLOCK DARK MODE",content,new Vector2(.30f,.27f),new Vector2(.52f,.315f),17,Cream);
             MakeButton("Quit",content,new Vector2(.07f,.225f),new Vector2(.20f,.292f),Quit);
             var credits=MakeButton("Credits",content,new Vector2(.21f,.232f),new Vector2(.29f,.285f),()=>ShowCredits(true));credits.GetComponentInChildren<Text>().fontSize=24;
             // Top row, beside Dark Mode, with its own live caption underneath (what's connected, how many are chatting).

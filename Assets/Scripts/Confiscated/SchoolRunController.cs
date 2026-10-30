@@ -139,7 +139,10 @@ namespace Confiscated
             // The phone lights up with a friend's text: what the run is about.
             if (id == 0) PhoneMessage.Show();
             if (Count == 5) Object.FindFirstObjectByType<SchoolBellSystem>()?.Ring();
+            if (DemoBuild.On && RoundStarted && Count >= DemoBuild.ItemCap) StartCoroutine(EndDemo());
         }
+        // Long enough for the item pop-up to land before the demo card covers it.
+        System.Collections.IEnumerator EndDemo(){yield return new WaitForSeconds(1.5f);GameManager.Instance?.EndDemo();}
         public void PenalizeCatch()
         {
             Detentions++;

@@ -74,6 +74,7 @@ namespace Confiscated
             var kb = Keyboard.current;
             if (Time.unscaledTime < retryAvailableAt) return;
             if(kb!=null&&kb.mKey.wasPressedThisFrame){ReturnToTitle();return;}
+            if(DemoBuild.On&&kb!=null&&kb.wKey.wasPressedThisFrame){DemoBuild.OpenStore();return;}
             if (kb != null && (kb.rKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame))
                 Restart();
             if (!creditsShown && creditsAt >= 0 && Time.unscaledTime >= creditsAt)
@@ -249,6 +250,16 @@ namespace Confiscated
             if (hud != null && hud.overlay != null) SteamLeaderboardView.Show(hud.overlay.transform, hud.overlayBody);
             SteamLeaderboard.Submit(timing.Category, ms);
             ScheduleCredits();
+        }
+
+        /// <summary>Demo builds stop here after <see cref="DemoBuild.ItemCap"/> belongings: W opens the Steam page, R retries, M title.</summary>
+        public void EndDemo()
+        {
+            if (!IsPlaying || SchoolRunController.Instance == null) return;
+            SchoolRunController.Instance.PauseStaff();
+            Current = State.Won; EndRound();
+            HudController.Instance?.SetObjective("END OF THE DEMO");
+            HudController.Instance?.ShowOverlay("TO BE CONTINUED...", "Three more belongings. Two staff hunting you. One way out.\nThe full game also has Dark Mode, four endings and Steam leaderboards."+ChatReport()+"\n\nW: wishlist CONFISCATED! on Steam\nR: retry   M: title");
         }
 
         void EndRound()
