@@ -14,8 +14,8 @@ namespace Confiscated
         public static bool On=>false;
 #endif
         public const int ItemCap=2;
-        /// <summary>The demo's own Steamworks app id. 0 until Valve assigns it, which skips the relaunch-through-Steam check.</summary>
-        public const uint AppId=0;
+        /// <summary>The demo's own Steamworks app id (Confiscated! Demo). 0 would skip the relaunch-through-Steam check.</summary>
+        public const uint AppId=5544810;
         /// <summary>Opens the full game's page in the Steam client, where the player is already signed in to wishlist.</summary>
         public static void OpenStore()=>Application.OpenURL("steam://store/"+SteamLeaderboard.AppId);
     }
