@@ -38,7 +38,9 @@ namespace Confiscated
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void RelaunchThroughSteam()
         {
-            try{if(SteamAPI.RestartAppIfNecessary(new AppId_t(AppId)))Application.Quit();}
+            uint id=DemoBuild.On?DemoBuild.AppId:AppId;
+            if(id==0)return;
+            try{if(SteamAPI.RestartAppIfNecessary(new AppId_t(id)))Application.Quit();}
             catch(Exception e){Debug.LogWarning("Steam check skipped: "+e.Message);}
         }
         #endif
@@ -51,7 +53,7 @@ namespace Confiscated
         {
             Category=category??"";Top.Clear();You=null;
             string board=BoardId(category);
-            if(Suppress){Set("");return;}
+            if(Suppress||DemoBuild.On){Set("");return;}
             if(Category.StartsWith("Dark / ")){Set("Dark mode personal best saved locally.");return;}
             if(board==null||ms<=0||ms>int.MaxValue){Set("This run can't be ranked.");return;}
 #if DISABLESTEAMWORKS
@@ -66,7 +68,7 @@ namespace Confiscated
         public static void Achieve(string id)
         {
 #if !DISABLESTEAMWORKS
-            if(Suppress||Application.isEditor||string.IsNullOrEmpty(id))return;
+            if(Suppress||DemoBuild.On||Application.isEditor||string.IsNullOrEmpty(id))return;
             if(instance==null){var g=new GameObject("Steam leaderboard");DontDestroyOnLoad(g);instance=g.AddComponent<SteamLeaderboard>();}
             if(!instance.Init())return;
             instance.achievements.Add(id);instance.achieveTries=0;instance.achieveAt=0;

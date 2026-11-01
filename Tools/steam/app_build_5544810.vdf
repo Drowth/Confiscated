@@ -1,0 +1,12 @@
+"AppBuild"
+{
+	"AppID" "5544810"
+	"Desc" "Demo build (set ContentRoot to the Demo_ build folder)"
+	"ContentRoot" "D:\Creative Stuff\Games\Confiscated\Builds\Demo_YYYY-MM-DD_HHMMSS\Windows\"
+	"BuildOutput" "D:\Creative Stuff\Games\Confiscated\Builds\SteamPipeOutput\"
+	"Preview" "0"
+	"Depots"
+	{
+		"5544811" "depot_build_5544811.vdf"
+	}
+}

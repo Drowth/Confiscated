@@ -11,8 +11,8 @@ namespace Confiscated
         #else
         public static bool DevUnlock=>false;
         #endif
-        public static bool DarkUnlocked=>DevUnlock||EndingUnlocks.IsUnlocked(EndingUnlocks.Ending.Completed)
-            ||EndingUnlocks.IsUnlocked(EndingUnlocks.Ending.FastRun)||EndingUnlocks.IsUnlocked(EndingUnlocks.Ending.QuackEscape);
+        public static bool DarkUnlocked=>!DemoBuild.On&&(DevUnlock||EndingUnlocks.IsUnlocked(EndingUnlocks.Ending.Completed)
+            ||EndingUnlocks.IsUnlocked(EndingUnlocks.Ending.FastRun)||EndingUnlocks.IsUnlocked(EndingUnlocks.Ending.QuackEscape));
         public static bool Select(bool dark)
         {
             if(dark&&!DarkUnlocked)return false;
