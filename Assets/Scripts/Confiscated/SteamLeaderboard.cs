@@ -38,13 +38,45 @@ namespace Confiscated
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void RelaunchThroughSteam()
         {
-            try{if(SteamAPI.RestartAppIfNecessary(new AppId_t(AppId)))Application.Quit();}
-            catch(Exception e){Debug.LogWarning("Steam check skipped: "+e.Message);}
+            try{if(SteamAPI.RestartAppIfNecessary(new AppId_t(AppId))){Application.Quit();return;}}
+            catch(Exception e){Debug.LogWarning("Steam check skipped: "+e.Message);return;}
+            // Start Steam now, so the boards exist (Init creates them) and stats load before the first ending.
+            Ensure().Init();
         }
         #endif
 
         static string BoardId(string category)=>category=="Phone start"?"phone":category=="Lesson start"?"lesson":category=="Classroom start"?"classroom":null;
         static void Set(string status){Status=status;Changed?.Invoke();}
+        /// <summary>The three ranked categories, in the order the title screen's Leaderboards card shows them.</summary>
+        public static readonly string[] Categories={"Phone start","Lesson start","Classroom start"};
+        /// <summary>False in the itch build, which compiles Steamworks out.</summary>
+        public static bool Available
+        {
+#if DISABLESTEAMWORKS
+            get=>false;
+#else
+            get=>true;
+#endif
+        }
+        /// <summary>Reads a board's top ten and the player's rank without uploading anything (title screen).</summary>
+        public static void Browse(string category)
+        {
+            Category=category??"";Top.Clear();You=null;
+            string board=BoardId(category);
+            if(board==null){Set("");return;}
+#if DISABLESTEAMWORKS
+            Set("Steam leaderboards are in the Steam version.");
+#else
+            Ensure().Begin(board,-1);
+#endif
+        }
+#if !DISABLESTEAMWORKS
+        static SteamLeaderboard Ensure()
+        {
+            if(instance==null){var g=new GameObject("Steam leaderboard");DontDestroyOnLoad(g);instance=g.AddComponent<SteamLeaderboard>();}
+            return instance;
+        }
+#endif
 
         /// <summary>Call once, after a valid escape has frozen its time.</summary>
         public static void Submit(string category,long ms)
@@ -57,8 +89,7 @@ namespace Confiscated
 #if DISABLESTEAMWORKS
             Set(Application.isEditor?"":"Steam leaderboards are in the Steam version. Time saved on this PC only.");
 #else
-            if(instance==null){var g=new GameObject("Steam leaderboard");DontDestroyOnLoad(g);instance=g.AddComponent<SteamLeaderboard>();}
-            instance.Begin(board,(int)ms);
+            Ensure().Begin(board,(int)ms);
 #endif
         }
 
@@ -67,8 +98,7 @@ namespace Confiscated
         {
 #if !DISABLESTEAMWORKS
             if(Suppress||Application.isEditor||string.IsNullOrEmpty(id))return;
-            if(instance==null){var g=new GameObject("Steam leaderboard");DontDestroyOnLoad(g);instance=g.AddComponent<SteamLeaderboard>();}
-            if(!instance.Init())return;
+            if(!Ensure().Init())return;
             instance.achievements.Add(id);instance.achieveTries=0;instance.achieveAt=0;
 #endif
         }
@@ -113,26 +143,31 @@ namespace Confiscated
             youLoaded=CallResult<LeaderboardScoresDownloaded_t>.Create(OnYou);
             // Names of strangers arrive late; redraw when Steam has them.
             personaChanged=Callback<PersonaStateChange_t>.Create(_=>{if(!busy&&rows.Count>0)Publish();});
-            return ready=true;
+            ready=true;
+            // Create every board up front, so they exist in Steamworks (and for Valve's review) before anyone escapes.
+            foreach(string c in Categories)SteamUserStats.FindOrCreateLeaderboard(BoardName(BoardId(c)),ELeaderboardSortMethod.k_ELeaderboardSortMethodAscending,ELeaderboardDisplayType.k_ELeaderboardDisplayTypeTimeMilliSeconds);
+            return true;
         }
+        // The editor, development builds and Valve's public test app (480) use separate boards, so testing never reaches the released game's tables.
+        static string BoardName(string board)=>(Application.isEditor||Debug.isDebugBuild||SteamUtils.GetAppID().m_AppId==480?"test_escape_":"escape_")+board+"_v1";
+        /// <summary>ms below zero only reads the board.</summary>
         void Begin(string board,int ms)
         {
-            if(!Init()){Set("Steam isn't running. Time saved on this PC only.");return;}
+            if(!Init()){Set(ms<0?"Steam isn't running, so the leaderboards can't load.":"Steam isn't running. Time saved on this PC only.");return;}
             // One upload at a time; a newer finish waits, and only the latest waiting one is kept.
             if(busy){queuedBoard=board;queuedMs=ms;return;}
             busy=true;pendingMs=ms;rows.Clear();mine=null;
-            Set("Sending your time to Steam...");
-            // The editor, development builds and Valve's public test app (480) use separate boards, so testing never reaches the released game's tables.
-            bool testing=Application.isEditor||Debug.isDebugBuild||SteamUtils.GetAppID().m_AppId==480;
-            found.Set(SteamUserStats.FindOrCreateLeaderboard((testing?"test_escape_":"escape_")+board+"_v1",ELeaderboardSortMethod.k_ELeaderboardSortMethodAscending,ELeaderboardDisplayType.k_ELeaderboardDisplayTypeTimeMilliSeconds));
+            Set(ms<0?"Loading the Steam leaderboard...":"Sending your time to Steam...");
+            found.Set(SteamUserStats.FindOrCreateLeaderboard(BoardName(board),ELeaderboardSortMethod.k_ELeaderboardSortMethodAscending,ELeaderboardDisplayType.k_ELeaderboardDisplayTypeTimeMilliSeconds));
         }
         int pendingMs;
-        void Fail(string why){busy=false;Set(why+" Time saved on this PC only.");Drain();}
+        void Fail(string why){busy=false;Set(why+(pendingMs<0?"":" Time saved on this PC only."));Drain();}
         void Drain(){if(queuedBoard==null)return;string b=queuedBoard;queuedBoard=null;Begin(b,queuedMs);}
         void OnFound(LeaderboardFindResult_t r,bool ioFailure)
         {
             if(ioFailure||r.m_bLeaderboardFound==0){Fail("Couldn't reach the Steam leaderboard.");return;}
             handle=r.m_hSteamLeaderboard;
+            if(pendingMs<0){topLoaded.Set(SteamUserStats.DownloadLeaderboardEntries(handle,ELeaderboardDataRequest.k_ELeaderboardDataRequestGlobal,1,10));return;}
             uploaded.Set(SteamUserStats.UploadLeaderboardScore(handle,ELeaderboardUploadScoreMethod.k_ELeaderboardUploadScoreMethodKeepBest,pendingMs,null,0));
         }
         void OnUploaded(LeaderboardScoreUploaded_t r,bool ioFailure)
@@ -157,7 +192,8 @@ namespace Confiscated
         {
             var own=new List<(CSteamID,int,int)>();if(!ioFailure)Read(r,own);
             if(own.Count>0)mine=own[0];else mine=null;
-            busy=false;Publish();Drain();
+            // A newer request is waiting (another tab was picked): don't flash this board under its name.
+            busy=false;if(queuedBoard==null)Publish();Drain();
         }
         static string Name(CSteamID id)
         {
@@ -172,7 +208,7 @@ namespace Confiscated
             Top.Clear();
             foreach(var row in rows)Top.Add(new Entry{rank=row.rank,name=Name(row.id),ms=row.score,you=row.id==self});
             You=mine.HasValue?new Entry{rank=mine.Value.rank,name=Name(mine.Value.id),ms=mine.Value.score,you=true}:(Entry?)null;
-            Set(You.HasValue?"YOUR BEST  "+RunTiming.Format(You.Value.ms)+"   RANK #"+You.Value.rank:"");
+            Set(You.HasValue?"YOUR BEST  "+RunTiming.Format(You.Value.ms)+"   RANK #"+You.Value.rank:Top.Count==0?"No times yet. Escape to set the first one.":"");
         }
         // Unscaled: Steam answers must arrive while the results screen has the game paused.
         void Update(){if(!ready)return;SteamAPI.RunCallbacks();FlushAchievements();}
