@@ -90,9 +90,11 @@ namespace Confiscated
                 if((kb!=null&&kb.escapeKey.wasPressedThisFrame)||(pad!=null&&pad.buttonEast.wasPressedThisFrame))SkipIntro();
             }
             else if(creditsOpen&&((kb!=null&&kb.escapeKey.wasPressedThisFrame)||(pad!=null&&pad.buttonEast.wasPressedThisFrame)))ShowCredits(false);
+            else if(LeaderboardOpen&&((kb!=null&&kb.escapeKey.wasPressedThisFrame)||(pad!=null&&pad.buttonEast.wasPressedThisFrame)))ShowLeaderboard(false);
             else if(kb!=null&&kb.enterKey.wasPressedThisFrame)
             {
                 if(creditsOpen){ShowCredits(false);return;}
+                if(LeaderboardOpen){EventSystem.current?.currentSelectedGameObject?.GetComponent<Button>()?.onClick.Invoke();return;}
                 if(twitchPanel!=null&&twitchPanel.activeSelf)
                 {
                     // Enter in the channel box connects; it must never fall through to Start game.
@@ -189,7 +191,7 @@ namespace Confiscated
             if(musicSource!=null)musicSource.Stop();
             game.BeginSchoolDay();
         }
-        void OnDisable(){if(creditsOpen){creditsOpen=false;RestoreCreditsProps();}if(active){active=false;Restore();if(canvas!=null)canvas.gameObject.SetActive(false);}if(musicSource!=null)musicSource.Stop();}
+        void OnDisable(){SteamLeaderboard.Changed-=RedrawBoard;if(creditsOpen){creditsOpen=false;RestoreCreditsProps();}if(active){active=false;Restore();if(canvas!=null)canvas.gameObject.SetActive(false);}if(musicSource!=null)musicSource.Stop();}
         void OnDestroy(){if(Instance==this)Instance=null;}
         void Quit()
         {
@@ -225,6 +227,8 @@ namespace Confiscated
             Label(SchoolGameMode.DarkUnlocked?(SchoolGameMode.DevUnlock?"DEV UNLOCK ON. LIGHTS OUT.":"LIGHTS OUT. FIND YOUR TORCH."):"ESCAPE ONCE TO UNLOCK DARK MODE",content,new Vector2(.30f,.27f),new Vector2(.52f,.315f),17,Cream);
             MakeButton("Quit",content,new Vector2(.07f,.225f),new Vector2(.20f,.292f),Quit);
             var credits=MakeButton("Credits",content,new Vector2(.21f,.232f),new Vector2(.29f,.285f),()=>ShowCredits(true));credits.GetComponentInChildren<Text>().fontSize=24;
+            // Valve's review checks the store's "Steam Leaderboards" feature in the build, so the boards must be reachable without escaping first.
+            if(SteamLeaderboard.Available)MakeButton("Leaderboards",content,new Vector2(.30f,.232f),new Vector2(.45f,.285f),()=>ShowLeaderboard(true)).GetComponentInChildren<Text>().fontSize=24;
             // Top row, beside Dark Mode, with its own live caption underneath (what's connected, how many are chatting).
             var twitch=MakeButton("Twitch",content,new Vector2(.53f,.32f),new Vector2(.74f,.405f),()=>ShowTwitch(true));
             twitchButton=(Image)twitch.targetGraphic;twitchButtonLabel=twitch.GetComponentInChildren<Text>();twitchButtonLabel.resizeTextForBestFit=true;twitchButtonLabel.resizeTextMinSize=18;twitchButtonLabel.resizeTextMaxSize=32;
@@ -237,6 +241,7 @@ namespace Confiscated
             var endings=Label(EndingsText(),content,new Vector2(.69f,.655f),new Vector2(.96f,.895f),20,Color.white);
             endings.alignment=TextAnchor.UpperLeft;endings.supportRichText=true;
             BuildTwitch(content);
+            BuildLeaderboard(content);
         }
         // Streamer setup: the channel to read chat from. Read-only guest access, so no login, no keys, nothing posted.
         void BuildTwitch(Transform parent)

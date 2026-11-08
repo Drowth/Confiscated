@@ -29,7 +29,12 @@ namespace Confiscated.EditorTools
     {
         public const string ResultFile="../Builds/last_release_build.txt";
         [MenuItem("Confiscated/Build/Windows Store Candidate")]
-        public static void Build()
+        public static void Build()=>Build(false);
+        /// <summary>The itch.io zip: the same game with Steamworks compiled out (DISABLESTEAMWORKS). The Steam build relaunches through
+        /// Steam as app 5521710, which quits the game for anyone with Steam installed who doesn't own it, so never upload it to itch.</summary>
+        [MenuItem("Confiscated/Build/Windows itch.io Candidate")]
+        public static void BuildItch()=>Build(true);
+        static void Build(bool itch)
         {
             if(EditorApplication.isPlayingOrWillChangePlaymode)throw new InvalidOperationException("Stop Play before building.");
             for(int i=0;i<SceneManager.sceneCount;i++)
@@ -37,17 +42,17 @@ namespace Confiscated.EditorTools
             var scenes=EditorBuildSettings.scenes.Where(s=>s.enabled).Select(s=>s.path).ToArray();
             var expected=new[]{"Assets/Scenes/StudioSplash.unity","Assets/Scenes/SchoolLayout.unity"};
             if(!scenes.SequenceEqual(expected))throw new InvalidOperationException("Store build must launch StudioSplash then SchoolLayout. Check enabled scenes.");
-            string root=Path.GetFullPath("../Builds/Release_"+DateTime.Now.ToString("yyyy-MM-dd_HHmmss"));
+            string root=Path.GetFullPath("../Builds/"+(itch?"Itch_":"Release_")+DateTime.Now.ToString("yyyy-MM-dd_HHmmss"));
             string player=Path.Combine(root,"Windows");
             Directory.CreateDirectory(player);
             Directory.CreateDirectory(Path.GetDirectoryName(ResultFile));
             File.WriteAllText(ResultFile,"Building\n"+root+"\n");
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{
                 scenes=scenes,locationPathName=Path.Combine(player,"Confiscated.exe"),
-                target=BuildTarget.StandaloneWindows64,
+                target=BuildTarget.StandaloneWindows64,extraScriptingDefines=itch?new[]{"DISABLESTEAMWORKS"}:null,
                 options=BuildOptions.CompressWithLz4HC|BuildOptions.DetailedBuildReport});
             var s=report.summary;
-            string result=$"{s.result}\n{root}\nUTC: {DateTime.UtcNow:O}\nUnity: {Application.unityVersion}\nVersion: {PlayerSettings.bundleVersion}\nScenes: {string.Join(", ",scenes)}\nCompression: LZ4HC (lossless)\nBuild data: {s.totalSize/1048576f:F1} MiB\nTime: {s.totalTime}\nErrors: {s.totalErrors}; warnings: {s.totalWarnings}\n";
+            string result=$"{s.result}\n{root}\nSteam: {(itch?"compiled out (itch.io)":"on")}\nUTC: {DateTime.UtcNow:O}\nUnity: {Application.unityVersion}\nVersion: {PlayerSettings.bundleVersion}\nScenes: {string.Join(", ",scenes)}\nCompression: LZ4HC (lossless)\nBuild data: {s.totalSize/1048576f:F1} MiB\nTime: {s.totalTime}\nErrors: {s.totalErrors}; warnings: {s.totalWarnings}\n";
             File.WriteAllText(ResultFile,result);
             File.WriteAllText(Path.Combine(root,"BuildReport.txt"),result);
             File.WriteAllLines(Path.Combine(root,"BuildWarnings.txt"),report.steps.SelectMany(step=>step.messages)
