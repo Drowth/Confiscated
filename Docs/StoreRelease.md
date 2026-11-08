@@ -12,10 +12,12 @@ For a manual-upload ZIP, run `Tools/PackageStoreBuild.ps1 -BuildRoot <release di
 
 ## itch.io
 
+Build itch zips with `Confiscated/Build/Windows itch.io Candidate`, never the Steam candidate. The Steam build calls `RestartAppIfNecessary(5521710)`, so on a PC with Steam installed it hands off to Steam and quits unless that account owns the game. The itch build compiles Steamworks out (`DISABLESTEAMWORKS`): no leaderboard, no achievements, and the escape screen says the boards are in the Steam version. It lands in `Builds/Itch_<timestamp>`.
+
 The existing destination is `drowth/confiscated:windows-playtest`. Once the candidate has passed testing, use PowerShell:
 
 ```powershell
-& "$env:LOCALAPPDATA\Programs\butler\butler.exe" push "D:\Confiscated\Builds\Release_YYYY-MM-DD_HHMMSS\Windows" drowth/confiscated:windows-playtest
+& "$env:LOCALAPPDATA\Programs\butler\butler.exe" push "D:\Confiscated\Builds\Itch_YYYY-MM-DD_HHMMSS\Windows" drowth/confiscated:windows-playtest
 ```
 
 Replace the timestamp with the tested build. Butler accepts the whole portable folder; no installer is required. Keep the file marked Windows. Test a freshly downloaded and extracted copy before directing creators to it.

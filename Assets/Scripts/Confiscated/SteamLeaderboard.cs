@@ -55,7 +55,7 @@ namespace Confiscated
             if(Category.StartsWith("Dark / ")){Set("Dark mode personal best saved locally.");return;}
             if(board==null||ms<=0||ms>int.MaxValue){Set("This run can't be ranked.");return;}
 #if DISABLESTEAMWORKS
-            Set("");
+            Set(Application.isEditor?"":"Steam leaderboards are in the Steam version. Time saved on this PC only.");
 #else
             if(instance==null){var g=new GameObject("Steam leaderboard");DontDestroyOnLoad(g);instance=g.AddComponent<SteamLeaderboard>();}
             instance.Begin(board,(int)ms);
